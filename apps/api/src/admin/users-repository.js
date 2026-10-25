@@ -74,8 +74,8 @@ export function createAdminUsersRepository(pool) {
     if (!roles.has(role)) throw new ApiError(422, 'VALIDATION_ERROR', 'Vai trò không hợp lệ.');
     const password = temporaryPassword();
     const passwordHash = await hashPassword(password);
-    const { rows } = await client.query(`INSERT INTO users(email, password_hash, role, must_change_password)
-      VALUES ($1, $2, $3, true)
+    const { rows } = await client.query(`INSERT INTO users(email, password_hash, role, must_change_password, email_verified_at, created_via)
+      VALUES ($1, $2, $3, true, now(), 'admin')
       RETURNING id, email, role, is_active, must_change_password, failed_login_count, locked_until, created_at`,
     [normalizedEmail, passwordHash, role]);
     const user = rows[0];

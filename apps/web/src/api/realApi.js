@@ -13,6 +13,9 @@ export const realApi = {
     }),
     forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
     resetPassword: ({ token, new_password }) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password }) }),
+    register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
+    verifyEmail: (token) => request('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
+    resendVerification: (email) => request('/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email }) }),
   },
   market: {
     status: () => request('/market/status'),

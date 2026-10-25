@@ -21,6 +21,8 @@ import { ChatPage } from './features/chat/ChatPage.jsx';
 import { NotificationSettingsPage } from './features/settings/NotificationSettingsPage.jsx';
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage.jsx';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage.jsx';
+import { RegisterPage } from './features/auth/RegisterPage.jsx';
+import { VerifyEmailPage } from './features/auth/VerifyEmailPage.jsx';
 
 function usePathname() {
   const [pathname, setPathname] = useState(window.location.pathname);
@@ -37,7 +39,7 @@ export function App() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (user && !user.must_change_password && ['/login', '/forgot-password', '/reset-password'].includes(pathname)) navigate('/overview');
+    if (user && !user.must_change_password && ['/login', '/forgot-password', '/reset-password', '/register', '/verify-email'].includes(pathname)) navigate('/overview');
   }, [user, pathname]);
 
   if (loading) {
@@ -47,11 +49,13 @@ export function App() {
   if (!user) {
     if (pathname === '/forgot-password') return <ForgotPasswordPage />;
     if (pathname === '/reset-password') return <ResetPasswordPage />;
+    if (pathname === '/register') return <RegisterPage />;
+    if (pathname === '/verify-email') return <VerifyEmailPage />;
     return <LoginPage />;
   }
 
   if (user.must_change_password) return <ChangePasswordPage mandatory />;
-  if (pathname === '/forgot-password' || pathname === '/reset-password' || pathname === '/login') {
+  if (['/forgot-password', '/reset-password', '/register', '/verify-email', '/login'].includes(pathname)) {
     return <main className="startup-state" aria-live="polite">Đang chuyển tới trang chính…</main>;
   }
 

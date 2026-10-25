@@ -8,6 +8,7 @@ import { ROLE_CAPABILITIES, ROLES } from '@stocksense/core/access';
 import { databaseEnabled, pool } from './db/pool.js';
 import { createPostgresAuthRepository } from './auth/postgres-repository.js';
 import { createPasswordResetRepository } from './auth/password-reset-repository.js';
+import { createRegistrationRepository } from './auth/registration-repository.js';
 import { createAdminUsersRepository } from './admin/users-repository.js';
 import { createAdminJobsRepository } from './admin/jobs-repository.js';
 import { createPostgresWatchlistRepository, validateNote } from './watchlist/repository.js';
@@ -18,7 +19,7 @@ import { createJournalRepository, validateJournalUpdate, validateManualJournal }
 import { createInvestmentProfileRepository, validateInvestmentProfile } from './profile/repository.js';
 import { createChatRepository, validateChatSession } from './chat/repository.js';
 import { createNotificationPreferencesRepository, createNotificationChannelsRepository, validateNotificationPreferences, hashVerificationCode } from './notifications/repository.js';
-import { emailProviderConfigured, telegramProviderConfigured, sendVerificationEmail, sendPasswordResetEmail, sendTestEmail, sendTelegramMessage } from './notifications/providers.js';
+import { emailProviderConfigured, telegramProviderConfigured, sendVerificationEmail, sendPasswordResetEmail, sendRegistrationVerificationEmail, sendAccountAlreadyExistsEmail, sendTestEmail, sendTelegramMessage } from './notifications/providers.js';
 import { ApiError } from './errors.js';
 import { createFixtureMarketRepository, createPostgresMarketRepository } from './market/repository.js';
 import { createPdfReport, formatReportValue } from './reports/pdf.js';
@@ -40,6 +41,7 @@ const app = Fastify({ logger: true, genReqId: () => randomUUID() });
 const market = databaseEnabled ? createPostgresMarketRepository(pool) : createFixtureMarketRepository();
 const postgresAuth = databaseEnabled ? createPostgresAuthRepository(pool) : null;
 const passwordResets = databaseEnabled ? createPasswordResetRepository(pool) : null;
+const registration = databaseEnabled ? createRegistrationRepository(pool) : null;
 const adminUsers = databaseEnabled ? createAdminUsersRepository(pool) : null;
 const adminJobs = databaseEnabled ? createAdminJobsRepository(pool) : null;
 const personalMarketTools = databaseEnabled ? createPostgresWatchlistRepository(pool) : null;
@@ -138,6 +140,9 @@ function envelope(data) { return { data }; }
 function dataNotReady(reply, request) {
   return fail(reply, request, 503, 'DATA_NOT_READY', 'Chưa có batch dữ liệu thị trường trong cơ sở dữ liệu.');
 }
+async function requireRegistrationStore(request, reply) {
+  if (!registration) return fail(reply, request, 503, 'REGISTRATION_UNAVAILABLE', 'Đăng ký tài khoản cần PostgreSQL.');
+}
 async function requireAdminStore(request, reply) {
   if (!adminUsers) return fail(reply, request, 503, 'ADMIN_STORE_UNAVAILABLE', 'Chức năng quản trị tài khoản cần PostgreSQL.');
 }
@@ -198,15 +203,20 @@ async function validateUserId(request, reply) {
   }
 }
 
-function getPasswordResetAppUrl() {
-  if (process.env.PASSWORD_RESET_ENABLED !== 'true' || !passwordResets ||
-      !process.env.AUTH_RATE_LIMIT_SECRET || process.env.AUTH_RATE_LIMIT_SECRET.length < 32 || !process.env.PUBLIC_APP_URL) return null;
+function getPublicAppUrl() {
+  if (!process.env.PUBLIC_APP_URL) return null;
   try {
     const url = new URL(process.env.PUBLIC_APP_URL);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash ||
         (process.env.NODE_ENV === 'production' && url.protocol !== 'https:')) return null;
     return url.origin;
   } catch { return null; }
+}
+
+function getPasswordResetAppUrl() {
+  if (process.env.PASSWORD_RESET_ENABLED !== 'true' || !passwordResets ||
+      !process.env.AUTH_RATE_LIMIT_SECRET || process.env.AUTH_RATE_LIMIT_SECRET.length < 32) return null;
+  return getPublicAppUrl();
 }
 
 app.post('/api/v1/auth/forgot-password', {
@@ -249,6 +259,88 @@ app.post('/api/v1/auth/reset-password', {
   return envelope(result);
 });
 
+app.post('/api/v1/auth/register', {
+  config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+  preHandler: [requireRegistrationStore],
+}, async (request, reply) => {
+  const { email, password, full_name: fullName, age_confirmed: ageConfirmed, terms_accepted: termsAccepted, privacy_accepted: privacyAccepted } = request.body ?? {};
+  if (typeof email !== 'string' || email.length > 254 || !/^\S+@\S+\.\S+$/.test(email.trim()) ||
+      typeof password !== 'string' || password.length < 12 || password.length > 128 ||
+      (fullName !== undefined && fullName !== null && (typeof fullName !== 'string' || fullName.trim().length > 100)) ||
+      ageConfirmed !== true || termsAccepted !== true || privacyAccepted !== true) {
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Vui lòng nhập email, mật khẩu hợp lệ (12-128 ký tự) và xác nhận đủ các điều kiện bắt buộc.');
+  }
+  const appUrl = getPublicAppUrl();
+  if (!appUrl) return fail(reply, request, 503, 'REGISTRATION_UNAVAILABLE', 'Thiếu cấu hình PUBLIC_APP_URL.');
+  const issued = await registration.register(email, password, fullName ?? null, request.ip);
+  reply.code(202).header('Cache-Control', 'no-store');
+  const response = reply.send(envelope({ message: 'Nếu email hợp lệ, chúng tôi đã gửi email xác thực tài khoản.' }));
+  if (issued?.created) {
+    const verifyUrl = new URL('/verify-email', appUrl);
+    verifyUrl.hash = new URLSearchParams({ token: issued.token }).toString();
+    setImmediate(async () => {
+      if (!emailProviderConfigured()) {
+        request.log.warn({ user_id: issued.userId, verify_url: verifyUrl.toString() }, 'SMTP chưa cấu hình: dùng liên kết này để xác thực email trong môi trường phát triển.');
+        return;
+      }
+      try { await sendRegistrationVerificationEmail(issued.email, verifyUrl.toString()); }
+      catch (error) {
+        await registration.cancelVerification(issued.token).catch(() => {});
+        request.log.error({ err: error, user_id: issued.userId }, 'Registration verification email delivery failed.');
+      }
+    });
+  } else if (issued?.alreadyExists && emailProviderConfigured()) {
+    setImmediate(async () => {
+      try { await sendAccountAlreadyExistsEmail(issued.email, new URL('/login', appUrl).toString()); }
+      catch (error) { request.log.error({ err: error }, 'Account-exists notice email delivery failed.'); }
+    });
+  }
+  return response;
+});
+
+app.post('/api/v1/auth/verify-email', {
+  config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+  preHandler: [requireRegistrationStore],
+}, async (request, reply) => {
+  const token = request.body?.token;
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{40,64}$/.test(token)) {
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Mã xác thực không hợp lệ.');
+  }
+  reply.header('Cache-Control', 'no-store');
+  return envelope(await registration.verifyEmail(token));
+});
+
+app.post('/api/v1/auth/resend-verification', {
+  config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+  preHandler: [requireRegistrationStore],
+}, async (request, reply) => {
+  const email = request.body?.email;
+  if (typeof email !== 'string' || email.length > 254 || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'A valid email address is required.');
+  }
+  const appUrl = getPublicAppUrl();
+  if (!appUrl) return fail(reply, request, 503, 'REGISTRATION_UNAVAILABLE', 'Thiếu cấu hình PUBLIC_APP_URL.');
+  const issued = await registration.resend(email, request.ip);
+  reply.code(202).header('Cache-Control', 'no-store');
+  const response = reply.send(envelope({ message: 'Nếu email hợp lệ và chưa xác thực, chúng tôi đã gửi lại email xác thực.' }));
+  if (issued) {
+    const verifyUrl = new URL('/verify-email', appUrl);
+    verifyUrl.hash = new URLSearchParams({ token: issued.token }).toString();
+    setImmediate(async () => {
+      if (!emailProviderConfigured()) {
+        request.log.warn({ user_id: issued.userId, verify_url: verifyUrl.toString() }, 'SMTP chưa cấu hình: dùng liên kết này để xác thực email trong môi trường phát triển.');
+        return;
+      }
+      try { await sendRegistrationVerificationEmail(issued.email, verifyUrl.toString()); }
+      catch (error) {
+        await registration.cancelVerification(issued.token).catch(() => {});
+        request.log.error({ err: error, user_id: issued.userId }, 'Registration verification email delivery failed.');
+      }
+    });
+  }
+  return response;
+});
+
 app.post('/api/v1/auth/login', {
   config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
 }, async (request, reply) => {
@@ -261,6 +353,9 @@ app.post('/api/v1/auth/login', {
   let login;
   if (postgresAuth) {
     login = await postgresAuth.login(normalizedEmail, password);
+    if (login?.emailUnverified) {
+      return fail(reply, request, 403, 'EMAIL_NOT_VERIFIED', 'Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư hoặc yêu cầu gửi lại email xác thực.');
+    }
   } else {
     const role = demoAccounts.get(normalizedEmail);
     if (role && password === demoPasswords.get(normalizedEmail)) {

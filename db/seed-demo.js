@@ -17,10 +17,10 @@ try {
   ];
   for (const [email, role] of demoUsers) {
     const demoPassword = `${role}12345678`;
-    await client.query(`INSERT INTO users(email, password_hash, role, must_change_password)
-      VALUES ($1, $2, $3, false) ON CONFLICT (email) DO UPDATE SET
+    await client.query(`INSERT INTO users(email, password_hash, role, must_change_password, email_verified_at, created_via)
+      VALUES ($1, $2, $3, false, now(), 'admin') ON CONFLICT (email) DO UPDATE SET
         password_hash=EXCLUDED.password_hash, role=EXCLUDED.role, must_change_password=false,
-        is_active=true, failed_login_count=0, locked_until=NULL, updated_at=now()`,
+        is_active=true, failed_login_count=0, locked_until=NULL, email_verified_at=now(), updated_at=now()`,
     [email, await hashPassword(demoPassword), role]);
   }
 

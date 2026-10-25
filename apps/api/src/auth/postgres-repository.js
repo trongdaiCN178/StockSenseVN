@@ -16,6 +16,7 @@ function mapUser(row) {
     email: row.email,
     role: row.role,
     must_change_password: row.must_change_password,
+    full_name: row.full_name ?? null,
   };
 }
 
@@ -26,7 +27,7 @@ export function createPostgresAuthRepository(pool) {
       await pool.query(`DELETE FROM auth_sessions
         WHERE expires_at <= now() OR revoked_at < now() - interval '90 days'`);
       const { rows } = await pool.query(`SELECT id, email, role, password_hash, must_change_password,
-        is_active, failed_login_count, locked_until
+        is_active, failed_login_count, locked_until, email_verified_at, full_name
         FROM users WHERE email = $1 LIMIT 1`, [normalizedEmail]);
       const row = rows[0];
 
@@ -49,6 +50,8 @@ export function createPostgresAuthRepository(pool) {
         return null;
       }
 
+      if (!row.email_verified_at) return { emailUnverified: true };
+
       const token = randomBytes(32).toString('base64url');
       const tokenHash = sessionTokenHash(token);
       const client = await pool.connect();
@@ -56,7 +59,7 @@ export function createPostgresAuthRepository(pool) {
         await client.query('BEGIN');
         const updated = await client.query(`UPDATE users SET failed_login_count = 0, locked_until = NULL, updated_at = now()
           WHERE id = $1 AND is_active = true AND (locked_until IS NULL OR locked_until <= now())
-          RETURNING id, email, role, must_change_password`, [row.id]);
+          RETURNING id, email, role, must_change_password, full_name`, [row.id]);
         if (!updated.rowCount) {
           await client.query('ROLLBACK');
           return null;
@@ -76,7 +79,7 @@ export function createPostgresAuthRepository(pool) {
     async findUserByToken(token) {
       if (!token || token.length > 128) return null;
       const tokenHash = sessionTokenHash(token);
-      const { rows } = await pool.query(`SELECT s.id AS session_id, u.id, u.email, u.role, u.must_change_password
+      const { rows } = await pool.query(`SELECT s.id AS session_id, u.id, u.email, u.role, u.must_change_password, u.full_name
         FROM auth_sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now() AND u.is_active = true
         LIMIT 1`, [tokenHash]);

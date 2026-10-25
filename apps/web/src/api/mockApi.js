@@ -144,6 +144,9 @@ export const mockApi = {
     },
     async forgotPassword() { throw new Error('Đặt lại mật khẩu cần API thật, SMTP và feature flag đã bật.'); },
     async resetPassword() { throw new Error('Đặt lại mật khẩu cần API thật, SMTP và feature flag đã bật.'); },
+    async register() { throw new Error('Đăng ký tài khoản cần API thật kết nối PostgreSQL.'); },
+    async verifyEmail() { throw new Error('Xác thực email cần API thật kết nối PostgreSQL.'); },
+    async resendVerification() { throw new Error('Gửi lại email xác thực cần API thật kết nối PostgreSQL.'); },
     async changePassword({ current_password, new_password }) {
       await delay();
       const user = readSession();

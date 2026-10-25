@@ -21,6 +21,22 @@ export async function sendPasswordResetEmail(to, resetUrl) {
     text: `Bạn đã yêu cầu đặt lại mật khẩu StockSense VN. Mở liên kết dùng một lần trong vòng 30 phút: ${resetUrl}\nNếu bạn không yêu cầu, hãy bỏ qua email này.` });
 }
 
+export async function sendRegistrationVerificationEmail(to, verifyUrl) {
+  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Registration verification email is unavailable because SMTP is not configured.');
+  const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, requireTLS: process.env.SMTP_SECURE !== 'true' });
+  await transport.sendMail({ from: process.env.SMTP_FROM, to, subject: 'Xác thực tài khoản StockSense VN',
+    text: `Cảm ơn bạn đã đăng ký StockSense VN. Mở liên kết dùng một lần trong vòng 24 giờ để xác thực email: ${verifyUrl}\nNếu bạn không yêu cầu, hãy bỏ qua email này.` });
+}
+
+export async function sendAccountAlreadyExistsEmail(to, loginUrl) {
+  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Email delivery is not configured.');
+  const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, requireTLS: process.env.SMTP_SECURE !== 'true' });
+  await transport.sendMail({ from: process.env.SMTP_FROM, to, subject: 'Bạn đã có tài khoản StockSense VN',
+    text: `Email này đã có tài khoản StockSense VN. Nếu đây là bạn, hãy đăng nhập tại ${loginUrl} hoặc dùng chức năng quên mật khẩu nếu cần.\nNếu không phải bạn yêu cầu, hãy bỏ qua email này.` });
+}
+
 export function telegramProviderConfigured() {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_USERNAME && process.env.TELEGRAM_WEBHOOK_SECRET);
 }

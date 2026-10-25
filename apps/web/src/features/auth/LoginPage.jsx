@@ -80,6 +80,7 @@ export function LoginPage() {
             {submitting ? 'Đang đăng nhập…' : isMockMode ? 'Đăng nhập demo' : 'Đăng nhập'}
           </button>
           {!isMockMode && import.meta.env.VITE_PASSWORD_RESET_ENABLED === 'true' && <button className="text-button" type="button" onClick={() => navigate('/forgot-password')}>Quên mật khẩu?</button>}
+          {!isMockMode && <button className="text-button" type="button" onClick={() => navigate('/register')}>Chưa có tài khoản? Đăng ký</button>}
           {isMockMode && <p className="small muted">Vai trò được chọn chỉ phục vụ xem thử các menu theo quyền.</p>}
         </form>
       </section>
