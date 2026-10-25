@@ -1,0 +1,117 @@
+import { download, request } from './client.js';
+
+export const realApi = {
+  auth: {
+    me: () => request('/me'),
+    login: ({ email, password }) => request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+    logout: () => request('/auth/logout', { method: 'POST' }),
+    changePassword: ({ current_password, new_password }) => request('/auth/change-password', {
+      method: 'POST', body: JSON.stringify({ current_password, new_password }),
+    }),
+    forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+    resetPassword: ({ token, new_password }) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password }) }),
+  },
+  market: {
+    status: () => request('/market/status'),
+    summary: () => request('/market/summary'),
+    symbols: () => request('/symbols'),
+  },
+  screener: {
+    run: (filters) => {
+      const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== '' && value != null));
+      return request(`/screener?${params}`);
+    },
+    saved: () => request('/screener/saved-filters'),
+    save: (payload) => request('/screener/saved-filters', { method: 'POST', body: JSON.stringify(payload) }),
+    remove: (id) => request(`/screener/saved-filters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  },
+  portfolio: {
+    snapshot: () => request('/portfolio'),
+    add: (payload) => request('/portfolio/transactions', { method: 'POST', body: JSON.stringify(payload) }),
+    importMany: (transactions) => request('/portfolio/transactions/import', { method: 'POST', body: JSON.stringify({ transactions }) }),
+    remove: (id) => request(`/portfolio/transactions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  },
+  plans: {
+    calculate: (payload) => request('/plans/calc', { method: 'POST', body: JSON.stringify(payload) }),
+    list: () => request('/plans'),
+    create: (payload) => request('/plans', { method: 'POST', body: JSON.stringify(payload) }),
+    updateStatus: (id, status) => request(`/plans/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    close: (id, payload) => request(`/plans/${encodeURIComponent(id)}/close`, { method: 'POST', body: JSON.stringify(payload) }),
+  },
+  journal: {
+    list: ({ symbol = '', limit = 50 } = {}) => request(`/journal?${new URLSearchParams({ ...(symbol ? { symbol } : {}), limit: String(limit) })}`),
+    update: (id, payload) => request(`/journal/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    createManual: (payload) => request('/journal', { method: 'POST', body: JSON.stringify(payload) }),
+    stats: () => request('/journal/stats'),
+  },
+  profile: {
+    get: () => request('/me/profile'),
+    save: (payload) => request('/me/profile', { method: 'PUT', body: JSON.stringify(payload) }),
+  },
+  chat: {
+    sessions: () => request('/chat/sessions'),
+    createSession: (title = 'Cuộc trò chuyện mới') => request('/chat/sessions', { method: 'POST', body: JSON.stringify({ title }) }),
+    messages: (sessionId, limit = 100) => request(`/chat/sessions/${encodeURIComponent(sessionId)}/messages?limit=${limit}`),
+    sendMessage: (sessionId, content) => request(`/chat/sessions/${encodeURIComponent(sessionId)}/messages`, { method: 'POST', body: JSON.stringify({ content }) }),
+    deleteSession: (sessionId) => request(`/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' }),
+  },
+  notifications: {
+    getPreferences: () => request('/me/notification-preferences'),
+    savePreferences: (payload) => request('/me/notification-preferences', { method: 'PUT', body: JSON.stringify(payload) }),
+    channels: () => request('/notify/channels'),
+    linkEmail: () => request('/notify/email/link', { method: 'POST' }),
+    verifyEmail: (code) => request('/notify/email/verify', { method: 'POST', body: JSON.stringify({ code }) }),
+    linkTelegram: () => request('/notify/telegram/link', { method: 'POST' }),
+    test: (channel) => request(`/notify/channels/${encodeURIComponent(channel)}/test`, { method: 'POST' }),
+    unlink: (channel) => request(`/notify/channels/${encodeURIComponent(channel)}`, { method: 'DELETE' }),
+  },
+  symbols: {
+    detail: (symbol) => request(`/symbols/${encodeURIComponent(symbol)}`),
+    prices: (symbol, range = '3m') => request(`/symbols/${encodeURIComponent(symbol)}/prices?range=${encodeURIComponent(range)}`),
+    news: (symbol) => request(`/symbols/${encodeURIComponent(symbol)}/news`),
+    historyCsv: (symbol, range = '6m') => download(`/symbols/${encodeURIComponent(symbol)}/history.csv?range=${encodeURIComponent(range)}`, `stocksense-${symbol}-history.csv`, 'text/csv'),
+  },
+  watchlist: {
+    list: () => request('/watchlist'),
+    add: (symbol, note = '') => request(`/watchlist/${encodeURIComponent(symbol)}`, { method: 'PUT', body: JSON.stringify({ note }) }),
+    updateNote: (symbol, note) => request(`/watchlist/${encodeURIComponent(symbol)}`, { method: 'PATCH', body: JSON.stringify({ note }) }),
+    remove: (symbol) => request(`/watchlist/${encodeURIComponent(symbol)}`, { method: 'DELETE' }),
+  },
+  alerts: {
+    rules: () => request('/alert-rules'),
+    createRule: (payload) => request('/alert-rules', { method: 'POST', body: JSON.stringify(payload) }),
+    updateRule: (id, payload) => request(`/alert-rules/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    deleteRule: (id) => request(`/alert-rules/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    list: () => request('/alerts?limit=50'),
+    markRead: (id) => request(`/alerts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ read: true }) }),
+  },
+  reports: {
+    symbol: (symbol) => download(`/reports/symbols/${encodeURIComponent(symbol)}.pdf`, `stocksense-${symbol}.pdf`),
+    portfolio: () => download('/reports/portfolio.pdf', 'stocksense-portfolio.pdf'),
+    plan: (id, symbol = 'plan') => download(`/reports/plans/${encodeURIComponent(id)}.pdf`, `stocksense-plan-${symbol}.pdf`),
+    journal: () => download('/reports/journal.pdf', 'stocksense-journal.pdf'),
+  },
+  admin: {
+    users: {
+      list: ({ q = '' } = {}) => request(`/admin/users?q=${encodeURIComponent(q)}`),
+      create: (payload) => request('/admin/users', { method: 'POST', body: JSON.stringify(payload) }),
+      update: (id, payload) => request(`/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+      resetPassword: (id) => request(`/admin/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST' }),
+      revokeSessions: (id) => request(`/admin/users/${encodeURIComponent(id)}/revoke-sessions`, { method: 'POST' }),
+    },
+    audit: ({ limit = 50, cursor, eventType } = {}) => {
+      const query = new URLSearchParams({ limit: String(limit) });
+      if (cursor) query.set('cursor', cursor);
+      if (eventType) query.set('event_type', eventType);
+      return request(`/admin/audit?${query}`);
+    },
+    ingestionRuns: () => request('/admin/ingestion-runs?limit=50'),
+    notifications: () => request('/admin/notifications?limit=50'),
+    opsEvents: () => request('/admin/ops-events?limit=50'),
+    jobs: () => request('/admin/jobs'),
+    enqueueJob: (job) => request(`/admin/jobs/${encodeURIComponent(job)}/run`, { method: 'POST' }),
+  },
+};

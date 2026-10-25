@@ -1,0 +1,29 @@
+{
+  "name": "stocksense-vn",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @stocksense/web run dev",
+    "dev:api": "npm --workspace @stocksense/api run dev",
+    "worker:market:sync": "npm --workspace @stocksense/worker run market:sync",
+    "worker:news:sync": "npm --workspace @stocksense/worker run news:sync",
+    "worker:notifications:deliver": "npm --workspace @stocksense/worker run notifications:deliver",
+    "worker:admin-jobs:run": "npm --workspace @stocksense/worker run admin-jobs:run",
+    "worker:admin-jobs:watch": "npm --workspace @stocksense/worker run admin-jobs:watch",
+    "db:migrate": "npm --workspace @stocksense/api run db:migrate",
+    "db:seed:demo": "npm --workspace @stocksense/api run db:seed:demo",
+    "build:web": "npm --workspace @stocksense/web run build",
+    "preview:web": "npm --workspace @stocksense/web run preview",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.5"
+  }
+}

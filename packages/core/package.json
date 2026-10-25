@@ -1,0 +1,11 @@
+{
+  "name": "@stocksense/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./access": "./src/access/roles.js",
+    "./labels": "./src/labels/forecast.js",
+    "./calc": "./src/calc/riskReward.js"
+  }
+}

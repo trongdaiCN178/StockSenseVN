@@ -1,0 +1,1140 @@
+﻿<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>StockSense VN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: app shell — sidebar điều hướng + thanh trạng thái dữ liệu trên cùng; dưới 760px chuyển thành tab bar đáy như bản mobile (SDD 8.3) */
+:root{
+  --bg:#F3F5F2; --surface:#FFFFFF; --surface-2:#ECEFEA; --ink:#15201B; --muted:#5A6660; --line:#DADFD8;
+  --accent:#0B5D52; --accent-ink:#FFFFFF; --accent-soft:#DDEDE8;
+  --up:#0B8445; --up-soft:#DDF1E5; --hold:#A86B0C; --hold-soft:#FAEFD6; --down:#C9352A; --down-soft:#FBE3E0;
+  --warn:#A86B0C; --info:#1F6FA8; --info-soft:#E0EDF7;
+  --shadow:0 1px 2px rgba(18,32,27,.06),0 4px 16px rgba(18,32,27,.05);
+  --f-ui:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r-sm:6px; --r-md:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1412; --surface:#151D1A; --surface-2:#1C2622; --ink:#E4EBE7; --muted:#9AA8A1; --line:#28342F;
+  --accent:#4CC2A6; --accent-ink:#0B1714; --accent-soft:#183A33;
+  --up:#3ECB7F; --up-soft:#173527; --hold:#E3AE48; --hold-soft:#3A2E15; --down:#FF6E61; --down-soft:#3E1D1A;
+  --warn:#E3AE48; --info:#6DB5EA; --info-soft:#17303F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1412; --surface:#151D1A; --surface-2:#1C2622; --ink:#E4EBE7; --muted:#9AA8A1; --line:#28342F;
+  --accent:#4CC2A6; --accent-ink:#0B1714; --accent-soft:#183A33;
+  --up:#3ECB7F; --up-soft:#173527; --hold:#E3AE48; --hold-soft:#3A2E15; --down:#FF6E61; --down-soft:#3E1D1A;
+  --warn:#E3AE48; --info:#6DB5EA; --info-soft:#17303F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+h1,h2,h3{text-wrap:balance;margin:0}
+h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:16px;font-weight:600}
+h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+p{margin:0}
+
+/* shell */
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.side{background:var(--surface);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:13px}
+.brand b{font-size:15px;display:block;line-height:1.1}
+.brand small{color:var(--muted);font-size:11px}
+.navgrp{display:flex;flex-direction:column;gap:2px}
+.navgrp h3{font-size:10.5px;padding:0 10px 4px}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);border:0;background:none;text-align:left;cursor:pointer;color:var(--ink);font-weight:500;width:100%}
+.nav svg{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;color:var(--muted)}
+.nav:hover{background:var(--surface-2)}
+.nav.on{background:var(--accent-soft);color:var(--accent)}
+.nav.on svg{color:var(--accent)}
+.nav .tag{margin-left:auto}
+.tag{font-size:10px;font-weight:600;padding:1px 6px;border-radius:99px;background:var(--surface-2);color:var(--muted);letter-spacing:.03em;white-space:nowrap}
+.side-foot{margin-top:auto;padding:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--muted)}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:10px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.datastat{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);min-width:0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--up);flex:none;box-shadow:0 0 0 3px var(--up-soft)}
+.top .grow{flex:1}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 10px;min-width:200px}
+.search svg{width:16px;height:16px;flex:none;stroke:var(--muted);fill:none;stroke-width:1.8}
+.search input{border:0;background:none;outline:none;width:100%}
+.iconbtn{position:relative;width:34px;height:34px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer}
+.iconbtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7}
+.badge{position:absolute;top:-5px;right:-5px;background:var(--down);color:#fff;font-size:10px;font-weight:700;border-radius:99px;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px}
+.rolesel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:8px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.content{padding:22px 24px 40px;display:flex;flex-direction:column;gap:18px;max-width:1440px;width:100%}
+.pagehead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;justify-content:space-between}
+.pagehead p{color:var(--muted);margin-top:4px;max-width:70ch}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* blocks */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px;min-width:0}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g-main{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:var(--r-sm);cursor:pointer;font-weight:500;font-size:13px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--down);border-color:color-mix(in srgb,var(--down) 40%,var(--line))}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip.up{background:var(--up-soft);color:var(--up)}
+.chip.hold{background:var(--hold-soft);color:var(--hold)}
+.chip.down{background:var(--down-soft);color:var(--down)}
+.chip.neutral{background:var(--surface-2);color:var(--muted)}
+.chip.info{background:var(--info-soft);color:var(--info)}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.c-up{color:var(--up)} .c-down{color:var(--down)} .c-hold{color:var(--hold)} .muted{color:var(--muted)}
+.small{font-size:12px}
+.disc{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);background:var(--surface-2);border-radius:var(--r-sm);padding:8px 10px}
+.disc svg{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;margin-top:1px}
+.note{display:block;padding:10px 12px;border-radius:var(--r-sm);font-size:13px}
+.note.warn{background:var(--hold-soft);color:var(--ink)}
+.note.warn b{color:var(--hold)}
+.note.info{background:var(--info-soft)}
+.note .actions{margin-top:8px}
+.note.bad{background:var(--down-soft)}
+.anno{display:none;font-family:var(--f-num);font-size:10.5px;color:var(--info);background:var(--info-soft);padding:1px 6px;border-radius:4px;white-space:nowrap;font-weight:500}
+body.show-anno .anno{display:inline-block}
+
+/* tables */
+.tw{overflow-x:auto;margin:0 -16px;padding:0 16px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--surface-2)}
+td.r,th.r{text-align:right}
+.sym{font-weight:700;letter-spacing:.02em}
+.sym small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;letter-spacing:0}
+.lab{display:inline-flex;align-items:center;gap:5px;font-weight:600}
+.flag{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--info);margin-left:4px;vertical-align:middle}
+
+/* market strip */
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.strip>div{padding:14px 16px;border-right:1px solid var(--line);min-width:0}
+.strip>div:last-child{border-right:0}
+.strip .k{font-size:11.5px;color:var(--muted);font-weight:500}
+.strip .v{font-size:20px;font-weight:600;margin-top:2px}
+.breadth{display:flex;height:8px;border-radius:99px;overflow:hidden;margin-top:8px;gap:2px}
+.breadth i{display:block}
+
+/* forecast card */
+.fcs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.fc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.fc-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.hz{font-family:var(--f-num);font-weight:600;font-size:13px;background:var(--surface-2);padding:2px 8px;border-radius:6px}
+.fc-label{display:flex;align-items:baseline;gap:10px;font-size:28px;font-weight:700;letter-spacing:-.01em}
+.fc-label .pct{font-family:var(--f-num);font-size:18px;font-weight:500;color:var(--muted)}
+.pbar{display:flex;height:12px;border-radius:99px;overflow:hidden;gap:2px;background:var(--surface-2)}
+.pbar i{display:block;height:100%}
+.bg-up{background:var(--up)} .bg-hold{background:var(--hold)} .bg-down{background:var(--down)}
+.plegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px}
+.plegend span{display:inline-flex;gap:4px;align-items:center}
+.fc-f{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px}
+.conf{display:inline-flex;gap:3px;align-items:center}
+.conf i{width:6px;height:12px;border-radius:2px;background:var(--line);display:block}
+.conf.lv1 i:nth-child(-n+1),.conf.lv2 i:nth-child(-n+2),.conf.lv3 i:nth-child(-n+3){background:var(--accent)}
+
+/* detail */
+.dhead{display:flex;gap:18px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.dhead .px{font-size:26px;font-weight:600}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:none;padding:10px 14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.reasons{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.reasons li{display:grid;grid-template-columns:22px 1fr;gap:8px}
+.reasons li b{font-family:var(--f-num);font-size:12px;width:22px;height:22px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center}
+.share{display:flex;height:22px;border-radius:6px;overflow:hidden;gap:2px;font-size:11px;font-weight:600}
+.share i{display:flex;align-items:center;padding:0 8px;font-style:normal;color:#fff;white-space:nowrap;overflow:hidden}
+.s-tech{background:#3A6EA5} .s-news{background:#8A5BB0} .s-fin{background:#2F8C7E}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{fill:var(--muted);font-family:var(--f-num);font-size:10px}
+.gridline{stroke:var(--line);stroke-width:1}
+
+/* news */
+.news{display:flex;flex-direction:column}
+.news article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.news article:last-child{border-bottom:0}
+.news h4{margin:0;font-size:14px;font-weight:600}
+.news p{color:var(--muted);font-size:13px;grid-column:1}
+.news .meta{font-size:12px;color:var(--muted);grid-column:1}
+
+/* forms */
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:12px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:8px 10px;width:100%;min-width:0}
+.field textarea{resize:vertical;min-height:64px}
+.field .hint{font-size:11.5px;color:var(--muted)}
+.frow{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
+.toggle input{appearance:none;width:34px;height:20px;border-radius:99px;background:var(--line);position:relative;cursor:pointer;transition:background .15s}
+.toggle input::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.toggle input:checked{background:var(--accent)}
+.toggle input:checked::after{transform:translateX(14px)}
+
+/* stat tiles */
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:22px;font-weight:600;margin-top:2px}
+.stat .s{font-size:12px;margin-top:2px}
+
+/* kanban */
+.kan{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:12px;overflow-x:auto;padding-bottom:4px}
+.col{background:var(--surface-2);border-radius:var(--r-md);padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.col-h{display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--muted);padding:2px 4px;text-transform:uppercase;letter-spacing:.05em}
+.pc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.pc:hover{border-color:var(--accent)}
+.pc.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12.5px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right}
+
+/* chat */
+.chatwrap{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;min-height:560px}
+.msgs{display:flex;flex-direction:column;gap:14px;padding:4px 0}
+.msg{max-width:78%;padding:10px 14px;border-radius:14px;font-size:14px}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--surface-2);border-bottom-left-radius:4px}
+.cite{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:1px 8px;margin:6px 4px 0 0;cursor:pointer;color:var(--accent)}
+.suggest{display:flex;gap:8px;flex-wrap:wrap}
+.suggest button{border:1px dashed var(--line);background:none;border-radius:99px;padding:5px 12px;cursor:pointer;font-size:12.5px}
+
+/* confusion */
+.cm{display:grid;grid-template-columns:auto repeat(3,1fr);gap:3px;font-size:12px}
+.cm div{padding:10px 6px;text-align:center;border-radius:4px}
+.cm .h{font-weight:600;color:var(--muted);background:none}
+
+/* popovers / modal */
+.pop{position:absolute;right:0;top:42px;width:340px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow);z-index:40;padding:8px}
+.pop .it{display:flex;gap:10px;padding:10px;border-radius:var(--r-sm);cursor:pointer;font-size:13px}
+.pop .it:hover{background:var(--surface-2)}
+.pop .it.unread{font-weight:600}
+.modal-bg{position:fixed;inset:0;background:rgba(10,18,15,.45);z-index:60;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border-radius:var(--r-md);max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;font-size:13px;z-index:80;font-weight:500}
+
+/* login */
+.login{min-height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.login-l{background:var(--accent);color:var(--accent-ink);padding:48px;display:flex;flex-direction:column;justify-content:space-between;gap:32px}
+.login-l h1{font-size:34px;max-width:16ch;line-height:1.15}
+.login-r{display:grid;place-items:center;padding:32px 16px}
+.login-form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px}
+.demo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.demo button{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:10px;cursor:pointer}
+.demo button b{display:block;font-size:13px}
+.demo button span{font-size:11.5px;color:var(--muted)}
+
+.empty403{text-align:center;padding:60px 16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty403 .code{font-family:var(--f-num);font-size:44px;font-weight:600;color:var(--muted)}
+
+.bottombar{display:none}
+.more-sheet{display:none}
+.hide-sm{}
+
+@media (max-width:1100px){
+  .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g-main{grid-template-columns:minmax(0,1fr)}
+  .strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .strip>div:nth-child(2){border-right:0}
+  .strip>div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{display:none}
+  .top{padding:10px 16px}
+  .search{min-width:0;flex:1}
+  .content{padding:16px 16px 96px}
+  .g2,.g3,.fcs,.chatwrap{grid-template-columns:minmax(0,1fr)}
+  .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hide-sm{display:none!important}
+  .chatlist{display:none}
+  .msg{max-width:92%}
+  .bottombar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+  .bottombar button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--muted);cursor:pointer;padding:4px 0}
+  .bottombar button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7}
+  .bottombar button.on{color:var(--accent)}
+  .more-sheet.open{display:flex;flex-direction:column;position:fixed;left:0;right:0;bottom:62px;z-index:29;background:var(--surface);border-top:1px solid var(--line);padding:8px 12px;box-shadow:var(--shadow)}
+  .login{grid-template-columns:minmax(0,1fr)}
+  .login-l{padding:28px 20px}
+  .login-l h1{font-size:26px}
+  .fc-label{font-size:24px}
+  .rolesel .lbl{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div id="root"></div>
+<div id="modal"></div>
+
+<script>
+/* ============ dữ liệu minh họa ============ */
+const DATA_DATE='07/10/2026', DUE2='09/10/2026', DUE5='14/10/2026', MODEL='mm-2026.10.01-a', BATCH_AT='16:42';
+const LV={up:'Tăng',hold:'Đi ngang',down:'Giảm'}, IC={up:'▲',hold:'●',down:'▼'};
+const S=[
+ ['FPT','CTCP FPT','HOSE','Công nghệ',118500,1.28,520,[.48,.33,.19],[.57,.28,.15],0,'hold'],
+ ['VCB','Ngân hàng TMCP Ngoại thương','HOSE','Ngân hàng',92300,-0.32,310,[.22,.56,.22],[.30,.47,.23]],
+ ['HPG','CTCP Tập đoàn Hòa Phát','HOSE','Thép',27450,2.04,780,[.52,.30,.18],[.41,.25,.34]],
+ ['MWG','CTCP Đầu tư Thế Giới Di Động','HOSE','Bán lẻ',63200,-1.25,450,[.20,.32,.48],[.46,.30,.24],'hold'],
+ ['VNM','CTCP Sữa Việt Nam','HOSE','Tiêu dùng',66800,0.15,210,[.25,.51,.24],[.27,.49,.24]],
+ ['TCB','Ngân hàng TMCP Kỹ Thương','HOSE','Ngân hàng',24650,0.82,390,[.44,.36,.20],[.50,.31,.19]],
+ ['MBB','Ngân hàng TMCP Quân Đội','HOSE','Ngân hàng',23900,0.42,410,[.38,.40,.22],[.42,.34,.24]],
+ ['SSI','CTCP Chứng khoán SSI','HOSE','Chứng khoán',33150,3.12,690,[.55,.26,.19],[.59,.22,.19],'hold'],
+ ['VHM','CTCP Vinhomes','HOSE','Bất động sản',41800,-2.11,560,[.17,.29,.54],[.21,.31,.48],'hold'],
+ ['VIC','Tập đoàn Vingroup','HOSE','Bất động sản',44300,-0.67,330,[.23,.36,.41],[.28,.38,.34]],
+ ['ACB','Ngân hàng TMCP Á Châu','HOSE','Ngân hàng',25100,0.20,240,[.31,.47,.22],[.36,.42,.22]],
+ ['GAS','Tổng Công ty Khí Việt Nam','HOSE','Năng lượng',71500,-0.42,150,[.26,.44,.30],[.24,.40,.36],0,0,['Thiếu tin 5 phiên']],
+ ['MSN','CTCP Tập đoàn Masan','HOSE','Tiêu dùng',78900,1.15,280,[.46,.35,.19],[.44,.33,.23]],
+ ['SHS','CTCP Chứng khoán Sài Gòn Hà Nội','HNX','Chứng khoán',16800,4.35,310,[.58,.24,.18],[.51,.27,.22],0,'hold'],
+ ['PVS','Tổng CTCP Dịch vụ Kỹ thuật Dầu khí','HNX','Dầu khí',34200,-1.44,190,[.21,.35,.44],[.25,.37,.38]],
+ ['CEO','CTCP Tập đoàn C.E.O','HNX','Bất động sản',18900,-3.57,120,[.18,.30,.52],[.20,.33,.47]],
+ ['IDC','Tổng Công ty IDICO','HNX','BĐS khu công nghiệp',52600,0.57,95,[.36,.43,.21],[.39,.40,.21]],
+].map(r=>{
+  const mk=(p,prev)=>{const k=['up','hold','down'];const i=p.indexOf(Math.max(...p));return {label:k[i],p:{up:p[0],hold:p[1],down:p[2]},max:p[i],prev:prev||null}};
+  const o={s:r[0],n:r[1],ex:r[2],sec:r[3],px:r[4],ch:r[5],liq:r[6],t2:mk(r[7],r[9]),t5:mk(r[8],r[10]),ds:r[11]||[]};
+  o.conflict=(o.t2.label==='up'&&o.t5.label==='down')||(o.t2.label==='down'&&o.t5.label==='up');
+  for(const h of ['t2','t5']){const f=o[h];let lv=f.max<.45?1:f.max<=.55?2:3;if(o.conflict||o.ds.length)lv=Math.max(1,lv-1);f.conf=lv}
+  return o;
+});
+const BY=Object.fromEntries(S.map(o=>[o.s,o]));
+const CONF=['','Thấp','Trung bình','Cao'];
+
+/* ============ trạng thái ============ */
+const st={screen:'app',role:'retail',page:'overview',sym:'FPT',tab:'fc',filter:{ex:'all',sec:'all',trend:'all',q:''},hist:30,
+  newsF:'all',bell:false,more:false,planSel:2,jSel:1,adminTab:'users',evalH:2,chatMsgs:null,
+  wl:{FPT:'Chờ KQKD quý III',HPG:'Theo dõi giá thép',MWG:'',SSI:'Vùng 32-33',VCB:''},
+  alerts:[
+    {id:1,t:'MWG: T+2 đổi nhãn Đi ngang → Giảm',when:'07/10 16:43',read:false,sym:'MWG'},
+    {id:2,t:'FPT: T+5 đổi nhãn Đi ngang → Tăng',when:'07/10 16:43',read:false,sym:'FPT'},
+    {id:3,t:'Kế hoạch HPG: giá đóng cửa chạm vùng vào 27.000–27.500',when:'07/10 16:44',read:false,sym:'HPG'},
+    {id:4,t:'SSI: xác suất Tăng T+5 vượt 55% (59%)',when:'07/10 16:43',read:true,sym:'SSI'},
+    {id:5,t:'VHM: T+2 đổi nhãn Đi ngang → Giảm',when:'07/10 16:43',read:true,sym:'VHM'},
+    
+  ],
+  annos:false};
+try{const s=JSON.parse(localStorage.getItem('ss-ui')||'{}');if(s.role)st.role=s.role;if(s.page)st.page=s.page;if(s.annos)st.annos=true}catch(e){}
+function save(){try{localStorage.setItem('ss-ui',JSON.stringify({role:st.role,page:st.page,annos:st.annos}))}catch(e){}}
+
+const ROLE_N={retail:'Retail',trader:'Trader',analyst:'Analyst',admin:'Admin'};
+const ROLE_D={retail:'Nhà đầu tư cá nhân',trader:'Swing trader',analyst:'Analyst / quant',admin:'Quản trị viên'};
+const isT=()=>['trader','analyst'].includes(st.role), isA=()=>st.role==='analyst', isAd=()=>st.role==='admin';
+
+/* trang: id, tên, nhóm, giai đoạn, vai trò được vào, icon */
+const PAGES=[
+ ['overview','Tổng quan','Thị trường','',['retail','trader','analyst'],'home'],
+ ['detail','Chi tiết mã','Thị trường','',['retail','trader','analyst'],'chart',true],
+ ['screener','Screener','Thị trường','GĐ2',['retail','trader','analyst'],'filter'],
+ ['watchlist','Watchlist & cảnh báo','Thị trường','',['retail','trader','analyst'],'star'],
+ ['portfolio','Portfolio','Của tôi','GĐ2',['retail','trader','analyst'],'pie'],
+ ['plans','Trade Plan','Của tôi','GĐ2',['retail','trader','analyst'],'target'],
+ ['journal','Journal','Của tôi','GĐ2',['retail','trader','analyst'],'book'],
+ ['chat','Chat hỏi đáp','Hỗ trợ','GĐ2',['retail','trader','analyst'],'chat'],
+ ['eval','Đánh giá mô hình','Hỗ trợ','',['retail','trader','analyst','admin'],'gauge'],
+ ['admin','Quản trị','Hệ thống','',['analyst','admin'],'shield'],
+ ['settings','Cài đặt','Hệ thống','',['retail','trader','analyst'],'gear'],
+];
+const ICONS={
+ home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+ chart:'<path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/>',
+ filter:'<path d="M3 5h18l-7 8v6l-4-2v-4z"/>',
+ star:'<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+ pie:'<path d="M12 3v9h9a9 9 0 1 1-9-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/>',
+ target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/>',
+ book:'<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/>',
+ chat:'<path d="M4 5h16v11H9l-5 4z"/>',
+ gauge:'<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/>',
+ shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+ bell:'<path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+ info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ pdf:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/>',
+ dl:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+ more:'<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+ search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+ share:'<path d="M4 12v7h16v-7M12 3v12M7 8l5-5 5 5"/>',
+};
+const ic=(n,cls='')=>`<svg viewBox="0 0 24 24" class="${cls}" aria-hidden="true">${ICONS[n]}</svg>`;
+
+/* ============ tiện ích ============ */
+const fp=v=>Math.round(v).toLocaleString('vi-VN');
+const pc=(v,d=2)=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d).replace('.',',')+'%';
+const p100=v=>Math.round(v*100)+'%';
+const cls=v=>v>0?'c-up':v<0?'c-down':'c-hold';
+const A=(t)=>`<span class="anno">${t}</span>`;
+const lab=(l,extra='')=>`<span class="lab c-${l}">${IC[l]} ${LV[l]}${extra}</span>`;
+const confEl=lv=>`<span class="conf lv${lv}" title="Mức tin cậy ${CONF[lv]}"><i></i><i></i><i></i></span> <span>${CONF[lv]}</span>`;
+function rng(seed){let s=0;for(const c of String(seed))s=(s*31+c.charCodeAt(0))>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
+function disc(t='Dự báo chỉ mang tính tham khảo, không phải khuyến nghị đầu tư.'){return `<div class="disc">${ic('info')}<span>${t}</span></div>`}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2200)}
+
+/* ============ thành phần ============ */
+function fcCard(o,h){
+  const f=o[h], due=h==='t2'?DUE2:DUE5, P=f.p;
+  return `<div class="fc">
+   <div class="fc-h"><span class="hz">${h==='t2'?'T+2':'T+5'}</span><span class="small muted">Đáo hạn <span class="num">${due}</span></span></div>
+   <div class="fc-label c-${f.label}">${IC[f.label]} ${LV[f.label]} <span class="pct">${p100(f.max)}</span></div>
+   <div class="pbar" role="img" aria-label="Tăng ${p100(P.up)}, Đi ngang ${p100(P.hold)}, Giảm ${p100(P.down)}"><i class="bg-up" style="width:${P.up*100}%"></i><i class="bg-hold" style="width:${P.hold*100}%"></i><i class="bg-down" style="width:${P.down*100}%"></i></div>
+   <div class="plegend num"><span class="c-up">▲ ${p100(P.up)}</span><span class="c-hold">● ${p100(P.hold)}</span><span class="c-down">▼ ${p100(P.down)}</span></div>
+   <div class="fc-f">${confEl(f.conf)}${f.max<.45?'<span class="chip hold">Độ tin cậy thấp</span>':''}${f.prev?`<span class="chip info">Đổi từ ${LV[f.prev]}</span>`:''}${o.ds.map(d=>`<span class="chip neutral">${d}</span>`).join('')}</div>
+   ${A('M2 · FR-M2-01..08')}
+  </div>`;
+}
+function miniLab(f){return `<span class="lab c-${f.label}">${IC[f.label]} ${LV[f.label]}</span> <span class="num muted small">${p100(f.max)}</span>${f.prev?'<span class="flag" title="Đổi nhãn hôm nay"></span>':''}`}
+
+function candle(o,w=760,hgt=280){
+  const r=rng(o.s), n=120; let p=o.px*(0.82+r()*0.3); const c=[];
+  for(let i=0;i<n;i++){const drift=(o.px-p)/(n-i)*0.9;const op=p;const cl=Math.max(1,op+drift+(r()-.5)*o.px*0.028);const hi=Math.max(op,cl)*(1+r()*.012),lo=Math.min(op,cl)*(1-r()*.012);c.push({op,cl,hi,lo,news:r()<.07?(r()<.5?1:-1):0});p=cl}
+  c[n-1].cl=o.px;
+  const pad={l:8,r:52,t:10,b:34}, W=w-pad.l-pad.r, H=hgt-pad.t-pad.b;
+  const mx=Math.max(...c.map(x=>x.hi)), mn=Math.min(...c.map(x=>x.lo));
+  const y=v=>pad.t+(mx-v)/(mx-mn)*H, bw=W/n;
+  let g='';
+  const step=(mx-mn)/4;for(let i=0;i<=4;i++){const v=mn+step*i;g+=`<line class="gridline" x1="${pad.l}" x2="${pad.l+W}" y1="${y(v)}" y2="${y(v)}"/><text x="${pad.l+W+6}" y="${y(v)+3}">${fp(v/100)*100>0?fp(Math.round(v/50)*50):''}</text>`}
+  const months=['05','06','07','08','09','10'];months.forEach((m,i)=>{const x=pad.l+(i*21+8)*bw;if(x<pad.l+W)g+=`<text x="${x}" y="${hgt-6}">T${m}</text>`});
+  c.forEach((k,i)=>{const x=pad.l+i*bw+bw/2, col=k.cl>=k.op?'var(--up)':'var(--down)';
+    g+=`<line x1="${x}" x2="${x}" y1="${y(k.hi)}" y2="${y(k.lo)}" stroke="${col}" stroke-width="1"/><rect x="${x-bw*.35}" y="${y(Math.max(k.op,k.cl))}" width="${bw*.7}" height="${Math.max(1,Math.abs(y(k.op)-y(k.cl)))}" fill="${col}"/>`;
+    if(k.news)g+=`<circle cx="${x}" cy="${pad.t+H+12}" r="3.2" fill="${k.news>0?'var(--up)':'var(--down)'}"><title>Tin ${k.news>0?'tích cực':'tiêu cực'} mạnh</title></circle>`});
+  g+=`<line x1="${pad.l}" x2="${pad.l+W}" y1="${y(o.px)}" y2="${y(o.px)}" stroke="var(--accent)" stroke-dasharray="3 3"/><rect x="${pad.l+W+2}" y="${y(o.px)-8}" width="48" height="16" rx="3" fill="var(--accent)"/><text x="${pad.l+W+6}" y="${y(o.px)+4}" style="fill:var(--accent-ink);font-weight:600">${fp(o.px)}</text>`;
+  return `<svg viewBox="0 0 ${w} ${hgt}" role="img" aria-label="Biểu đồ nến 6 tháng ${o.s}">${g}</svg>`;
+}
+function lineChart(vals,{w=760,h=200,color='var(--accent)',area=true,zero=false,fmt=v=>v,labels=[]}={}){
+  const pad={l:8,r:56,t:10,b:24},W=w-pad.l-pad.r,H=h-pad.t-pad.b;
+  const mx=Math.max(...vals),mn=zero?Math.min(0,...vals):Math.min(...vals);const rg=mx-mn||1;
+  const x=i=>pad.l+i/(vals.length-1)*W,y=v=>pad.t+(mx-v)/rg*H;
+  let g='';for(let i=0;i<=3;i++){const v=mn+rg*i/3;g+=`<line class="gridline" x1="${pad.l}" x2="${pad.l+W}" y1="${y(v)}" y2="${y(v)}"/><text x="${pad.l+W+6}" y="${y(v)+3}">${fmt(v)}</text>`}
+  labels.forEach(([i,t])=>g+=`<text x="${x(i)}" y="${h-6}" text-anchor="middle">${t}</text>`);
+  const d=vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  if(area)g+=`<path d="${d}L${x(vals.length-1)},${pad.t+H}L${pad.l},${pad.t+H}Z" fill="${color}" opacity=".12"/>`;
+  g+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="2"/><circle cx="${x(vals.length-1)}" cy="${y(vals.at(-1))}" r="4" fill="${color}"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}">${g}</svg>`;
+}
+function sentChart(o){
+  const r=rng(o.s+'s'),n=30,w=760,h=200,pad={l:8,r:56,t:10,b:24},W=w-pad.l-pad.r,H=h-pad.t-pad.b;
+  const sv=[],pv=[];let p=o.px*.95;for(let i=0;i<n;i++){sv.push((r()-.45)*1.2*(i>24?1.3:1));p+= (o.px-p)/(n-i)+(r()-.5)*o.px*.015;pv.push(p)}pv[n-1]=o.px;
+  const bw=W/n,mid=pad.t+H/2,sy=v=>mid-v/1*H/2*0.9;
+  const pmx=Math.max(...pv),pmn=Math.min(...pv),py=v=>pad.t+(pmx-v)/(pmx-pmn)*H;
+  let g=`<line class="gridline" x1="${pad.l}" x2="${pad.l+W}" y1="${mid}" y2="${mid}"/><text x="${pad.l+W+6}" y="${pad.t+8}">+1</text><text x="${pad.l+W+6}" y="${mid+3}">0</text><text x="${pad.l+W+6}" y="${pad.t+H}">−1</text>`;
+  sv.forEach((v,i)=>{const x=pad.l+i*bw+bw*.15;g+=`<rect x="${x}" y="${Math.min(mid,sy(v))}" width="${bw*.7}" height="${Math.abs(sy(v)-mid)}" fill="${v>=0?'var(--up)':'var(--down)'}" opacity=".75"/>`});
+  const d=pv.map((v,i)=>`${i?'L':'M'}${(pad.l+i*bw+bw/2).toFixed(1)},${py(v).toFixed(1)}`).join('');
+  g+=`<path d="${d}" fill="none" stroke="var(--ink)" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+  [[0,'26/08'],[10,'09/09'],[20,'23/09'],[29,'07/10']].forEach(([i,t])=>g+=`<text x="${pad.l+i*bw+bw/2}" y="${h-6}" text-anchor="middle">${t}</text>`);
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Chỉ số cảm xúc 30 phiên và giá">${g}</svg>`;
+}
+
+/* ============ shell ============ */
+function allowed(id){const p=PAGES.find(x=>x[0]===id);return p&&p[4].includes(st.role)}
+function nav(){
+  let out='',grp='';
+  for(const p of PAGES){if(p[6])continue;if(!p[4].includes(st.role))continue;
+    if(p[2]!==grp){if(grp)out+='</div>';grp=p[2];out+=`<div class="navgrp"><h3>${grp}</h3>`}
+    const on=st.page===p[0]||(p[0]==='overview'&&st.page==='detail');
+    out+=`<button class="nav ${on?'on':''}" data-go="${p[0]}">${ic(p[5])}<span>${p[0]==='admin'&&isA()?'Nhật ký & mô hình':p[1]}</span>${p[3]?`<span class="tag">${p[3]}</span>`:''}</button>`}
+  return out+'</div>';
+}
+function shell(body){
+  const unread=st.alerts.filter(a=>!a.read).length;
+  const tabs=isAd()?[['admin','Quản trị','shield'],['eval','Mô hình','gauge']]:[['overview','Tổng quan','home'],['watchlist','Watchlist','star'],['portfolio','Portfolio','pie'],['plans','Trade Plan','target'],['__more','Thêm','more']];
+  return `<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="brand-mark">SS</div><div><b>StockSense VN</b><small>IDSS · dự báo T+2 / T+5</small></div></div>
+    ${nav()}
+    <div class="side-foot">
+      <div><b style="color:var(--ink)">${isAd()?'Nguyễn Quản Trị':'Hoàng Minh Tuấn'}</b><br>${ROLE_D[st.role]} · tài khoản demo</div>
+      <button class="btn sm" data-act="logout">Đăng xuất</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div class="datastat"><span class="dot"></span><span>Dữ liệu ngày <b class="num" style="color:var(--ink)">${DATA_DATE}</b><span class="hide-sm"> · cập nhật ${BATCH_AT} · mô hình <span class="num">${MODEL}</span></span></span>${A('FR-M1-05')}</div>
+      <div class="grow"></div>
+      ${isAd()?'':`<label class="search">${ic('search','')}<input id="q" placeholder="Tìm mã, ví dụ FPT" autocomplete="off"></label>`}
+      <div class="rolesel"><span class="lbl">Xem với vai trò</span><div class="seg" role="tablist">${Object.keys(ROLE_N).map(r=>`<button class="${st.role===r?'on':''}" data-role="${r}">${ROLE_N[r]}</button>`).join('')}</div></div>
+      ${isAd()?'':`<div style="position:relative"><button class="iconbtn" data-act="bell" aria-label="Thông báo">${ic('bell')}${unread?`<span class="badge">${unread}</span>`:''}</button>${st.bell?bellPop():''}</div>`}
+      <button class="iconbtn hide-sm" data-act="anno" title="Bật/tắt chú thích mô-đun và FR" aria-label="Chú thích thiết kế" style="${st.annos?'background:var(--info-soft);color:var(--info)':''}"><span style="font-size:11px;font-weight:700">FR</span></button>
+    </header>
+    <main class="content" id="content">${body}</main>
+  </div>
+  </div>
+  <div class="more-sheet ${st.more?'open':''}">${PAGES.filter(p=>!p[6]&&p[4].includes(st.role)&&!['overview','watchlist','portfolio','plans'].includes(p[0])).map(p=>`<button class="nav" data-go="${p[0]}">${ic(p[5])}<span>${p[1]}</span></button>`).join('')}<button class="nav" data-act="logout">Đăng xuất</button></div>
+  <nav class="bottombar" style="${isAd()?'grid-template-columns:1fr 1fr':''}">${tabs.map(t=>`<button class="${st.page===t[0]?'on':''}" ${t[0]==='__more'?'data-act="more"':`data-go="${t[0]}"`}>${ic(t[2])}<span>${t[1]}</span></button>`).join('')}</nav>`;
+}
+function bellPop(){
+  return `<div class="pop"><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px"><b>Cảnh báo</b><button class="btn sm" data-act="readall">Đánh dấu đã đọc</button></div>
+  ${st.alerts.slice(0,5).map(a=>`<div class="it ${a.read?'':'unread'}" data-alert="${a.id}"><span style="width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none;background:${a.read?'transparent':'var(--accent)'}"></span><div><div>${a.t}</div><div class="small muted num">${a.when}</div></div></div>`).join('')}
+  <div style="padding:6px 10px"><button class="btn sm" data-go="watchlist">Xem tất cả và quy tắc</button></div></div>`;
+}
+
+/* ============ TRANG ============ */
+function pOverview(){
+  const f=st.filter;
+  let rows=S.filter(o=>(f.ex==='all'||o.ex===f.ex)&&(f.sec==='all'||o.sec===f.sec)&&(f.trend==='all'||o.t5.label===f.trend)&&(!f.q||o.s.includes(f.q.toUpperCase())));
+  const changed=S.filter(o=>o.t2.prev||o.t5.prev);
+  const cnt=k=>S.filter(o=>o.t5.label===k).length;
+  const secs=[...new Set(S.map(o=>o.sec))];
+  return `
+  <div class="pagehead"><div><h1>Tổng quan thị trường</h1><p>Dự báo xu hướng T+2 và T+5 cho ${S.length} mã thanh khoản cao thuộc VN30 và HNX30, tính lại mỗi ngày sau phiên.</p></div>${A('M1')}</div>
+  <section class="strip">
+    <div><div class="k">VN-Index</div><div class="v num">1.684,32</div><div class="small num c-up">▲ +6,41 (+0,38%)</div></div>
+    <div><div class="k">HNX-Index</div><div class="v num">268,15</div><div class="small num c-down">▼ −0,92 (−0,34%)</div></div>
+    <div><div class="k">Độ rộng HOSE</div><div class="v num" style="font-size:16px"><span class="c-up">212</span> · <span class="c-hold">74</span> · <span class="c-down">168</span></div><div class="breadth"><i class="bg-up" style="flex:212"></i><i class="bg-hold" style="flex:74"></i><i class="bg-down" style="flex:168"></i></div></div>
+    <div><div class="k">Tỷ lệ nhãn T+5 (${S.length} mã)</div><div class="v num" style="font-size:16px"><span class="c-up">▲ ${cnt('up')}</span> · <span class="c-hold">● ${cnt('hold')}</span> · <span class="c-down">▼ ${cnt('down')}</span></div><div class="breadth"><i class="bg-up" style="flex:${cnt('up')}"></i><i class="bg-hold" style="flex:${cnt('hold')}"></i><i class="bg-down" style="flex:${cnt('down')}"></i></div></div>
+  </section>
+  ${A('FR-M1-06 · v_market_summary')}
+  <section class="card">
+    <div class="card-h"><h2>Tín hiệu đổi hôm nay <span class="tag">${changed.length} mã</span></h2>${A('FR-M1-07')}</div>
+    <div class="grid g4">${changed.map(o=>{const h=o.t2.prev?'t2':'t5',fc=o[h];return `<button class="card" style="text-align:left;cursor:pointer;padding:12px" data-sym="${o.s}"><div style="display:flex;justify-content:space-between"><span class="sym">${o.s}</span><span class="hz">${h==='t2'?'T+2':'T+5'}</span></div><div class="small muted" style="margin:6px 0 4px">${LV[fc.prev]} → </div>${lab(fc.label)} <span class="num muted small">${p100(fc.max)}</span></button>`}).join('')}</div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>Danh sách mã</h2>
+      <div class="actions">
+        <div class="seg">${['all','HOSE','HNX'].map(e=>`<button class="${f.ex===e?'on':''}" data-f="ex:${e}">${e==='all'?'Tất cả sàn':e}</button>`).join('')}</div>
+        <div class="field" style="flex-direction:row"><select id="fsec" aria-label="Ngành"><option value="all">Mọi ngành</option>${secs.map(s=>`<option ${f.sec===s?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div class="field" style="flex-direction:row"><select id="ftrend" aria-label="Xu hướng T+5"><option value="all">Mọi xu hướng T+5</option>${['up','hold','down'].map(k=>`<option value="${k}" ${f.trend===k?'selected':''}>${IC[k]} ${LV[k]}</option>`).join('')}</select></div>
+      </div></div>
+    <div class="tw"><table>
+      <thead><tr><th>Mã</th><th class="hide-sm">Sàn · Ngành</th><th class="r">Giá</th><th class="r">%</th><th class="r hide-sm">GTGD TB20 (tỷ)</th><th>T+2</th><th>T+5</th><th class="hide-sm">Tin cậy T+5</th></tr></thead>
+      <tbody>${rows.sort((a,b)=>b.liq-a.liq).map(o=>`<tr class="click" data-sym="${o.s}">
+        <td><span class="sym">${o.s}<small class="hide-sm">${o.n}</small></span></td>
+        <td class="hide-sm muted">${o.ex} · ${o.sec}</td>
+        <td class="r num">${fp(o.px)}</td><td class="r num ${cls(o.ch)}">${pc(o.ch)}</td>
+        <td class="r num hide-sm">${fp(o.liq)}</td>
+        <td>${miniLab(o.t2)}</td><td>${miniLab(o.t5)}${o.conflict?' <span class="chip hold" title="T+2 và T+5 ngược chiều">Mâu thuẫn</span>':''}</td>
+        <td class="hide-sm">${confEl(o.t5.conf)}</td></tr>`).join('')||`<tr><td colspan="8" class="muted">Không có mã khớp bộ lọc.</td></tr>`}</tbody></table></div>
+    <div style="margin-top:12px;display:flex;gap:14px;flex-wrap:wrap" class="small muted"><span><span class="flag"></span> đổi nhãn so với phiên trước</span><span>Sắp xếp theo thanh khoản giảm dần</span><span>Dữ liệu trong bản thiết kế là minh họa</span></div>
+  </section>
+  ${disc()}`;
+}
+
+function reasons(o){
+  const L=o.t5.label;
+  const R={up:['Giá đóng cửa nằm trên đường MA20 trong 4/5 phiên gần nhất, động lượng ngắn hạn đang tăng.','Tin tức 3 ngày qua nghiêng tích cực (chỉ số cảm xúc +0,42), nổi bật tin về kết quả kinh doanh quý III.','Thanh khoản 5 phiên cao hơn 28% so với bình quân 20 phiên.'],
+    hold:['Giá dao động trong biên ±1,5% suốt 8 phiên, độ biến động 20 phiên ở mức thấp.','Tin tức trung tính, chưa có sự kiện mới đáng kể trong 3 ngày.','Thanh khoản tương đương bình quân 20 phiên, chưa có dòng tiền đột biến.'],
+    down:['Giá cắt xuống dưới MA20, RSI(14) giảm từ 58 về 41 trong 6 phiên.','Tin tiêu cực chiếm 4/6 bài trong 3 ngày qua (chỉ số cảm xúc −0,37).','P/E hiện tại cao hơn trung vị ngành 18%, mức định giá kém hấp dẫn hơn.']}[L];
+  const risk=['Sắp công bố BCTC quý III (dự kiến 20/10), thông tin bất ngờ có thể làm giá đổi hướng.'];
+  if(o.conflict)risk.unshift('T+2 và T+5 ngược chiều nhau: tín hiệu ngắn hạn chưa ổn định, mức tin cậy đã được hạ một bậc.');
+  if(o.ds.length)risk.unshift('Thiếu tin 5 phiên gần nhất, phần đóng góp của tin tức không được tính trong dự báo này.');
+  else risk.push(`Hit rate T+2 của ${o.s} trong 30 phiên là 47% (n = 28), mẫu còn nhỏ.`);
+  return {R,risk};
+}
+function pDetail(){
+  const o=BY[st.sym];
+  const tabs=[['fc','Dự báo'],['news','Tin tức'],['hist','Lịch sử'],...(isA()?[['an','Analyst & Audit']]:[])];
+  if(st.tab==='an'&&!isA())st.tab='fc';
+  const inWl=o.s in st.wl;
+  return `
+  <div><button class="btn sm" data-go="overview">← Tổng quan</button></div>
+  <div class="dhead">
+    <div><div class="small muted">${o.ex} · ${o.sec}</div><h1 style="font-size:28px">${o.s} <span style="font-weight:500;font-size:16px" class="muted">${o.n}</span></h1>
+      <div style="display:flex;gap:12px;align-items:baseline;margin-top:4px"><span class="px num">${fp(o.px)}</span><span class="num ${cls(o.ch)}">${pc(o.ch)}</span><span class="small muted">đóng cửa ${DATA_DATE}</span></div></div>
+    <div class="actions">
+      <button class="btn" data-act="wl" data-s="${o.s}">${ic(inWl?'star':'plus')}${inWl?'Đang theo dõi':'Thêm watchlist'}</button>
+      <button class="btn" data-go="plans" data-act="newplan" data-s="${o.s}">${ic('target')}Lập Trade Plan</button>
+      <button class="btn" data-act="pdf">${ic('pdf')}Xuất PDF</button>
+      <button class="btn" data-act="share" title="Chia sẻ dự báo">${ic('share')}<span class="hide-sm">Chia sẻ</span></button>
+    </div>
+  </div>
+  <div class="tabs" role="tablist">${tabs.map(t=>`<button class="${st.tab===t[0]?'on':''}" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>
+  ${st.tab==='fc'?tabFc(o):st.tab==='news'?tabNews(o):st.tab==='hist'?tabHist(o):tabAn(o)}`;
+}
+function tabFc(o){
+  const {R,risk}=reasons(o);
+  const gs={tech:.48,news:.33,fin:.19};
+  return `
+  ${o.conflict?`<div class="note warn"><b>Mâu thuẫn kỳ hạn.</b> T+2 dự báo ${LV[o.t2.label]}, T+5 dự báo ${LV[o.t5.label]}. Nên đọc cả hai thẻ trước khi quyết định. ${A('FR-M2-05')}</div>`:''}
+  <div class="fcs">${fcCard(o,'t2')}${fcCard(o,'t5')}</div>
+  <div class="grid g2">
+    <section class="card"><div class="card-h"><h2>Vì sao? <span class="tag">T+5</span></h2>${A('M3 · FR-M3-01..03')}</div>
+      <ol class="reasons">${R.map((t,i)=>`<li><b>${i+1}</b><span>${t}</span></li>`).join('')}</ol>
+      ${isT()?`<div style="margin-top:16px"><h3 style="margin-bottom:8px">Đóng góp theo nhóm đặc trưng</h3><div class="share"><i class="s-tech" style="width:${gs.tech*100}%">Kỹ thuật ${p100(gs.tech)}</i><i class="s-news" style="width:${gs.news*100}%">Tin tức ${p100(gs.news)}</i><i class="s-fin" style="width:${gs.fin*100}%">Tài chính ${p100(gs.fin)}</i></div></div>`:''}
+      ${isA()?`<button class="btn sm" style="margin-top:12px" data-tab="an">Xem top 15 đặc trưng →</button>`:''}
+    </section>
+    <section class="card"><div class="card-h"><h2>Điều gì có thể làm dự báo sai</h2>${A('FR-M2-09')}</div>
+      <ul class="reasons">${risk.map(t=>`<li><b style="color:var(--hold)">!</b><span>${t}</span></li>`).join('')}</ul>
+      <div style="margin-top:14px" class="small muted">Trạng thái dữ liệu: ${o.ds.length?`<span class="chip hold">${o.ds.join(', ')}</span>`:'<span class="chip up">Đầy đủ giá, tin và BCTC</span>'}</div>
+    </section>
+  </div>
+  <section class="card chart"><div class="card-h"><h2>Giá 6 tháng</h2><div class="small muted" style="display:flex;gap:12px;flex-wrap:wrap"><span><span style="color:var(--up)">●</span> tin tích cực mạnh</span><span><span style="color:var(--down)">●</span> tin tiêu cực mạnh</span></div></div>${candle(o)}</section>
+  ${disc()}`;
+}
+function tabNews(o){
+  const items=[
+    ['pos',`${o.s} công bố kết quả kinh doanh 9 tháng, lợi nhuận sau thuế tăng 21% so với cùng kỳ`,'Doanh thu và lợi nhuận đều vượt kế hoạch năm sau 9 tháng, biên lợi nhuận gộp cải thiện nhờ chi phí đầu vào giảm.','CafeF','07/10/2026 11:20',.91,.32],
+    ['neu',`HĐQT ${o.s} thông qua phương án phát hành cổ phiếu ESOP 2026`,'Số lượng phát hành tối đa 1% vốn điều lệ, giá phát hành 10.000 đồng/cp, hạn chế chuyển nhượng 1 năm.','Vietstock','06/10/2026 17:05',.78,.11],
+    ['neg',`Nhóm ${o.sec.toLowerCase()} chịu áp lực điều chỉnh sau chuỗi tăng nóng`,'Nhiều mã trong nhóm giảm trên 2% trong phiên chiều, thanh khoản tăng mạnh ở vùng giá cao.','CafeF','06/10/2026 15:42',.84,.24],
+    ['pos',`Khối ngoại quay lại gom ${o.s} sau 3 tuần`,'Giá trị giao dịch ròng của nhà đầu tư nước ngoài đạt 85 tỷ đồng trong phiên 03/10.','NDH','03/10/2026 16:10',.73,.18],
+    ['neu',`${o.s} dự kiến chốt quyền tạm ứng cổ tức tiền mặt đợt 1`,'Tỷ lệ 10%, ngày đăng ký cuối cùng 24/10/2026.','CafeF','02/10/2026 09:30',.88,.15],
+  ];
+  const M={pos:['up','Tích cực'],neu:['neutral','Trung tính'],neg:['down','Tiêu cực']};
+  const f=st.newsF;
+  return `
+  <div class="grid g-main">
+    <section class="card"><div class="card-h"><h2>Tin liên quan</h2><div class="seg">${[['all','Tất cả'],['pos','Tích cực'],['neu','Trung tính'],['neg','Tiêu cực']].map(x=>`<button class="${f===x[0]?'on':''}" data-nf="${x[0]}">${x[1]}</button>`).join('')}</div></div>
+      <div class="news">${items.filter(x=>f==='all'||x[0]===f).map(x=>`<article><h4>${x[1]}</h4><span class="chip ${M[x[0]][0]}" style="grid-row:span 2">${M[x[0]][1]} <span class="num">${p100(x[5])}</span></span><p>${x[2]}</p><div class="meta">${x[3]} · <span class="num">${x[4]}</span> · <a href="https://cafef.vn" target="_blank" rel="noopener">Đọc bài gốc ↗</a>${isT()?` · trọng số tin <span class="num">${x[6].toFixed(2).replace('.',',')}</span>`:''}</div></article>`).join('')}</div>
+      <div class="small muted" style="margin-top:8px">Tin đăng sau 15:00 được tính vào dự báo của phiên kế tiếp. Hệ thống chỉ hiển thị tiêu đề, sapo và link gốc. ${A('FR-M4-06 · C3')}</div>
+    </section>
+    <section class="card chart"><div class="card-h"><h2>Cảm xúc 30 phiên</h2>${A('FR-M4-04')}</div>${sentChart(o)}
+      <div class="small muted" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px"><span>Cột: chỉ số cảm xúc theo phiên</span><span>Nét đứt: giá đóng cửa</span></div>
+      <div class="grid g3" style="margin-top:14px">${[['Tích cực','12','up'],['Trung tính','9','hold'],['Tiêu cực','5','down']].map(x=>`<div class="stat"><div class="k">${x[0]}</div><div class="v num c-${x[2]}">${x[1]}</div><div class="s muted">bài / 30 phiên</div></div>`).join('')}</div>
+    </section>
+  </div>`;
+}
+function tabHist(o){
+  const r=rng(o.s+'h'),labs=['up','hold','down'],rows=[];
+  const dates=['07/10','06/10','03/10','02/10','01/10','30/09','29/09','26/09','25/09','24/09'];
+  dates.forEach((d,i)=>{const h=st.histH||2;const pr=labs[Math.floor(r()*3)];const pending=(h===2&&i<2)||(h===5&&i<5);const act=pending?null:(r()<.52?pr:labs[Math.floor(r()*3)]);rows.push({d,pr,p:.4+r()*.25,act,pending})});
+  const h=st.histH||2,w=st.hist,n=w===30?(h===2?28:25):(h===2?86:83),hit=w===30?(h===2?.47:.52):(h===2?.45:.49),base=w===30?.39:.41;
+  return `
+  <div class="grid g4">
+    <div class="card stat"><div class="k">Hit rate ${h===2?'T+2':'T+5'} · ${w} phiên</div><div class="v num">${p100(hit)}</div><div class="s muted">n = ${n} dự báo đã đáo hạn</div></div>
+    <div class="card stat"><div class="k">Baseline "lớp phổ biến nhất"</div><div class="v num">${p100(base)}</div><div class="s ${hit>base?'c-up':'c-down'}">${hit>base?'Cao hơn':'Thấp hơn'} ${Math.round(Math.abs(hit-base)*100)} điểm %</div></div>
+    <div class="card stat"><div class="k">Precision Tăng / Đi ngang / Giảm</div><div class="v num" style="font-size:17px">51% · 44% · 46%</div><div class="s muted">Recall 49% · 47% · 42%</div></div>
+    <div class="card stat"><div class="k">Đang chờ đáo hạn</div><div class="v num">${h===2?2:5}</div><div class="s muted">dự báo gần nhất</div></div>
+  </div>
+  ${n<50?`<div class="note warn"><b>Mẫu nhỏ.</b> Chỉ có ${n} dự báo đã đáo hạn trong cửa sổ này (dưới 50), hit rate có thể dao động mạnh. ${A('FR-M6-06')}</div>`:''}
+  ${h===5?`<div class="note info">Các dự báo T+5 liên tiếp có cửa sổ chồng lấn nhau, nên số mẫu độc lập ít hơn n.</div>`:''}
+  <section class="card"><div class="card-h"><h2>Dự báo trước đây</h2><div class="actions"><div class="seg">${[2,5].map(x=>`<button class="${h===x?'on':''}" data-hh="${x}">T+${x}</button>`).join('')}</div><div class="seg">${[30,90].map(x=>`<button class="${w===x?'on':''}" data-hw="${x}">${x} phiên</button>`).join('')}</div>${isA()?`<button class="btn sm" data-act="csv">${ic('dl')}CSV</button>`:''}</div></div>
+    <div class="tw"><table><thead><tr><th>Ngày T</th><th>Dự báo</th><th class="r">Xác suất</th><th>Thực tế</th><th>Kết quả</th></tr></thead>
+    <tbody>${rows.map(x=>`<tr><td class="num">${x.d}/2026</td><td>${lab(x.pr)}</td><td class="r num">${p100(x.p)}</td><td>${x.pending?'<span class="muted">—</span>':lab(x.act)}</td><td>${x.pending?'<span class="chip neutral">Đang chờ</span>':x.act===x.pr?'<span class="chip up">✓ Đúng</span>':'<span class="chip down">✗ Sai</span>'}</td></tr>`).join('')}</tbody></table></div>
+  </section>`;
+}
+function tabAn(o){
+  const F=[['ret_5d','Kỹ thuật','+3,8%',.142],['sent_3d_mean','Tin tức','+0,42',.118],['ma20_gap','Kỹ thuật','+2,1%',.097],['vol_ratio_20','Kỹ thuật','1,28',.081],['news_count_3d','Tin tức','6',.064],['rsi_14','Kỹ thuật','61,4',.058],['vnindex_ret_5d','Kỹ thuật','+1,2%',.041],['eps_growth_yoy','Tài chính','+21%',.039],['macd_hist','Kỹ thuật','0,84',.033],['atr_14','Kỹ thuật','2,3%',-.029],['pe_ttm','Tài chính','19,6',-.044],['bb_width','Kỹ thuật','0,071',-.022],['roe_ttm','Tài chính','27,9%',.018],['obv_slope_10','Kỹ thuật','+0,6',.015],['sent_ewm_7d','Tin tức','+0,18',.012]];
+  const mx=.15;
+  return `
+  <div class="grid g-main">
+    <section class="card"><div class="card-h"><h2>Top 15 đặc trưng · T+5</h2>${A('FR-M3 · Integrated Gradients')}</div>
+      <div class="tw"><table><thead><tr><th>Đặc trưng</th><th>Nhóm</th><th class="r">Giá trị thô</th><th style="width:40%">Đóng góp vào lớp ${LV[o.t5.label]}</th></tr></thead>
+      <tbody>${F.map(f=>`<tr><td class="num">${f[0]}</td><td class="muted">${f[1]}</td><td class="r num">${f[2]}</td><td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;display:flex;height:10px"><div style="flex:1;display:flex;justify-content:flex-end">${f[3]<0?`<i style="display:block;height:10px;width:${-f[3]/mx*100}%;background:var(--down);border-radius:2px 0 0 2px"></i>`:''}</div><div style="width:1px;background:var(--muted)"></div><div style="flex:1">${f[3]>0?`<i style="display:block;height:10px;width:${f[3]/mx*100}%;background:var(--up);border-radius:0 2px 2px 0"></i>`:''}</div></div><span class="num small" style="width:48px;text-align:right">${f[3]>0?'+':'−'}${Math.abs(f[3]).toFixed(3).replace('.',',')}</span></div></td></tr>`).join('')}</tbody></table></div>
+    </section>
+    <div class="grid" style="align-content:start">
+      <section class="card"><div class="card-h"><h2>Trọng số attention theo tin</h2></div>
+        ${[['KQKD 9 tháng tăng 21%',.32],['Nhóm ngành chịu áp lực điều chỉnh',.24],['Khối ngoại quay lại',.18],['Chốt quyền cổ tức',.15],['ESOP 2026',.11]].map(x=>`<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px 40px;gap:8px;align-items:center;margin-bottom:8px;font-size:13px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x[0]}</span><div class="pbar" style="height:8px"><i style="width:${x[1]/.32*100}%;background:var(--accent)"></i></div><span class="num small r">${x[1].toFixed(2).replace('.',',')}</span></div>`).join('')}
+      </section>
+      <section class="card"><div class="card-h"><h2>Truy vết dự báo</h2>${A('M7 · GET /forecasts/{id}/audit')}</div>
+        <dl class="kv"><dt>Forecast id</dt><dd class="num">fc_20261007_${o.s}_5</dd><dt>Tạo lúc</dt><dd class="num">07/10/2026 16:42:10</dd><dt>Phiên bản mô hình</dt><dd class="num">${MODEL}</dd><dt>Snapshot SHA-256</dt><dd class="num">9f3a…c71e</dd><dt>Job kích hoạt</dt><dd class="num">batch_daily #412</dd><dt>Tin dùng (trước 15:00)</dt><dd class="num">6 bài</dd></dl>
+      </section>
+    </div>
+  </div>`;
+}
+
+function pWatchlist(){
+  const syms=Object.keys(st.wl);
+  return `
+  <div class="pagehead"><div><h1>Watchlist & cảnh báo</h1><p>Theo dõi tối đa 10 mã. Cảnh báo được tạo ngay sau batch dự báo hằng ngày và gửi qua kênh bạn đã bật.</p></div>${A('M5')}</div>
+  <section class="card"><div class="card-h"><h2>Mã đang theo dõi <span class="tag num">${syms.length}/10</span></h2><button class="btn sm" data-act="addwl">${ic('plus')}Thêm mã</button></div>
+    <div class="tw"><table><thead><tr><th>Mã</th><th class="r">Giá</th><th class="r">%</th><th>T+2</th><th>T+5</th><th>Ghi chú</th><th></th></tr></thead>
+    <tbody>${syms.map(s=>{const o=BY[s];return `<tr><td class="sym click" data-sym="${s}" style="cursor:pointer">${s}</td><td class="r num">${fp(o.px)}</td><td class="r num ${cls(o.ch)}">${pc(o.ch)}</td><td>${miniLab(o.t2)}</td><td>${miniLab(o.t5)}</td><td><input class="field" style="border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--surface);min-width:160px" id="note-${s}" value="${st.wl[s]}" placeholder="Thêm ghi chú"></td><td><button class="btn sm" data-act="rmwl" data-s="${s}">Bỏ</button></td></tr>`}).join('')}</tbody></table></div>
+  </section>
+  <div class="grid g2">
+    <section class="card"><div class="card-h"><h2>Quy tắc cảnh báo</h2><button class="btn sm pri" data-act="newrule">${ic('plus')}Thêm quy tắc</button></div>
+      <div class="tw"><table><thead><tr><th>Loại</th><th>Điều kiện</th><th>Bật</th></tr></thead><tbody>
+      ${[['Đổi nhãn','Mọi mã trong watchlist · T+2 và T+5',1],['Ngưỡng xác suất','SSI · Tăng T+5 ≥ 55%',1],['Chạm mốc kế hoạch','Kế hoạch HPG #12 · vùng vào, cắt lỗ, mục tiêu',1],['Tập trung danh mục','Một mã > 30% giá trị danh mục',isT()?1:0],['Khớp bộ lọc','Bộ lọc "Tăng T+5, tin cậy cao" có mã mới',0]].map((r,i)=>`<tr><td><b>${r[0]}</b></td><td class="muted" style="white-space:normal">${r[1]}</td><td><label class="toggle"><input type="checkbox" id="rule${i}" ${r[2]?'checked':''} aria-label="Bật quy tắc"></label></td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="small muted" style="margin-top:8px">Quy tắc ngưỡng chỉ báo một lần khi xác suất vượt từ dưới lên. ${A('FR-M5-03 · AC-11')}</div>
+    </section>
+    <section class="card"><div class="card-h"><h2>Lịch sử cảnh báo · 90 ngày</h2><button class="btn sm" data-act="readall">Đánh dấu đã đọc</button></div>
+      ${st.alerts.filter(a=>!a.t.includes('Danh mục:')).map(a=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer" data-alert="${a.id}"><span style="width:8px;height:8px;border-radius:50%;margin-top:7px;flex:none;background:${a.read?'var(--line)':'var(--accent)'}"></span><div style="flex:1;min-width:0"><div style="${a.read?'':'font-weight:600'}">${a.t}</div><div class="small muted num">${a.when} · Web${a.id<4?', Telegram':''}</div></div></div>`).join('')}
+    </section>
+  </div>`;
+}
+
+function pScreener(){
+  const presets=[['Tăng T+5, tin cậy cao',o=>o.t5.label==='up'&&o.t5.conf>=3],['Đổi nhãn hôm nay',o=>o.t2.prev||o.t5.prev],['Giảm T+2',o=>o.t2.label==='down'],['Đi ngang cả hai kỳ hạn',o=>o.t2.label==='hold'&&o.t5.label==='hold']];
+  st.preset=st.preset??0;
+  const rows=S.filter(presets[st.preset][1]).sort((a,b)=>b.liq-a.liq);
+  return `
+  <div class="pagehead"><div><h1>Screener</h1><p>Lọc các mã theo dự báo, mức tin cậy và thanh khoản. Kết quả là danh sách sàng lọc, không phải bảng xếp hạng nên mua.</p></div>${A('M8 · GĐ2')}</div>
+  <section class="card">
+    <div class="card-h"><h2>Bộ lọc có sẵn</h2>${isT()?`<div class="actions"><span class="small muted">Bộ lọc đã lưu:</span><span class="chip acc">Ngân hàng tăng T+2</span><span class="chip acc">HNX thanh khoản > 100 tỷ</span><span class="tag num">2/20</span></div>`:''}</div>
+    <div class="seg">${presets.map((p,i)=>`<button class="${st.preset===i?'on':''}" data-preset="${i}">${p[0]}</button>`).join('')}</div>
+    <div class="frow" style="margin-top:14px">
+      <div class="field"><label for="sc-h">Kỳ hạn</label><select id="sc-h"><option>T+5</option><option>T+2</option></select></div>
+      <div class="field"><label for="sc-l">Nhãn</label><select id="sc-l"><option>Tăng</option><option>Đi ngang</option><option>Giảm</option></select></div>
+      <div class="field"><label for="sc-p">Xác suất tối thiểu</label><input id="sc-p" type="number" value="50" min="34" max="99"><span class="hint">%</span></div>
+      <div class="field"><label for="sc-e">Sàn</label><select id="sc-e"><option>Tất cả</option><option>HOSE</option><option>HNX</option></select></div>
+      <div class="field"><label for="sc-v">GTGD TB20 tối thiểu</label><input id="sc-v" type="number" value="100"><span class="hint">tỷ đồng</span></div>
+    </div>
+    ${isT()?`<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)"><h3 style="margin-bottom:8px">Điều kiện nâng cao</h3>
+      <div class="frow"><div class="field"><select id="adv1" aria-label="Cột"><option>Hit rate 90 phiên</option><option>Mức tin cậy</option><option>% thay đổi giá</option></select></div><div class="field"><select id="adv2" aria-label="Toán tử"><option>≥</option><option>≤</option></select></div><div class="field"><input id="adv3" value="45" aria-label="Giá trị"></div><div class="field"><button class="btn">${ic('plus')}Thêm điều kiện</button></div></div>
+      <div class="actions" style="margin-top:12px"><button class="btn pri">Lọc</button><button class="btn" data-act="savescreen">Lưu bộ lọc</button></div></div>`:`<div class="actions" style="margin-top:12px"><button class="btn pri">Lọc</button><span class="small muted">Lưu bộ lọc và điều kiện nâng cao dành cho Trader, Analyst.</span></div>`}
+  </section>
+  <section class="card"><div class="card-h"><h2>Kết quả <span class="tag">${rows.length} mã</span></h2><span class="small muted">Thứ tự: thanh khoản giảm dần · dữ liệu ngày ${DATA_DATE}</span></div>
+    <div class="tw"><table><thead><tr><th>Mã</th><th>Nhãn T+5</th><th class="r">Xác suất</th><th>Tin cậy</th><th class="r hide-sm">Hit rate 90p</th><th class="hide-sm">Dữ liệu</th><th></th></tr></thead>
+    <tbody>${rows.map(o=>`<tr><td class="sym click" data-sym="${o.s}" style="cursor:pointer">${o.s}<small>${o.ex}</small></td><td>${lab(o.t5.label)}</td><td class="r num">${p100(o.t5.max)}</td><td>${confEl(o.t5.conf)}</td><td class="r num hide-sm">${45+o.s.charCodeAt(0)%9}% <span class="muted small">n=8${o.s.charCodeAt(1)%9}</span></td><td class="hide-sm">${o.ds.length?`<span class="chip hold">${o.ds[0]}</span>`:'<span class="chip up">Đủ</span>'}</td><td><div class="actions"><button class="btn sm" data-act="wl" data-s="${o.s}">+ Watchlist</button><button class="btn sm" data-go="plans" data-act="newplan" data-s="${o.s}">Lập kế hoạch</button></div></td></tr>`).join('')||'<tr><td colspan="7" class="muted">Không có mã khớp bộ lọc.</td></tr>'}</tbody></table></div>
+  </section>
+  ${disc('Danh sách sàng lọc theo tiêu chí bạn chọn, không phải xếp hạng nên mua và không phải khuyến nghị đầu tư.')}`;
+}
+
+function pPortfolio(){
+  const pos=[['FPT',500,104200],['HPG',3000,25800],['VHM',1500,46500],['SSI',1000,30100]];
+  let tv=0,tc=0;pos.forEach(p=>{tv+=p[1]*BY[p[0]].px;tc+=p[1]*p[2]});
+  const vals=[];const r=rng('pf');let v=tc*0.97;for(let i=0;i<60;i++){v+=(tv-v)/(60-i)+(r()-.5)*tc*.012;vals.push(v)}vals[59]=tv;
+  return `
+  <div class="pagehead"><div><h1>Portfolio</h1><p>Danh mục bạn tự nhập để theo dõi. Hệ thống không kết nối tài khoản chứng khoán và không đưa khuyến nghị.</p></div>
+    <div class="actions"><button class="btn pri" data-act="addtx">${ic('plus')}Nhập giao dịch</button>${isT()?`<button class="btn" data-act="csvimport">Import CSV</button>`:''}<button class="btn" data-act="pdf">${ic('pdf')}PDF</button></div></div>
+  <div class="grid g4">
+    <div class="card stat"><div class="k">Giá trị thị trường</div><div class="v num">${fp(tv)}</div><div class="s muted">đồng</div></div>
+    <div class="card stat"><div class="k">Lãi/lỗ tạm tính</div><div class="v num ${cls(tv-tc)}">${tv-tc>0?'+':'−'}${fp(Math.abs(tv-tc))}</div><div class="s num ${cls(tv-tc)}">${pc((tv-tc)/tc*100)}</div></div>
+    <div class="card stat"><div class="k">Lãi/lỗ đã thực hiện</div><div class="v num c-up">+4.180.000</div><div class="s muted">từ 01/2026</div></div>
+    <div class="card stat"><div class="k">Mã có nhãn Giảm</div><div class="v num c-down">1</div><div class="s muted">VHM · T+2 và T+5</div></div>
+  </div>
+  ${isT()?`<section class="card chart"><div class="card-h"><h2>Giá trị danh mục · 60 phiên</h2>${A('FR-M9-05')}</div>${lineChart(vals,{fmt:v=>(v/1e6).toFixed(0)+' tr',labels:[[0,'10/07'],[20,'07/08'],[40,'05/09'],[59,'07/10']]})}</section>`:''}
+  <section class="card"><div class="card-h"><h2>Vị thế</h2>${A('FR-M9-03, 04')}</div>
+    <div class="tw"><table><thead><tr><th>Mã</th><th class="r">KL</th><th class="r">Giá vốn BQ</th><th class="r">Giá đóng cửa</th><th class="r">Lãi/lỗ tạm tính</th><th class="r">Tỷ trọng</th><th>T+2</th><th>T+5</th></tr></thead>
+    <tbody>${pos.map(p=>{const o=BY[p[0]],mv=p[1]*o.px,pl=mv-p[1]*p[2];return `<tr class="click" data-sym="${p[0]}"><td class="sym">${p[0]}</td><td class="r num">${fp(p[1])}</td><td class="r num">${fp(p[2])}</td><td class="r num">${fp(o.px)}</td><td class="r num ${cls(pl)}">${pl>0?'+':'−'}${fp(Math.abs(pl))} <span class="small">(${pc(pl/(p[1]*p[2])*100,1)})</span></td><td class="r num">${p100(mv/tv)}</td><td>${miniLab(o.t2)}</td><td>${miniLab(o.t5)}</td></tr>`}).join('')}</tbody></table></div>
+  </section>
+  <section class="card"><div class="card-h"><h2>Giao dịch gần đây</h2><button class="btn sm danger" data-act="delall">Xóa toàn bộ giao dịch</button></div>
+    <div class="tw"><table><thead><tr><th>Ngày</th><th>Mã</th><th>Loại</th><th class="r">KL</th><th class="r">Giá</th><th class="r">Phí</th><th>Nguồn</th></tr></thead><tbody>
+    ${[['02/10/2026','SSI','MUA',1000,30100,45150,'Nhập tay'],['18/09/2026','VHM','MUA',1500,46500,104625,'Nhập tay'],['05/09/2026','MWG','BÁN',800,61200,73440,'CSV'],['20/08/2026','HPG','MUA',3000,25800,116100,'CSV']].map(t=>`<tr><td class="num">${t[0]}</td><td class="sym">${t[1]}</td><td><span class="chip ${t[2]==='MUA'?'acc':'neutral'}">${t[2]}</span></td><td class="r num">${fp(t[3])}</td><td class="r num">${fp(t[4])}</td><td class="r num">${fp(t[5])}</td><td class="muted">${t[6]}</td></tr>`).join('')}
+    </tbody></table></div>
+  </section>
+  ${disc('Danh mục chỉ để bạn tự theo dõi. Tín hiệu hiển thị cạnh vị thế là dự báo chung của mã, không phải khuyến nghị cho danh mục của bạn.')}`;
+}
+
+const PLANS=[
+  {id:9,s:'FPT',st:'draft',e1:115000,e2:117000,sl:110000,tp:128000,why:'Chờ KQKD quý III, vào nếu giữ được MA20.',snap:['up',.48,'up',.57]},
+  {id:12,s:'HPG',st:'wait',e1:27000,e2:27500,sl:25600,tp:30500,why:'Giá thép phục hồi, vùng hỗ trợ 27.000.',snap:['up',.52,'hold',.41],sug:'Giá đóng cửa 27.450 đã chạm vùng vào'},
+  {id:7,s:'SSI',st:'open',e1:29800,e2:30400,sl:28500,tp:34500,why:'Thanh khoản thị trường tăng, nhóm chứng khoán hưởng lợi.',snap:['up',.51,'up',.49]},
+  {id:5,s:'TCB',st:'open',e1:24000,e2:24400,sl:23000,tp:26500,why:'Tín dụng quý III tăng tốt.',snap:['hold',.46,'up',.47]},
+  {id:3,s:'MWG',st:'closed',e1:60000,e2:61000,sl:57500,tp:66000,why:'Kỳ vọng mảng Bách Hóa Xanh có lãi.',snap:['up',.50,'up',.53],exit:61200,res:'+1,2%'},
+];
+const PST={draft:'Nháp',wait:'Chờ vào',open:'Đang mở',closed:'Đã đóng'};
+function calcPlan(e1,e2,sl,tp,cap,risk){const e=(e1+e2)/2;const rr=(tp-e)/(e-sl);const q=cap&&risk?Math.floor(cap*risk/100/(e-sl)/100)*100:null;return {e,rr,q,dsl:(sl-e)/e*100,dtp:(tp-e)/e*100}}
+function pPlans(){
+  const sel=st.planSel===0?{id:'mới',s:st.newPlanSymbol||'',st:'draft',e1:'',e2:'',sl:'',tp:'',why:'',snap:[BY[st.newPlanSymbol]?.t2.label||'hold',BY[st.newPlanSymbol]?.t2.max||0,BY[st.newPlanSymbol]?.t5.label||'hold',BY[st.newPlanSymbol]?.t5.max||0]}:(PLANS.find(p=>p.id===st.planSel)||PLANS[1]);
+  const c=calcPlan(sel.e1,sel.e2,sel.sl,sel.tp,100e6,1);
+  return `
+  <div class="pagehead"><div><h1>Trade Plan</h1><p>Kế hoạch giao dịch do bạn tự lập. Dự báo lúc lập được lưu lại làm snapshot để đối chiếu sau này.</p></div><div class="actions"><button class="btn pri" data-act="newplan" data-s="FPT">${ic('plus')}Lập kế hoạch</button><button class="btn" data-act="pdf">${ic('pdf')}PDF</button></div></div>
+  <div class="kan">${Object.keys(PST).map(k=>{const ps=PLANS.filter(p=>p.st===k);return `<div class="col"><div class="col-h"><span>${PST[k]}</span><span class="num">${ps.length}</span></div>
+    ${ps.map(p=>`<div class="pc ${p.id===sel.id?'sel':''}" data-plan="${p.id}"><div style="display:flex;justify-content:space-between"><span class="sym">${p.s}</span><span class="small muted num">#${p.id}</span></div><div class="small num muted">Vào ${fp(p.e1)}–${fp(p.e2)} · CL ${fp(p.sl)} · MT ${fp(p.tp)}</div>${p.sug?`<span class="chip info">Gợi ý: chạm vùng vào</span>`:''}${p.res?`<span class="chip up">${p.res}</span>`:''}</div>`).join('')}</div>`}).join('')}</div>
+  <div class="grid g-main">
+    <section class="card">
+      <div class="card-h"><h2>Kế hoạch ${sel.s} #${sel.id} <span class="chip neutral">${PST[sel.st]}</span></h2>${A('M10 · FR-M10-01..09')}</div>
+      ${sel.sug?`<div class="note info" style="margin-bottom:12px"><span><b>${sel.sug}.</b> Bạn có muốn chuyển kế hoạch sang Đang mở?</span><span class="actions"><button class="btn sm pri" data-act="toast" data-t="Đã chuyển kế hoạch sang Đang mở">Xác nhận</button><button class="btn sm">Để sau</button></span></div>`:''}
+      <div class="frow">
+        <div class="field"><label for="pl-s">Mã</label><input id="pl-s" value="${sel.s}"></div>
+        <div class="field"><label for="pl-e1">Vùng vào từ</label><input id="pl-e1" class="num" type="number" value="${sel.e1}" data-calc></div>
+        <div class="field"><label for="pl-e2">đến</label><input id="pl-e2" class="num" type="number" value="${sel.e2}" data-calc></div>
+        <div class="field"><label for="pl-sl">Cắt lỗ</label><input id="pl-sl" class="num" type="number" value="${sel.sl}" data-calc></div>
+        <div class="field"><label for="pl-tp">Mục tiêu</label><input id="pl-tp" class="num" type="number" value="${sel.tp}" data-calc></div>
+        ${isT()?`<div class="field"><label for="pl-cap">Vốn (đồng)</label><input id="pl-cap" class="num" type="number" value="100000000" data-calc></div><div class="field"><label for="pl-risk">Rủi ro tối đa</label><input id="pl-risk" class="num" type="number" step="0.1" value="1" data-calc><span class="hint">% vốn</span></div>`:''}
+      </div>
+      <div class="field" style="margin-top:12px"><label for="pl-why">Lý do</label><textarea id="pl-why">${sel.why}</textarea></div>
+      <div id="calcbox" style="margin-top:14px">${calcBox(c)}</div>
+      <div class="actions" style="margin-top:14px"><button class="btn pri" data-act="toast" data-t="Đã lưu kế hoạch">Lưu</button>${sel.st==='open'?`<button class="btn" data-act="closeplan">Đóng kế hoạch</button>`:''}</div>
+    </section>
+    <div class="grid" style="align-content:start">
+      <section class="card"><div class="card-h"><h2>Snapshot dự báo lúc lập</h2><span class="tag">chỉ đọc</span></div>
+        <dl class="kv"><dt>T+2</dt><dd>${lab(sel.snap[0])} <span class="num muted">${p100(sel.snap[1])}</span></dd><dt>T+5</dt><dd>${lab(sel.snap[2])} <span class="num muted">${p100(sel.snap[3])}</span></dd><dt>Mô hình</dt><dd class="num">${MODEL}</dd><dt>Snapshot</dt><dd class="num">a41b…09d2</dd></dl>
+        <div class="small muted" style="margin-top:10px">Hiện tại: T+2 ${lab(BY[sel.s].t2.label)} · T+5 ${lab(BY[sel.s].t5.label)}</div>
+      </section>
+      <section class="card"><div class="card-h"><h2>Lịch sử chỉnh sửa</h2></div>
+        ${[['05/10 21:14','Tạo kế hoạch'],['06/10 08:02','Sửa mục tiêu 30.000 → 30.500'],['07/10 16:44','Hệ thống gợi ý: chạm vùng vào']].map(h=>`<div style="display:flex;gap:10px;font-size:13px;padding:5px 0"><span class="num muted" style="width:84px;flex:none">${h[0]}</span><span>${h[1]}</span></div>`).join('')}
+      </section>
+      ${disc('Trade Plan do bạn tự lập. Hệ thống không điền sẵn giá vào, cắt lỗ, mục tiêu và không khuyến nghị giao dịch.')}
+    </div>
+  </div>`;
+}
+function calcBox(c){
+  const ok=c.rr>0&&isFinite(c.rr);
+  return `<div class="grid g4">
+    <div class="stat"><div class="k">Giá vào tham chiếu</div><div class="v num" style="font-size:18px">${fp(c.e)}</div><div class="s muted">trung điểm vùng vào</div></div>
+    <div class="stat"><div class="k">R:R</div><div class="v num" style="font-size:18px">${ok?c.rr.toFixed(2).replace('.',','):'—'}</div><div class="s muted">(MT − vào) / (vào − CL)</div></div>
+    <div class="stat"><div class="k">Khoảng cách</div><div class="v num" style="font-size:15px"><span class="c-down">${pc(c.dsl,1)}</span> / <span class="c-up">${pc(c.dtp,1)}</span></div><div class="s muted">tới cắt lỗ / mục tiêu</div></div>
+    ${isT()?`<div class="stat"><div class="k">Khối lượng tối đa</div><div class="v num" style="font-size:18px">${c.q!=null&&c.q>=0?fp(c.q):'—'}</div><div class="s muted">cp, làm tròn lô 100</div></div>`:`<div class="stat"><div class="k">Khối lượng tối đa</div><div class="s muted" style="margin-top:6px">Dành cho Trader, Analyst</div></div>`}
+  </div>`;
+}
+
+function pJournal(){
+  const J=[
+    {id:1,s:'MWG',d:'28/09 → 05/10',plan:'#3',res:1.2,days:5,al:'with',act:['up','hold'],snap:['up','up'],tags:['kqkd','bán lẻ'],note:'Chốt sớm vì thị trường chung yếu.',lesson:'Giữ đúng mục tiêu khi tín hiệu T+5 chưa đổi.'},
+    {id:2,s:'VHM',d:'12/09 → 19/09',plan:'#2',res:-4.8,days:5,al:'against',act:['down','down'],snap:['down','hold'],tags:['bđs'],note:'Vào ngược tín hiệu vì kỳ vọng tin pháp lý.',lesson:'Không vào khi T+2 Giảm và tin tiêu cực chiếm ưu thế.'},
+    {id:3,s:'HPG',d:'02/09 → 11/09',plan:'#1',res:3.6,days:7,al:'mixed',act:['up','up'],snap:['up','down'],tags:['thép'],note:'',lesson:''},
+    {id:4,s:'ACB',d:'25/08',plan:'Ghi thủ công',res:null,days:null,al:'neutral',act:['hold','hold'],snap:['hold','hold'],tags:['ngân hàng'],note:'Quyết định không vào lệnh, chờ thêm tín hiệu.',lesson:''},
+  ];
+  const AL={with:['up','Theo tín hiệu'],against:['down','Ngược tín hiệu'],mixed:['hold','Tín hiệu lẫn lộn'],neutral:['neutral','Trung lập']};
+  const e=J.find(x=>x.id===st.jSel)||J[0];
+  return `
+  <div class="pagehead"><div><h1>Journal</h1><p>Nhật ký quyết định được tạo tự động khi bạn đóng Trade Plan, kèm dự báo lúc quyết định và kết quả thực tế.</p></div><div class="actions">${isT()?`<button class="btn" data-act="toast" data-t="Mở biểu mẫu ghi thủ công">${ic('plus')}Ghi thủ công</button><button class="btn" data-act="pdf">${ic('pdf')}PDF</button>`:''}</div></div>
+  ${isT()?`<div class="grid g4">
+    <div class="card stat"><div class="k">Tỷ lệ có lãi · quý III</div><div class="v num">58%</div><div class="s muted">n = 12 lệnh đã đóng</div></div>
+    <div class="card stat"><div class="k">Khi theo tín hiệu</div><div class="v num c-up">+2,4%</div><div class="s muted">lãi/lỗ TB · n = 7</div></div>
+    <div class="card stat"><div class="k">Khi ngược tín hiệu</div><div class="v num c-down">−3,1%</div><div class="s muted">lãi/lỗ TB · n = 3</div></div>
+    <div class="card stat"><div class="k">Số phiên nắm giữ TB</div><div class="v num">5,8</div><div class="s muted">phiên</div></div>
+  </div><div class="note warn"><b>Mẫu nhỏ.</b> Thống kê dựa trên dưới 30 lệnh, chỉ nên dùng để tự nhìn lại. ${A('FR-M11-06')}</div>`:''}
+  <div class="grid g-main">
+    <section class="card"><div class="card-h"><h2>Bản ghi</h2><div class="seg"><button class="on">Tuần</button><button>Tháng</button><button>Quý</button></div></div>
+      <div class="tw"><table><thead><tr><th>Mã</th><th>Thời gian</th><th>Kế hoạch</th><th class="r">Kết quả</th><th>So với dự báo</th></tr></thead>
+      <tbody>${J.map(x=>`<tr class="click" data-j="${x.id}" style="${x.id===e.id?'background:var(--accent-soft)':''}"><td class="sym">${x.s}</td><td class="num">${x.d}</td><td class="muted">${x.plan}</td><td class="r num ${x.res==null?'':cls(x.res)}">${x.res==null?'—':pc(x.res,1)}</td><td><span class="chip ${AL[x.al][0]}">${AL[x.al][1]}</span></td></tr>`).join('')}</tbody></table></div>
+    </section>
+    <section class="card"><div class="card-h"><h2>${e.s} · ${e.plan}</h2>${A('M11 · FR-M11-01..04')}</div>
+      <dl class="kv"><dt>Dự báo lúc quyết định</dt><dd>T+2 ${lab(e.snap[0])} · T+5 ${lab(e.snap[1])}</dd><dt>Nhãn thực tế</dt><dd>T+2 ${lab(e.act[0])} · T+5 ${lab(e.act[1])}</dd><dt>Kết quả</dt><dd class="num ${e.res==null?'':cls(e.res)}">${e.res==null?'—':pc(e.res,1)+' · '+e.days+' phiên'}</dd><dt>So với dự báo</dt><dd><span class="chip ${AL[e.al][0]}">${AL[e.al][1]}</span></dd></dl>
+      <div class="field" style="margin-top:14px"><label for="j-note">Ghi chú</label><textarea id="j-note">${e.note}</textarea></div>
+      <div class="field" style="margin-top:10px"><label for="j-les">Bài học</label><textarea id="j-les" placeholder="Điều bạn rút ra từ quyết định này">${e.lesson}</textarea></div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="small muted">Thẻ:</span>${e.tags.map(t=>`<span class="chip neutral">#${t}</span>`).join('')}<button class="btn sm">+ thẻ</button></div>
+      <div class="small muted" style="margin-top:10px">Snapshot và kết quả không sửa được.</div>
+    </section>
+  </div>`;
+}
+
+function pChat(){
+  if(!st.chatMsgs)st.chatMsgs=[
+    {me:1,t:'Vì sao FPT được dự báo Tăng ở kỳ hạn T+5?'},
+    {me:0,t:'Dự báo T+5 cho FPT ngày 07/10/2026 là <b>Tăng 57%</b> (tin cậy Cao). Ba yếu tố đóng góp lớn nhất: giá nằm trên MA20 trong 4/5 phiên, tin tức 3 ngày qua nghiêng tích cực (chỉ số +0,42) với tin KQKD 9 tháng, và thanh khoản 5 phiên cao hơn bình quân 28%. Hit rate T+5 của FPT trong 90 phiên là 52% (n = 83), cao hơn baseline 41%.',c:['Dự báo FPT T+5','Tin: KQKD 9 tháng','Lịch sử FPT']},
+    {me:1,t:'Vậy tôi có nên mua FPT không?'},
+    {me:0,t:'Tôi không đưa khuyến nghị giao dịch. Tôi có thể tóm tắt dữ liệu: T+2 và T+5 của FPT cùng nhãn Tăng, rủi ro chính là BCTC quý III công bố khoảng 20/10. Nếu bạn muốn tự lên kế hoạch, mở Trade Plan để nhập vùng vào, cắt lỗ và mục tiêu của bạn.',c:['Trade Plan','Điều gì có thể làm dự báo sai']},
+  ];
+  return `
+  <div class="pagehead"><div><h1>Chat hỏi đáp</h1><p>Hỏi về dự báo, tin tức và dữ liệu của bạn trong hệ thống. Câu trả lời luôn kèm trích dẫn tới nguồn.</p></div>${A('M12 · GĐ2')}</div>
+  <div class="chatwrap">
+    <aside class="card chatlist" style="display:flex;flex-direction:column;gap:6px"><button class="btn pri" data-act="newchat">${ic('plus')}Phiên mới</button>
+      ${['Vì sao FPT tăng T+5','So sánh nhóm ngân hàng','Danh mục tuần này','Tin HPG gần đây'].map((t,i)=>`<button class="nav ${i===0?'on':''}">${ic('chat')}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t}</span></button>`).join('')}
+      <div class="small muted" style="margin-top:auto">Hội thoại được lưu 90 ngày.</div></aside>
+    <section class="card" style="display:flex;flex-direction:column;gap:12px">
+      ${disc('Chat chỉ diễn giải dữ liệu có trong hệ thống, không phải tư vấn đầu tư và không đưa khuyến nghị giao dịch.')}
+      <div class="msgs" id="msgs" style="flex:1">${st.chatMsgs.map(m=>`<div class="msg ${m.me?'me':'bot'}">${m.t}${m.c?`<div>${m.c.map(x=>`<span class="cite" data-sym="FPT">↗ ${x}</span>`).join('')}</div>`:''}</div>`).join('')}</div>
+      <div class="suggest">${['Mã nào đổi nhãn hôm nay?','Hit rate của VCB thế nào?','Tóm tắt tin về HPG tuần này','Danh mục của tôi có mã nào nhãn Giảm?'].map(q=>`<button data-ask="${q}">${q}</button>`).join('')}</div>
+      <form id="chatf" style="display:flex;gap:8px"><label class="search" style="flex:1"><input id="chatin" placeholder="Nhập câu hỏi" autocomplete="off"></label><button class="btn pri" type="submit">Gửi</button></form>
+    </section>
+  </div>`;
+}
+
+function pSettings(){
+  return `
+  <div class="pagehead"><div><h1>Cài đặt</h1><p>Kênh nhận cảnh báo và hồ sơ đầu tư của bạn.</p></div></div>
+  <div class="grid g2">
+    <section class="card"><div class="card-h"><h2>Kênh thông báo</h2>${A('M5 · FR-M5-06..08')}</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><b>Trên web</b><div class="small muted">Chuông thông báo, cập nhật mỗi 60 giây</div></div><label class="toggle"><input type="checkbox" checked disabled id="ch-web" aria-label="Web"></label></div>
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><b>Email</b> <span class="chip up">Đã xác thực</span><div class="small muted">tuan•••@gmail.com</div></div><div class="actions"><button class="btn sm" data-act="toast" data-t="Đã gửi email thử">Gửi thử</button><label class="toggle"><input type="checkbox" checked id="ch-mail" aria-label="Email"></label></div></div>
+        <div style="padding:12px;border:1px dashed var(--line);border-radius:var(--r-sm)"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><b>Telegram</b> <span class="chip neutral">Chưa liên kết</span></div></div>
+          <p class="small muted" style="margin:8px 0">Gửi mã sau cho bot <b>@StockSenseVN_bot</b> trong 10 phút để liên kết.</p>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="num" style="font-size:20px;font-weight:600;letter-spacing:.15em;background:var(--surface-2);padding:4px 12px;border-radius:6px">482 913</span><button class="btn sm" data-act="copy" data-t="482913">Sao chép</button><button class="btn sm">Tạo mã mới</button></div></div>
+      </div>
+    </section>
+    <section class="card"><div class="card-h"><h2>Hồ sơ đầu tư</h2>${A('FR-M10-04 · /me/profile')}</div>
+      ${isT()?`<div class="frow"><div class="field"><label for="pf-cap">Vốn dùng để tính khối lượng</label><input id="pf-cap" class="num" value="100.000.000"><span class="hint">đồng, bạn tự nhập</span></div><div class="field"><label for="pf-risk">Rủi ro tối đa mỗi lệnh</label><input id="pf-risk" class="num" value="1"><span class="hint">% vốn</span></div></div><div class="actions" style="margin-top:12px"><button class="btn pri" data-act="toast" data-t="Đã lưu hồ sơ">Lưu</button></div>`:`<p class="muted">Hồ sơ vốn và mức rủi ro dùng để tính khối lượng tối đa trong Trade Plan, dành cho vai trò Trader và Analyst.</p>`}
+      <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--line)"><h3 style="margin-bottom:8px">Tài khoản</h3><dl class="kv"><dt>Vai trò</dt><dd>${ROLE_N[st.role]}</dd><dt>Đăng nhập</dt><dd>hết hạn sau 24 giờ</dd></dl></div>
+    </section>
+  </div>`;
+}
+
+function pEval(){
+  const full=isA()||isAd();
+  const h=st.evalH;
+  const cm=h===2?[[312,141,97],[128,402,135],[89,150,286]]:[[341,118,81],[121,388,151],[74,142,309]];
+  const cmMax=Math.max(...cm.flat());
+  const rel=[[.1,.08],[.2,.17],[.3,.27],[.4,.38],[.5,.46],[.6,.53],[.7,.61],[.8,.66]];
+  const W=300,H=240,pad=34;const x=v=>pad+v*(W-pad-10),y=v=>H-pad-v*(H-pad-10);
+  let svg=`<line class="gridline" x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke-dasharray="4 3"/>`;
+  [0,.25,.5,.75,1].forEach(v=>{svg+=`<text x="${x(v)}" y="${H-pad+14}" text-anchor="middle">${v}</text><text x="${pad-6}" y="${y(v)+3}" text-anchor="end">${v}</text>`});
+  svg+=`<path d="${rel.map((p,i)=>`${i?'L':'M'}${x(p[0])},${y(p[1])}`).join('')}" fill="none" stroke="var(--accent)" stroke-width="2"/>`+rel.map(p=>`<circle cx="${x(p[0])}" cy="${y(p[1])}" r="3.5" fill="var(--accent)"/>`).join('');
+  svg+=`<text x="${W/2+12}" y="${H-4}" text-anchor="middle">Xác suất dự báo</text>`;
+  return `
+  <div class="pagehead"><div><h1>Đánh giá mô hình</h1><p>${full?'Kết quả kiểm định trên tập test theo thời gian, so với baseline và các cấu hình ablation.':'Bản tóm tắt độ chính xác của mô hình đang phục vụ, để bạn biết nên tin dự báo đến mức nào.'}</p></div>${A('M6')}</div>
+  <div class="grid g4">
+    <div class="card stat"><div class="k">Phiên bản đang phục vụ</div><div class="v num" style="font-size:16px">${MODEL}</div><div class="s muted">huấn luyện 01/10/2026</div></div>
+    <div class="card stat"><div class="k">Hit rate T+2 · 90 phiên</div><div class="v num">46%</div><div class="s muted">n = 1.364 · baseline 40%</div></div>
+    <div class="card stat"><div class="k">Hit rate T+5 · 90 phiên</div><div class="v num">49%</div><div class="s muted">n = 1.316 · baseline 41%</div></div>
+    <div class="card stat"><div class="k">Hit rate T+2 · 30 phiên</div><div class="v num">47%</div><div class="s muted">n = 476 · baseline 39%</div></div>
+  </div>
+  ${full?`
+  <div class="seg" style="align-self:flex-start">${[2,5].map(v=>`<button class="${h===v?'on':''}" data-eh="${v}">T+${v}</button>`).join('')}</div>
+  <div class="grid g3">
+    <section class="card"><div class="card-h"><h2>Confusion matrix · T+${h}</h2></div>
+      <div class="cm num"><div class="h"></div><div class="h">▲ Dự báo</div><div class="h">● Dự báo</div><div class="h">▼ Dự báo</div>
+      ${cm.map((r,i)=>`<div class="h" style="text-align:right">${['▲ Thực','● Thực','▼ Thực'][i]}</div>${r.map((v,j)=>`<div style="background:color-mix(in srgb,var(--accent) ${Math.round(v/cmMax*85)}%,var(--surface-2));color:${v/cmMax>.55?'var(--accent-ink)':'var(--ink)'}">${v}</div>`).join('')}`).join('')}</div>
+      <div class="small muted" style="margin-top:8px">Tập test 01/01–30/09/2026</div>
+    </section>
+    <section class="card chart"><div class="card-h"><h2>Reliability diagram</h2></div><svg viewBox="0 0 ${W} ${H}">${svg}</svg>
+      <div class="grid g2" style="margin-top:6px"><div class="stat"><div class="k">Brier score</div><div class="v num" style="font-size:18px">0,198</div></div><div class="stat"><div class="k">ECE</div><div class="v num" style="font-size:18px">0,061</div></div></div>
+    </section>
+    <section class="card"><div class="card-h"><h2>Chỉ số theo lớp · T+${h}</h2></div>
+      <div class="tw"><table><thead><tr><th>Lớp</th><th class="r">Precision</th><th class="r">Recall</th><th class="r">F1</th></tr></thead><tbody>
+      ${[['up',.59,.57],['hold',.58,.60],['down',.55,.54]].map(r=>`<tr><td>${lab(r[0])}</td><td class="r num">${r[1].toFixed(2).replace('.',',')}</td><td class="r num">${r[2].toFixed(2).replace('.',',')}</td><td class="r num">${(2*r[1]*r[2]/(r[1]+r[2])).toFixed(2).replace('.',',')}</td></tr>`).join('')}
+      </tbody></table></div></section>
+  </div>
+  <section class="card"><div class="card-h"><h2>Baseline và ablation</h2>${A('FR-M6-04')}</div>
+    <div class="tw"><table><thead><tr><th>Cấu hình</th><th class="r">Macro F1 T+2</th><th class="r">Macro F1 T+5</th><th class="r">AUC T+2</th><th class="r">AUC T+5</th><th class="r">Brier</th></tr></thead><tbody>
+    ${[['Baseline lớp phổ biến nhất','0,19','0,19','0,50','0,50','0,231'],['XGBoost chỉ báo kỹ thuật','0,41','0,44','0,61','0,63','0,214'],['Mô hình chỉ giá + tài chính','0,43','0,46','0,63','0,65','0,207'],['Mô hình chỉ tin tức','0,36','0,37','0,57','0,58','0,222'],['Đa phương thức (đang phục vụ)','0,47','0,50','0,66','0,69','0,198']].map((r,i)=>`<tr style="${i===4?'font-weight:600;background:var(--accent-soft)':''}"><td>${r[0]}</td>${r.slice(1).map(v=>`<td class="r num">${v}</td>`).join('')}</tr>`).join('')}
+    </tbody></table></div>
+    <div class="small muted" style="margin-top:8px">Số liệu là minh họa cho bố cục; số thật lấy từ model_run.metrics.</div>
+  </section>`:`<div class="note info">Hit rate là tỷ lệ dự báo đúng nhãn trong số dự báo đã đáo hạn. Baseline là cách đoán luôn chọn nhãn xuất hiện nhiều nhất; mô hình có ích khi hit rate cao hơn baseline.</div>`}`;
+}
+
+function pAdmin(){
+  const tabs=isAd()?[['users','Người dùng'],['jobs','Nguồn dữ liệu & job'],['models','Phiên bản mô hình'],['audit','Audit log'],['notif','Nhật ký thông báo'],['chatlog','Nhật ký Chat']]:[['models','Phiên bản mô hình'],['chatlog','Nhật ký Chat']];
+  if(!tabs.find(t=>t[0]===st.adminTab))st.adminTab=tabs[0][0];
+  const t=st.adminTab;let body='';
+  if(t==='users')body=`<div class="card-h"><h2>Người dùng</h2><div class="actions"><button class="btn sm">${ic('plus')}Tạo người dùng</button><button class="btn sm" data-act="toast" data-t="Đã nạp lại dữ liệu mẫu cho tài khoản demo">Nạp lại dữ liệu demo</button></div></div>
+    <div class="tw"><table><thead><tr><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th><th></th></tr></thead><tbody>
+    ${[['demo.retail@stocksense.vn','retail','Demo','07/10 20:11'],['demo.trader@stocksense.vn','trader','Demo','07/10 19:42'],['demo.analyst@stocksense.vn','analyst','Demo','06/10 22:05'],['tuan.hm@example.com','analyst','Hoạt động','08/10 09:15'],['test01@example.com','retail','Đã khóa','21/09 10:02']].map(u=>`<tr><td>${u[0]}</td><td><select aria-label="Vai trò" style="border:1px solid var(--line);border-radius:6px;padding:3px 6px;background:var(--surface)">${['retail','trader','analyst','admin'].map(r=>`<option ${r===u[1]?'selected':''}>${r}</option>`).join('')}</select></td><td><span class="chip ${u[2]==='Đã khóa'?'down':u[2]==='Demo'?'info':'up'}">${u[2]}</span></td><td class="num muted">${u[3]}</td><td><button class="btn sm">${u[2]==='Đã khóa'?'Mở khóa':'Khóa'}</button></td></tr>`).join('')}</tbody></table></div>
+    <div class="small muted" style="margin-top:8px">Admin không xem được nội dung Portfolio, Trade Plan, Journal của người dùng.</div>`;
+  if(t==='jobs')body=`<div class="card-h"><h2>Nguồn dữ liệu và lần chạy job</h2>${A('FR-M7-02')}</div>
+    <div class="tw"><table><thead><tr><th>Job</th><th>Lần chạy gần nhất</th><th>Thời lượng</th><th>Bản ghi</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+    ${[['prices · vnstock','07/10 15:31','1m 12s','17 mã × 1 phiên','ok'],['news · CafeF, Vietstock','07/10 15:34','3m 48s','64 bài, 9 trùng','ok'],['financials · BCTC','01/10 02:00','52s','17 mã','ok'],['sentiment · PhoBERT','07/10 15:39','2m 05s','55 bài','ok'],['forecast · T+2/T+5','07/10 16:42','58s','34 dự báo','ok'],['alerts + notify','07/10 16:44','4s','6 cảnh báo, 9 thông báo','warn'],['resolve · nhãn thực tế','07/10 16:45','2s','34 dự báo','ok']].map(j=>`<tr><td><b>${j[0]}</b></td><td class="num">${j[1]}</td><td class="num">${j[2]}</td><td class="muted">${j[3]}</td><td>${j[4]==='ok'?'<span class="chip up">Thành công</span>':'<span class="chip hold">1 lỗi gửi Telegram</span>'}</td><td><button class="btn sm" data-act="toast" data-t="Đã xếp hàng chạy lại job">Chạy lại</button></td></tr>`).join('')}</tbody></table></div>`;
+  if(t==='models')body=`<div class="card-h"><h2>Phiên bản mô hình</h2>${A('FR-M7-03 · AC-16')}</div>
+    <div class="tw"><table><thead><tr><th>Phiên bản</th><th>Huấn luyện</th><th class="r">Macro F1 T+2/T+5</th><th>Cấu hình</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+    ${[['mm-2026.10.01-a','01/10/2026','0,47 / 0,50','Đa phương thức, IG',1],['mm-2026.09.15-b','15/09/2026','0,45 / 0,48','Đa phương thức',0],['xgb-2026.09.10','10/09/2026','0,41 / 0,44','Baseline XGBoost',0]].map(m=>`<tr><td class="num"><b>${m[0]}</b></td><td class="num">${m[1]}</td><td class="r num">${m[2]}</td><td class="muted">${m[3]}</td><td>${m[4]?'<span class="chip up">Đang phục vụ</span>':'<span class="chip neutral">Lưu trữ</span>'}</td><td>${!m[4]&&isAd()?'<button class="btn sm" data-act="toast" data-t="Batch kế tiếp sẽ dùng phiên bản này">Đặt làm bản phục vụ</button>':''}</td></tr>`).join('')}</tbody></table></div>
+    ${isAd()?'':'<div class="small muted" style="margin-top:8px">Analyst chỉ xem, không đổi phiên bản.</div>'}`;
+  if(t==='audit')body=`<div class="card-h"><h2>Audit log</h2></div><div class="tw"><table><thead><tr><th>Thời điểm</th><th>Người thực hiện</th><th>Hành động</th><th>Đối tượng</th></tr></thead><tbody>
+    ${[['07/10 21:02','admin@stocksense.vn','Nạp lại dữ liệu demo','3 tài khoản demo'],['06/10 09:40','admin@stocksense.vn','Chạy lại job','news · CafeF'],['01/10 18:22','admin@stocksense.vn','Đổi bản phục vụ','mm-2026.10.01-a'],['21/09 10:05','admin@stocksense.vn','Khóa người dùng','test01@example.com'],['19/09 14:11','tuan.hm@example.com','Xóa toàn bộ giao dịch','portfolio (không ghi nội dung)']].map(a=>`<tr><td class="num">${a[0]}</td><td>${a[1]}</td><td><b>${a[2]}</b></td><td class="muted">${a[3]}</td></tr>`).join('')}</tbody></table></div>`;
+  if(t==='notif')body=`<div class="card-h"><h2>Nhật ký gửi thông báo</h2><span class="small muted">Tổng hợp, không kèm nội dung</span></div>
+    <div class="grid g3" style="margin-bottom:14px">${[['Web','142','0'],['Email','61','0'],['Telegram','38','1']].map(c=>`<div class="card stat"><div class="k">${c[0]} · 7 ngày</div><div class="v num">${c[1]}</div><div class="s ${c[2]>0?'c-down':'muted'}">${c[2]} lỗi sau 3 lần thử</div></div>`).join('')}</div>`;
+  if(t==='chatlog')body=`<div class="card-h"><h2>Nhật ký Chat</h2>${A('M12 · /admin/chat-log')}</div><div class="tw"><table><thead><tr><th>Thời điểm</th><th>Câu hỏi</th><th>Bộ lọc đầu ra</th><th class="r">Độ trễ</th></tr></thead><tbody>
+    ${[['07/10 20:15','Vì sao FPT được dự báo Tăng ở kỳ hạn T+5?','Đạt','2,1 s'],['07/10 20:16','Vậy tôi có nên mua FPT không?','Đã chặn khuyến nghị','1,8 s'],['07/10 19:03','████ (câu hỏi về dữ liệu cá nhân)','Đạt','2,6 s'],['06/10 22:41','Hit rate của VCB thế nào?','Đạt','1,4 s']].map(c=>`<tr><td class="num">${c[0]}</td><td style="white-space:normal">${c[1]}</td><td><span class="chip ${c[2]==='Đạt'?'up':'hold'}">${c[2]}</span></td><td class="r num">${c[3]}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="pagehead"><div><h1>${isAd()?'Quản trị':'Nhật ký & mô hình'}</h1><p>${isAd()?'Người dùng, nguồn dữ liệu, mô hình và nhật ký vận hành.':'Phần quản trị analyst được xem: phiên bản mô hình và nhật ký Chat đã che nội dung cá nhân.'}</p></div>${A('M7')}</div>
+  <div class="tabs">${tabs.map(x=>`<button class="${t===x[0]?'on':''}" data-at="${x[0]}">${x[1]}</button>`).join('')}</div>
+  <section class="card">${body}</section>`;
+}
+
+function p403(){
+  return `<div class="empty403"><div class="code">403</div><h2>Vai trò ${ROLE_N[st.role]} không mở được trang này</h2><p class="muted" style="max-width:52ch">${isAd()?'Admin không có quyền đọc dữ liệu cá nhân và dự báo dành cho người dùng cuối (AC-26). Chuyển vai trò ở thanh trên để xem trang này.':'Trang này dành cho vai trò khác. Chuyển vai trò ở thanh trên để xem.'}</p><button class="btn pri" data-go="${isAd()?'admin':'overview'}">Về trang chính</button></div>`;
+}
+
+function pLogin(){
+  return `<div class="login">
+    <div class="login-l"><div class="brand"><div class="brand-mark" style="background:var(--accent-ink);color:var(--accent)">SS</div><div><b>StockSense VN</b></div></div>
+      <div><h1>Dự báo xu hướng T+2 và T+5 cho cổ phiếu HOSE, HNX</h1><p style="margin-top:12px;opacity:.85;max-width:44ch">Kết hợp chỉ báo tài chính, kỹ thuật và cảm xúc tin tức. Cập nhật mỗi ngày sau 15:30, kèm giải thích cho từng dự báo.</p></div>
+      <div class="small" style="opacity:.8">Dự báo chỉ mang tính tham khảo, không phải khuyến nghị đầu tư.</div></div>
+    <div class="login-r"><form class="login-form" id="loginf">
+      <h1>Đăng nhập</h1>
+      <div class="field"><label for="lg-e">Email</label><input id="lg-e" type="email" placeholder="ban@example.com" autocomplete="username"></div>
+      <div class="field"><label for="lg-p">Mật khẩu</label><input id="lg-p" type="password" autocomplete="current-password"></div>
+      <button class="btn pri" type="submit" style="justify-content:center;padding:10px">Đăng nhập</button>
+      <div class="small muted" style="text-align:center">Hoặc vào nhanh bằng tài khoản demo</div>
+      <div class="demo">${Object.keys(ROLE_N).map(r=>`<button type="button" data-login="${r}"><b>${ROLE_N[r]}</b><span>${ROLE_D[r]}</span></button>`).join('')}</div>
+    </form></div></div>`;
+}
+
+/* ============ render ============ */
+function render(){
+  document.body.classList.toggle('show-anno',st.annos);
+  const root=document.getElementById('root');
+  if(st.screen==='login'){root.innerHTML=pLogin();syncHash();return}
+  let b;
+  if(!allowed(st.page))b=p403();
+  else b={overview:pOverview,detail:pDetail,watchlist:pWatchlist,screener:pScreener,portfolio:pPortfolio,plans:pPlans,journal:pJournal,chat:pChat,settings:pSettings,eval:pEval,admin:pAdmin}[st.page]();
+  root.innerHTML=shell(b);
+  save();syncHash();
+}
+/* ============ định tuyến theo hash ============
+   Mỗi màn hình có một địa chỉ riêng dạng neo đơn giản, chỉ gồm chữ, số và dấu gạch ngang
+   (nền tảng artifact chỉ chuyển loại neo này vào trang):
+   #<trang>-<vai trò>[-<tham số>...]   ví dụ  #watchlist-trader   #detail-analyst-fpt-an   #admin-admin-jobs
+   Trang: overview detail screener watchlist portfolio plans journal chat eval admin settings, và login
+   Vai trò: retail trader analyst admin (bỏ trống thì lấy vai trò đầu tiên được phép vào trang)
+   Tham số: mã cổ phiếu (fpt, hpg...), tab chi tiết (fc news hist an), lọc tin (pos neu neg), kỳ hạn t2 t5,
+   cửa sổ w30 w90, kế hoạch p9, nhật ký j1, bộ lọc screener s0..s3, tab quản trị (users jobs models audit notif chatlog),
+   anno để bật chú thích FR */
+function hashOf(){
+  if(st.screen==='login')return '#login';
+  const p=[st.page,st.role];
+  if(st.page==='detail'){
+    p.push(st.sym.toLowerCase(),st.tab);
+    if(st.tab==='hist')p.push('t'+(st.histH||2),'w'+st.hist);
+    if(st.tab==='news'&&st.newsF!=='all')p.push(st.newsF);
+  }
+  else if(st.page==='admin')p.push(st.adminTab);
+  else if(st.page==='eval')p.push('t'+st.evalH);
+  else if(st.page==='plans')p.push('p'+st.planSel);
+  else if(st.page==='journal')p.push('j'+st.jSel);
+  else if(st.page==='screener')p.push('s'+(st.preset||0));
+  if(st.annos)p.push('anno');
+  return '#'+p.join('-');
+}
+function applyHash(){
+  const raw=(location.hash||'').replace(/^#\/?/,'').toLowerCase();
+  if(!raw)return false;
+  const parts=raw.split('-'),id=parts[0],rest=parts.slice(1);
+  if(id==='login'){st.screen='login';st.bell=false;st.more=false;return true}
+  const pg=PAGES.find(p=>p[0]===id);
+  if(!pg)return false;
+  st.screen='app';st.page=id;st.bell=false;st.more=false;
+  st.role=rest.find(x=>ROLE_N[x])||pg[4][0];
+  /* tham số không có trong địa chỉ thì quay về mặc định, để cùng một địa chỉ luôn cho cùng một màn hình */
+  st.tab='fc';st.newsF='all';st.histH=2;st.hist=30;st.evalH=2;st.planSel=2;st.jSel=1;st.preset=0;st.adminTab='users';
+  for(const x of rest){
+    if(ROLE_N[x])continue;
+    const up=x.toUpperCase();
+    if(BY[up])st.sym=up;
+    else if(['fc','news','hist','an'].includes(x))st.tab=x;
+    else if(['pos','neu','neg'].includes(x))st.newsF=x;
+    else if(/^t[25]$/.test(x)){if(id==='eval')st.evalH=+x[1];else st.histH=+x[1]}
+    else if(/^w(30|90)$/.test(x))st.hist=+x.slice(1);
+    else if(/^p\d+$/.test(x))st.planSel=+x.slice(1);
+    else if(/^j\d+$/.test(x))st.jSel=+x.slice(1);
+    else if(/^s[0-3]$/.test(x))st.preset=+x[1];
+    else if(x==='anno')st.annos=true;
+    else if(id==='admin')st.adminTab=x;
+  }
+  return true;
+}
+function syncHash(){
+  try{const h=hashOf();if(location.hash!==h)history.replaceState(null,'',h)}catch(e){}
+}
+function go(p){st.page=p;st.bell=false;st.more=false;render();window.scrollTo(0,0)}
+function modal(html){document.getElementById('modal').innerHTML=`<div class="modal-bg" data-act="closemodal"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`}
+function closeModal(){document.getElementById('modal').innerHTML=''}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-go],[data-act],[data-sym],[data-role],[data-tab],[data-f],[data-nf],[data-hh],[data-hw],[data-preset],[data-plan],[data-j],[data-at],[data-eh],[data-alert],[data-login],[data-ask]');
+  if(!t){if(st.bell&&!e.target.closest('.pop')){st.bell=false;render()}return}
+  const d=t.dataset;
+  if(d.act==='closemodal'){if(e.target===t)closeModal();return}
+  if(d.login){st.role=d.login;st.screen='app';st.page=d.login==='admin'?'admin':'overview';render();return}
+  if(d.role){st.role=d.role;if(!allowed(st.page))st.page=d.role==='admin'?'admin':'overview';st.bell=false;render();return}
+  if(d.act==='newplan'){st.planSel=0;st.newPlanSymbol=d.s||st.sym||'';go('plans');return}
+  if(d.go){go(d.go);return}
+  if(d.sym&&!d.act){st.sym=d.sym;st.tab='fc';go('detail');return}
+  if(d.tab){st.tab=d.tab;render();return}
+  if(d.f){const[k,v]=d.f.split(':');st.filter[k]=v;render();return}
+  if(d.nf){st.newsF=d.nf;render();return}
+  if(d.hh){st.histH=+d.hh;render();return}
+  if(d.hw){st.hist=+d.hw;render();return}
+  if(d.preset){st.preset=+d.preset;render();return}
+  if(d.plan){st.planSel=+d.plan;render();return}
+  if(d.j){st.jSel=+d.j;render();return}
+  if(d.at){st.adminTab=d.at;render();return}
+  if(d.eh){st.evalH=+d.eh;render();return}
+  if(d.ask){st.chatMsgs.push({me:1,t:d.ask},{me:0,t:'Đây là bản thiết kế: câu trả lời thật được dịch vụ Chat sinh từ dữ liệu hệ thống và luôn kèm trích dẫn.',c:['Tổng quan thị trường']});render();return}
+  if(d.alert){const a=st.alerts.find(x=>x.id==d.alert);a.read=true;st.sym=a.sym;st.tab='fc';go('detail');return}
+  switch(d.act){
+    case 'bell':st.bell=!st.bell;render();break;
+    case 'more':st.more=!st.more;render();break;
+    case 'anno':st.annos=!st.annos;render();break;
+    case 'readall':st.alerts.forEach(a=>a.read=true);render();break;
+    case 'logout':st.screen='login';render();break;
+    case 'wl':if(d.s in st.wl){toast(d.s+' đã có trong watchlist')}else{st.wl[d.s]='';toast('Đã thêm '+d.s+' vào watchlist');render()}break;
+    case 'rmwl':delete st.wl[d.s];render();break;
+    case 'pdf':toast('Đang tạo PDF: cùng số liệu với màn hình, kèm tuyên bố và ngày dữ liệu');break;
+    case 'csv':toast('Đã xuất CSV lịch sử dự báo');break;
+    case 'share':toast('Đã sao chép liên kết dự báo để chia sẻ');break;
+    case 'toast':toast(d.t);break;
+    case 'copy':navigator.clipboard?.writeText(d.t).then(()=>toast('Đã sao chép mã'),()=>toast('Hãy chọn và sao chép mã thủ công'));break;
+    case 'newchat':st.chatMsgs=[];render();break;
+    case 'savescreen':toast('Đã lưu bộ lọc (3/20)');break;
+    case 'addwl':modal(`<h2>Thêm mã vào watchlist</h2><div class="field"><label for="m-sym">Mã</label><select id="m-sym">${S.filter(o=>!(o.s in st.wl)).map(o=>`<option>${o.s}</option>`).join('')}</select></div><div class="field"><label for="m-note">Ghi chú</label><input id="m-note"></div><div class="actions"><button class="btn pri" data-act="doaddwl">Thêm</button><button class="btn" data-act="cm">Hủy</button></div>`);break;
+    case 'doaddwl':{const s=document.getElementById('m-sym').value;st.wl[s]=document.getElementById('m-note').value;closeModal();render();toast('Đã thêm '+s);break}
+    case 'cm':closeModal();break;
+    case 'newrule':modal(`<h2>Thêm quy tắc cảnh báo</h2><div class="frow"><div class="field"><label for="r-k">Loại</label><select id="r-k"><option>Đổi nhãn</option><option>Ngưỡng xác suất</option></select></div><div class="field"><label for="r-s">Mã</label><select id="r-s"><option>Mọi mã trong watchlist</option>${S.map(o=>`<option>${o.s}</option>`).join('')}</select></div><div class="field"><label for="r-h">Kỳ hạn</label><select id="r-h"><option>T+2 và T+5</option><option>T+2</option><option>T+5</option></select></div><div class="field"><label for="r-t">Ngưỡng</label><input id="r-t" value="55"><span class="hint">% xác suất, với loại ngưỡng</span></div></div><div class="small muted">Gửi qua: Web, Email (đã bật trong Cài đặt)</div><div class="actions"><button class="btn pri" data-act="cmt" data-t="Đã thêm quy tắc">Lưu quy tắc</button><button class="btn" data-act="cm">Hủy</button></div>`);break;
+    case 'cmt':closeModal();toast(d.t);break;
+    case 'addtx':modal(`<h2>Nhập giao dịch</h2><div class="frow"><div class="field"><label for="t-d">Ngày</label><input id="t-d" type="date" value="2026-10-07"></div><div class="field"><label for="t-s">Mã</label><select id="t-s">${S.map(o=>`<option>${o.s}</option>`).join('')}</select></div><div class="field"><label for="t-k">Loại</label><select id="t-k"><option>MUA</option><option>BÁN</option></select></div><div class="field"><label for="t-q">Khối lượng</label><input id="t-q" type="number" value="100" step="100"></div><div class="field"><label for="t-p">Giá</label><input id="t-p" type="number"></div><div class="field"><label for="t-f">Phí</label><input id="t-f" type="number" value="0"></div></div><div class="small muted">Giao dịch bán vượt khối lượng đang nắm sẽ bị từ chối.</div><div class="actions"><button class="btn pri" data-act="cmt" data-t="Đã lưu giao dịch">Lưu</button><button class="btn" data-act="cm">Hủy</button></div>`);break;
+    case 'csvimport':modal(`<h2>Import CSV · xem trước</h2><div class="note info">Tệp <b>giao_dich_2026.csv</b>: 42 dòng hợp lệ, 2 dòng lỗi, 3 dòng trùng với dữ liệu đã có. Chỉ các dòng hợp lệ được ghi.</div><div class="tw"><table><thead><tr><th>Dòng</th><th>Nội dung</th><th>Lý do</th></tr></thead><tbody><tr><td class="num">17</td><td class="num">2026-08-12,VNM,BÁN,500,67000</td><td class="c-down">Bán vượt khối lượng đang nắm (0)</td></tr><tr><td class="num">29</td><td class="num">2026-08-30,ABC,MUA,100,12000</td><td class="c-down">Mã không có trong danh sách</td></tr><tr><td class="num">5, 6, 9</td><td class="muted">3 dòng</td><td class="muted">Trùng giao dịch đã nhập</td></tr></tbody></table></div><div class="actions"><button class="btn pri" data-act="cmt" data-t="Đã ghi 42 giao dịch">Xác nhận ghi 42 dòng</button><button class="btn" data-act="cm">Hủy</button></div>`);break;
+    case 'delall':modal(`<h2>Xóa toàn bộ giao dịch?</h2><p>Mọi giao dịch và vị thế trong Portfolio sẽ bị xóa vĩnh viễn. Trade Plan và Journal không bị ảnh hưởng.</p><div class="field"><label for="del-c">Gõ XÓA để xác nhận</label><input id="del-c"></div><div class="actions"><button class="btn danger" data-act="cmt" data-t="Đã xóa toàn bộ giao dịch">Xóa toàn bộ</button><button class="btn" data-act="cm">Hủy</button></div>`);break;
+    case 'closeplan':modal(`<h2>Đóng kế hoạch</h2><div class="frow"><div class="field"><label for="c-x">Giá thoát</label><input id="c-x" type="number" value="33150"></div><div class="field"><label for="c-d">Ngày</label><input id="c-d" type="date" value="2026-10-07"></div></div><div class="field"><label for="c-n">Ghi chú</label><textarea id="c-n"></textarea></div><div class="small muted">Một bản ghi Journal sẽ được tạo kèm snapshot dự báo lúc lập.</div><div class="actions"><button class="btn pri" data-act="cmt" data-t="Đã đóng kế hoạch và tạo Journal">Đóng và ghi Journal</button><button class="btn" data-act="cm">Hủy</button></div>`);break;
+  }
+});
+document.addEventListener('change',e=>{
+  if(e.target.id==='fsec'){st.filter.sec=e.target.value;render()}
+  if(e.target.id==='ftrend'){st.filter.trend=e.target.value;render()}
+  if(e.target.id?.startsWith('note-')){st.wl[e.target.id.slice(5)]=e.target.value;toast('Đã lưu ghi chú')}
+});
+document.addEventListener('input',e=>{
+  if(e.target.matches('[data-calc]')){const g=id=>+(document.getElementById(id)?.value||0);document.getElementById('calcbox').innerHTML=calcBox(calcPlan(g('pl-e1'),g('pl-e2'),g('pl-sl'),g('pl-tp'),g('pl-cap'),g('pl-risk')))}
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='q'&&e.key==='Enter'){const v=e.target.value.trim().toUpperCase();if(BY[v]){st.sym=v;st.tab='fc';go('detail')}else{st.filter.q=v;go('overview')}}
+  if(e.key==='Escape'){closeModal();if(st.bell){st.bell=false;render()}}
+});
+document.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(e.target.id==='loginf'){st.screen='app';st.page=st.role==='admin'?'admin':'overview';render()}
+  if(e.target.id==='chatf'){const v=document.getElementById('chatin').value.trim();if(!v)return;st.chatMsgs.push({me:1,t:v},{me:0,t:/mua|bán|nên/i.test(v)?'Tôi không đưa khuyến nghị giao dịch. Tôi có thể tóm tắt dự báo, tin tức và lịch sử độ chính xác của mã bạn quan tâm.':'Đây là bản thiết kế: câu trả lời thật được sinh từ dữ liệu hệ thống và luôn kèm trích dẫn.',c:['Tổng quan thị trường']});render()}
+});
+window.addEventListener('hashchange',()=>{
+  if(location.hash.toLowerCase()!==hashOf()&&applyHash()){closeModal();render();window.scrollTo(0,0)}
+});
+applyHash();
+render();
+</script>
+
+
+<script>
+(()=>{
+  const baseRender=render;
+  const baseOverview=pOverview;
+  let sortKey='liq', sortDir=-1, attempts=0, lockedUntil=0, userLocked=false, range='week';
+  const toastSafe=msg=>toast(msg);
+  pOverview=function(){const t=st.filter.trend;st.filter.trend='all';const html=baseOverview();st.filter.trend=t;return html};
+  const oldReasons=reasons;
+  reasons=function(o){const r=oldReasons(o);if(st.role!=='retail')return r;const cv=x=>x.replaceAll('MA20','đường trung bình giá 20 phiên').replaceAll('RSI(14)','chỉ số sức mạnh giá 14 phiên').replaceAll('P/E','hệ số giá trên lợi nhuận');return {R:r.R.map(cv),risk:r.risk.map(cv)}};
+  const oldTabFc=tabFc;
+  tabFc=function(o){return oldTabFc(o).replace('${candle(o)}',`${candle(o)}<div class="vol-bars" aria-label="Khối lượng giao dịch"><b>Khối lượng</b><div>${Array.from({length:24},(_,i)=>`<i title="Phiên ${i+1}: ${Math.round(500+((i*791)%2300))} nghìn cp" style="height:${18+((i*37)%62)}%"></i>`).join('')}</div></div>`)};
+  const oldWatch=pWatchlist;
+  pWatchlist=function(){return oldWatch().replace('30 mã','10 mã').replace('/30','/10').replace(/\$\{\[\['+'Tập trung danh mục'[\s\S]*?\.map\(\(r,i\)=>/,'${[['Đổi nhãn','Mọi mã trong watchlist · T+2 và T+5',1],['Ngưỡng xác suất','SSI · Tăng T+5 ≥ 55%',1],['Chạm mốc kế hoạch','Kế hoạch HPG #12 · vùng vào, cắt lỗ, mục tiêu',1]].map((r,i)=>')};
+  function decorate(){
+    if(st.page==='overview'){
+      const card=[...document.querySelectorAll('h2')].find(h=>h.textContent.includes('Danh sách mã'))?.closest('.card');
+      if(card&&!document.getElementById('ov-horizon')){const a=card.querySelector('.actions');if(a){const h=document.createElement('select');h.id='ov-horizon';h.innerHTML='<option value="t5">Kỳ hạn T+5</option><option value="t2">Kỳ hạn T+2</option>';a.append(h);const l=document.createElement('select');l.id='ov-liq';l.innerHTML='<option value="0">Mọi thanh khoản</option><option value="100">GTGD TB20 ≥ 100 tỷ</option><option value="200">GTGD TB20 ≥ 200 tỷ</option>';a.append(l)}const th=card.querySelectorAll('thead th');if(th.length){th[0].dataset.sort='symbol';th[2].dataset.sort='price';th[4].dataset.sort='liq';th[2].style.cursor=th[4].style.cursor='pointer'}const note=card.querySelector('.small.muted');if(note)note.textContent='Bấm tiêu đề Giá hoặc GTGD để sắp xếp. Dữ liệu trong bản thiết kế là minh họa.'}
+      const h=document.getElementById('ov-horizon'), l=document.getElementById('ov-liq');const rows=document.querySelectorAll('.pagehead~.strip~.card .tw tbody tr[data-sym]');const horizon=h?.value||'t5', min=+(l?.value||0);rows.forEach(r=>{const cells=r.querySelectorAll('td');const col=horizon==='t2'?5:6;const txt=cells[col]?.textContent||'';const trend=st.filter.trend;const okTrend=trend==='all'||txt.includes(LV[trend]);const liq=parseInt((cells[4]?.textContent||'0').replace(/\D/g,''),10)||0;r.hidden=!okTrend||liq<min});
+      const tb=document.querySelector('.pagehead~.strip~.card .tw tbody');if(tb&&sortKey){[...tb.querySelectorAll('tr[data-sym]')].sort((a,b)=>{let x,y;if(sortKey==='symbol'){x=a.dataset.sym;y=b.dataset.sym;return sortDir*x.localeCompare(y)}const idx=sortKey==='price'?2:4;x=parseInt(a.cells[idx]?.textContent.replace(/\D/g,'')||0,10);y=parseInt(b.cells[idx]?.textContent.replace(/\D/g,'')||0,10);return sortDir*(x-y)}).forEach(r=>tb.append(r))}
+    }
+    if(st.page==='detail'&&st.tab==='an'){
+      const c=document.querySelector('.pagehead~.tabs~.grid');if(c&&!document.getElementById('analyst-manifest')){const s=document.createElement('section');s.id='analyst-manifest';s.className='card';s.innerHTML='<h2>Manifest dữ liệu đầu vào</h2><p>Giá OHLCV: 17 mã · 252 phiên · VNINDEX/HNXINDEX · phiên 07/10/2026 15:00 ICT</p><p>Tin: CafeF, Vietstock, NDH · cửa sổ 3 ngày · 6 bài sau khử trùng</p><p>Tài chính: BCTC gần nhất · snapshot đóng băng lúc 15:30 ICT · model '+MODEL+'</p><button class="btn pri" data-extra="replay">Chạy lại</button> <span id="replay-result" class="small muted">Sai số chờ chạy</span>';c.parentNode.insertBefore(s,c)}
+    }
+    if(st.page==='settings'){
+      const c=document.querySelector('.pagehead~.grid');if(c&&!document.getElementById('security-settings')){const s=document.createElement('section');s.id='security-settings';s.className='card';s.innerHTML='<h2>Bảo mật tài khoản</h2><div class="frow"><div class="field"><label>Mật khẩu hiện tại</label><input id="pw-old" type="password"></div><div class="field"><label>Mật khẩu mới</label><input id="pw-new" type="password"></div><div class="field"><label>Nhập lại mật khẩu mới</label><input id="pw-confirm" type="password"></div></div><button class="btn pri" data-extra="password">Đổi mật khẩu</button><div style="margin-top:14px"><b>Email</b> <span class="chip hold">Chưa xác thực</span> <button class="btn sm" data-extra="email">Gửi email xác thực</button></div><div style="margin-top:12px"><b>Telegram</b> <button class="btn sm danger" data-extra="unlink">Hủy liên kết Telegram</button></div>';c.append(s)}
+    }
+    if(st.page==='portfolio'){
+      const card=[...document.querySelectorAll('h2')].find(h=>h.textContent==='Giao dịch gần đây')?.closest('.card');if(card&&!card.querySelector('.tx-actions')){card.querySelectorAll('tbody tr').forEach((r,i)=>{const td=document.createElement('td');td.className='tx-actions';td.innerHTML=`<button class="btn sm" data-extra="edit-tx">Sửa</button> <button class="btn sm danger" data-extra="delete-tx">Xóa</button>`;r.append(td)});const th=card.querySelector('thead tr');if(th)th.insertAdjacentHTML('beforeend','<th>Thao tác</th>')}
+      if(!document.getElementById('sector-allocation')){const s=document.createElement('section');s.id='sector-allocation';s.className='card';s.innerHTML='<h2>Phân bổ theo ngành</h2><div class="actions"><span class="chip acc">Ngân hàng · 18%</span><span class="chip neutral">Thép · 31%</span><span class="chip hold">Bất động sản · 34%</span><span class="chip up">Chứng khoán · 17%</span></div>';document.querySelector('.pagehead')?.after(s)}
+    }
+    if(st.page==='journal'){
+      const card=[...document.querySelectorAll('h2')].find(h=>h.textContent==='Bản ghi')?.closest('.card');if(card&&!document.getElementById('journal-filters')){const f=document.createElement('div');f.id='journal-filters';f.className='actions';f.style.margin='8px 0';f.innerHTML='<input id="jf-symbol" placeholder="Lọc mã"><input id="jf-date" type="date" aria-label="Từ ngày"><select id="jf-tag"><option value="">Mọi thẻ</option><option value="thép">thép</option><option value="bán lẻ">bán lẻ</option><option value="bđs">bđs</option></select><select id="jf-result"><option value="">Mọi kết quả</option><option value="win">Có lãi</option><option value="loss">Lỗ</option></select>';card.querySelector('.card-h')?.after(f);card.querySelectorAll('.seg button').forEach((b,i)=>{b.dataset.range=['week','month','quarter'][i];b.classList.toggle('on',b.dataset.range===range)});const stats=document.createElement('div');stats.className='small muted';stats.innerHTML='Tỷ lệ chạm mục tiêu: 58% · Tỷ lệ chạm cắt lỗ: 17% · R:R thực tế TB: 1,42';card.append(stats)}
+    }
+    if(st.page==='admin'&&st.adminTab==='audit'){
+      const c=document.querySelector('.pagehead~.tabs~.card');if(c&&!document.getElementById('audit-filters')){const f=document.createElement('div');f.id='audit-filters';f.className='actions';f.innerHTML='<input type="date" aria-label="Từ ngày"><input type="search" placeholder="Người thực hiện"><input type="search" placeholder="Hành động"><input type="search" placeholder="Đối tượng">';c.prepend(f);const th=c.querySelector('thead tr');if(th)th.insertAdjacentHTML('beforeend','<th>Before</th><th>After</th><th>Outcome</th>');c.querySelectorAll('tbody tr').forEach((r,i)=>r.insertAdjacentHTML('beforeend',`<td>${i===2?'mm-2026.09.15-b':'—'}</td><td>${i===2?'mm-2026.10.01-a':'—'}</td><td><span class="chip up">Thành công</span></td>`));c.insertAdjacentHTML('beforeend','<div class="actions"><button class="btn sm" data-extra="audit-prev">Trước</button><span>Trang 1 / 1</span><button class="btn sm" data-extra="audit-next">Sau</button></div>')}}
+    if(st.page==='admin'&&st.adminTab==='users'){
+      const c=document.querySelector('.pagehead~.tabs~.card');if(c){const b=[...c.querySelectorAll('button')].find(x=>x.textContent.includes('Tạo người dùng'));if(b){b.dataset.extra='create-user'}c.querySelectorAll('tbody tr').forEach(r=>{if(!r.querySelector('[data-extra="reset-user"]'))r.insertAdjacentHTML('beforeend','<td><button class="btn sm" data-extra="reset-user">Reset mật khẩu</button> <button class="btn sm" data-extra="revoke-session">Thu hồi phiên</button></td>')});if(!c.querySelector('.last-admin-note'))c.insertAdjacentHTML('beforeend','<div class="note warn last-admin-note">Không thể khóa hoặc hạ quyền Admin cuối cùng đang hoạt động.</div>')}
+    }
+    if(st.page==='admin'&&st.adminTab==='models'){
+      document.querySelectorAll('[data-act="toast"][data-t^="Batch kế tiếp"]').forEach(b=>{b.dataset.extra='serve-model';b.removeAttribute('data-act')});const c=document.querySelector('.pagehead~.tabs~.card');if(c&&!c.querySelector('.gate-status'))c.insertAdjacentHTML('beforeend','<p class="small muted gate-status">Cổng đánh giá: Macro F1 đạt ngưỡng · kiểm tra drift đạt · bias review đạt · sẵn sàng phục vụ.</p>')
+    }
+    if(st.page==='detail'&&st.tab==='news'){
+      const c=document.querySelector('.pagehead~.tabs~.grid .card');if(c&&!document.getElementById('news-date-range')){const f=document.createElement('div');f.id='news-date-range';f.className='actions';f.innerHTML='<label>Từ <input type="date" id="news-from"></label><label>Đến <input type="date" id="news-to"></label>';c.querySelector('.card-h')?.after(f)}
+    }
+  }
+  render=function(){baseRender();decorate()};
+  document.addEventListener('change',e=>{
+    if(e.target.id==='ov-horizon'||e.target.id==='ov-liq')decorate();
+    if(e.target.id?.startsWith('jf-')){const card=e.target.closest('.card')||document.querySelector('#journal-filters')?.closest('.card');card?.querySelectorAll('tbody tr').forEach(r=>{const sym=r.cells[0]?.textContent.toLowerCase()||'';const res=parseFloat((r.cells[3]?.textContent||'').replace(',','.'))||0;r.hidden=(document.getElementById('jf-symbol')?.value&& !sym.includes(document.getElementById('jf-symbol').value.toLowerCase()))||(document.getElementById('jf-result')?.value==='win'&&res<=0)||(document.getElementById('jf-result')?.value==='loss'&&res>=0)})}
+    if(e.target.dataset.range){range=e.target.dataset.range;document.querySelectorAll('#journal-filters~*').forEach(()=>{});toastSafe('Đang xem khoảng '+({week:'tuần',month:'tháng',quarter:'quý'}[range]))}
+  });
+  document.addEventListener('click',e=>{
+    const h=e.target.closest('th[data-sort]');if(h){sortKey=h.dataset.sort;sortDir=-sortDir;decorate();return}
+    const x=e.target.closest('[data-extra]');if(!x)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    if(x.dataset.extra==='create-user')modal('<h2>Tạo người dùng</h2><div class="field"><label>Email</label><input type="email" id="new-user-email"></div><div class="field"><label>Vai trò</label><select id="new-user-role"><option>retail</option><option>trader</option><option>analyst</option><option>admin</option></select></div><div class="actions"><button class="btn pri" data-extra="save-user">Tạo</button><button class="btn" data-act="cm">Hủy</button></div>');
+    else if(x.dataset.extra==='save-user'){toastSafe('Người dùng được tạo; thông tin đăng nhập tạm thời đã gửi');closeModal()}
+    else if(x.dataset.extra==='replay'){const n=(Math.random()*0.00008).toExponential(2);document.getElementById('replay-result').textContent=+n<1e-4?'Sai số '+n+' · tái lập được':'Không tái lập được'}
+    else if(x.dataset.extra==='password'){const a=document.getElementById('pw-old').value,b=document.getElementById('pw-new').value,c=document.getElementById('pw-confirm').value;toastSafe(a&&b.length>=12&&b===c?'Đổi mật khẩu thành công':'Kiểm tra mật khẩu hiện tại, độ dài tối thiểu 12 ký tự và xác nhận')}
+    else if(x.dataset.extra==='email')toastSafe('Đã gửi liên kết xác thực email');else if(x.dataset.extra==='unlink')modal('<h2>Hủy liên kết Telegram?</h2><p>Bạn sẽ không nhận cảnh báo qua Telegram cho đến khi liên kết lại.</p><button class="btn danger" data-extra="confirm-unlink">Xác nhận hủy liên kết</button> <button class="btn" data-act="cm">Quay lại</button>');else if(x.dataset.extra==='confirm-unlink'){closeModal();toastSafe('Đã hủy liên kết Telegram')}
+    else if(x.dataset.extra==='edit-tx')modal('<h2>Sửa giao dịch</h2><div class="field"><label>Khối lượng</label><input type="number" value="1000"></div><div class="field"><label>Giá</label><input type="number" value="30100"></div><button class="btn pri" data-extra="save-tx">Lưu thay đổi</button> <button class="btn" data-act="cm">Hủy</button>');else if(x.dataset.extra==='delete-tx')modal('<h2>Xóa giao dịch?</h2><p>Giao dịch này sẽ bị xóa khỏi lịch sử và tính lại vị thế.</p><button class="btn danger" data-extra="confirm-delete-tx">Xóa</button> <button class="btn" data-act="cm">Hủy</button>');else if(x.dataset.extra==='save-tx'||x.dataset.extra==='confirm-delete-tx'){closeModal();toastSafe('Đã lưu thay đổi giao dịch')}
+    else if(x.dataset.extra==='serve-model')modal('<h2>Chuyển phiên bản sang phục vụ?</h2><p>Chỉ phiên bản vượt qua cổng đánh giá mới được phục vụ. Thay đổi có hiệu lực ở batch dự báo kế tiếp.</p><button class="btn pri" data-extra="confirm-serve">Xác nhận</button> <button class="btn" data-act="cm">Hủy</button>');else if(x.dataset.extra==='confirm-serve'){closeModal();toastSafe('Đã xếp phiên bản vào batch kế tiếp')}
+    else if(x.dataset.extra==='reset-user')modal('<h2>Reset mật khẩu</h2><p>Người dùng sẽ phải đổi mật khẩu ở lần đăng nhập kế tiếp.</p><button class="btn pri" data-extra="confirm-reset">Reset và yêu cầu đổi mật khẩu</button> <button class="btn" data-act="cm">Hủy</button>');else if(x.dataset.extra==='confirm-reset'){closeModal();toastSafe('Đã reset; bắt buộc đổi mật khẩu khi đăng nhập')}
+    else if(x.dataset.extra==='revoke-session')toastSafe('Đã thu hồi tất cả phiên đăng nhập');else if(x.dataset.extra==='audit-next'||x.dataset.extra==='audit-prev')toastSafe('Đã chuyển trang Audit log');else if(x.dataset.extra==='delete-tx'){};
+  },true);
+  const priorSubmit=document.querySelector;
+  document.addEventListener('submit',e=>{if(e.target.id==='loginf'){e.preventDefault();e.stopImmediatePropagation();const email=document.getElementById('lg-e').value.toLowerCase(),pw=document.getElementById('lg-p').value;let msg='';if(userLocked){msg='Tài khoản đã bị khóa. Liên hệ quản trị viên.'}else if(Date.now()<lockedUntil){msg='Đăng nhập tạm khóa 15 phút. Vui lòng thử lại sau.'}else if(!email||!pw||pw==='wrong'||pw==='sai'){attempts++;msg='Email hoặc mật khẩu không đúng.';if(attempts>=5)lockedUntil=Date.now()+15*60*1000}else{attempts=0;st.screen='app';st.page=st.role==='admin'?'admin':'overview';render()}let old=document.getElementById('login-error');if(msg){if(!old){old=document.createElement('div');old.id='login-error';old.className='note warn';e.target.querySelector('h1').after(old)}old.textContent=msg}}},true);
+  const login=pLogin;pLogin=function(){return login().replace('</form>','<button type="button" class="btn" data-extra="forgot">Quên mật khẩu?</button><div class="small muted">Tài khoản khóa do quản trị viên sẽ không thể đăng nhập.</div></form>')};
+  document.addEventListener('click',e=>{const x=e.target.closest('[data-extra="forgot"]');if(x){e.preventDefault();modal('<h2>Quên mật khẩu</h2><p>Nhập email để nhận hướng dẫn đặt lại mật khẩu.</p><input type="email" placeholder="ban@example.com"><button class="btn pri" data-extra="send-reset">Gửi hướng dẫn</button> <button class="btn" data-act="cm">Hủy</button>')}if(e.target.closest('[data-extra="send-reset"]')){closeModal();toastSafe('Nếu email tồn tại, hướng dẫn đặt lại đã được gửi')}},true);
+  const originalInit=render;originalInit();
+})();
+</script></body></html>
+

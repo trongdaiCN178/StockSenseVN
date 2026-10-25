@@ -1,0 +1,17 @@
+{
+  "name": "@stocksense/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "market:sync": "node --env-file-if-exists=../../.env src/cli.js",
+    "news:sync": "node --env-file-if-exists=../../.env src/news-cli.js",
+    "notifications:deliver": "node --env-file-if-exists=../../.env src/notification-cli.js",
+    "admin-jobs:run": "node --env-file-if-exists=../../.env src/admin-jobs-cli.js",
+    "admin-jobs:watch": "node --env-file-if-exists=../../.env src/admin-jobs-cli.js --watch"
+  },
+  "dependencies": {
+    "nodemailer": "^10.2.0",
+    "pg": "^8.16.3"
+  }
+}
