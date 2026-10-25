@@ -25,6 +25,7 @@ import { RegisterPage } from './features/auth/RegisterPage.jsx';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage.jsx';
 import { AccountPage } from './features/settings/AccountPage.jsx';
 import { AdminRoleRequestsPage } from './features/admin/AdminRoleRequestsPage.jsx';
+import { AlertsPage } from './features/alerts/AlertsPage.jsx';
 
 function usePathname() {
   const [pathname, setPathname] = useState(window.location.pathname);
@@ -97,11 +98,11 @@ export function App() {
       ) : isAdminRoleRequests ? (
         <RequireCapability capability="admin.role-requests.manage"><AdminRoleRequestsPage /></RequireCapability>
       ) : isAccount ? (
-        <RequireCapability capability="profile.role.manage.self"><AccountPage /></RequireCapability>
+        <RequireCapability capability="account.manage.self"><AccountPage /></RequireCapability>
       ) : isWatchlist ? (
         <RequireCapability capability="watchlist.manage.self"><WatchlistPage /></RequireCapability>
       ) : isAlerts ? (
-        <RequireCapability capability="alerts.manage.self"><WatchlistPage /></RequireCapability>
+        <RequireCapability capability="alerts.inbox.read.self"><AlertsPage /></RequireCapability>
       ) : isScreener ? (
         <RequireCapability capability="screener.read"><ScreenerPage /></RequireCapability>
       ) : isPortfolio ? (

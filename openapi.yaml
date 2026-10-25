@@ -237,6 +237,11 @@ paths:
       parameters:
         - { in: query, name: symbol, schema: { type: string, maxLength: 12 } }
         - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { in: query, name: from, description: Decision date (manual) or creation date, ICT, schema: { type: string, format: date } }
+        - { in: query, name: to, schema: { type: string, format: date } }
+        - { in: query, name: tag, schema: { type: string, maxLength: 24 } }
+        - { in: query, name: result, schema: { type: string, enum: [win, loss, breakeven, none] } }
+        - { in: query, name: q, description: Case-insensitive search in title, note and lesson, schema: { type: string, maxLength: 100 } }
       responses:
         '200': { description: Journal entries owned by the current user; snapshots and outcomes are read-only }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -258,8 +263,10 @@ paths:
       tags: [Journal]
       x-required-capability: journal.stats.read.self
       security: [{ SessionCookie: [] }]
+      parameters:
+        - { in: query, name: period, schema: { type: string, enum: [week, month, quarter], default: month } }
       responses:
-        '200': { description: Owner-scoped trade journal statistics }
+        '200': { description: Owner-scoped totals plus per-period buckets (closed plans, target/stop hit rate, planned and realized R, P/L) }
         '403': { $ref: '#/components/responses/Forbidden' }
   /journal/{id}:
     patch:
@@ -323,9 +330,12 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [status], properties: { status: { type: string, enum: [active, cancelled] } } }
+            schema:
+              oneOf:
+                - { type: object, required: [status], additionalProperties: false, properties: { status: { type: string, enum: [planned, active, cancelled] } } }
+                - $ref: '#/components/schemas/TradePlanUpdate'
       responses:
-        '200': { description: Updated plan status }
+        '200': { description: Updated plan (status transition draft→planned→active, or an edit recorded in revisions) }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/InvalidRequest' }
   /plans/{id}/close:
@@ -339,7 +349,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [exit_price], properties: { exit_price: { type: number, exclusiveMinimum: 0 }, note: { type: string, maxLength: 1000 } } }
+            schema: { type: object, required: [exit_price], properties: { exit_price: { type: number, exclusiveMinimum: 0 }, note: { type: string, maxLength: 1000 }, reason: { type: string, enum: [target_hit, stop_hit, expired, manual], default: manual } } }
       responses:
         '200': { description: Closed plan; Journal entry created in the same transaction }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -350,9 +360,17 @@ paths:
       x-required-capability: portfolio.manage.self
       security: [{ SessionCookie: [] }]
       responses:
-        '200': { description: User-scoped portfolio summary, positions, and ledger }
+        '200': { description: User-scoped portfolio summary, positions with industry and weight, allocation by symbol/industry, 180-day value history, and ledger }
         '403': { $ref: '#/components/responses/Forbidden' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
+    delete:
+      tags: [Portfolio]
+      x-required-capability: portfolio.manage.self
+      security: [{ SessionCookie: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [confirm], properties: { confirm: { type: string, const: 'XOA TOAN BO' } } } } } }
+      responses:
+        '200': { description: All portfolio transactions of the current user deleted }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
   /portfolio/transactions:
     post:
       tags: [Portfolio]
@@ -390,6 +408,17 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
   /portfolio/transactions/{id}:
+    patch:
+      tags: [Portfolio]
+      x-required-capability: portfolio.manage.self
+      security: [{ SessionCookie: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PortfolioTransactionInput' } } } }
+      responses:
+        '200': { description: Transaction updated and portfolio recalculated }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/InvalidRequest' }
     delete:
       tags: [Portfolio]
       x-required-capability: portfolio.manage.self
@@ -725,8 +754,12 @@ paths:
         - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
         - { in: query, name: cursor, schema: { type: string, maxLength: 256 } }
         - { in: query, name: event_type, schema: { type: string, pattern: '^[a-z][a-z0-9_.-]{0,79}$' } }
+        - { in: query, name: from, schema: { type: string, format: date } }
+        - { in: query, name: to, schema: { type: string, format: date } }
+        - { in: query, name: actor, description: Substring of the actor email, schema: { type: string, maxLength: 254 } }
+        - { in: query, name: target, description: Substring of the target account email, schema: { type: string, maxLength: 254 } }
       responses:
-        '200': { description: Cursor-paginated audit events with optional event type filter, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/AdminAuditList' } } } } } }
+        '200': { description: Cursor-paginated audit events filtered by type, ICT date range, actor and target, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/AdminAuditList' } } } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
@@ -814,7 +847,7 @@ paths:
   /alerts:
     get:
       tags: [Personal]
-      x-required-capability: alerts.manage.self
+      x-required-capability: alerts.inbox.read.self
       security: [{ SessionCookie: [] }]
       parameters:
         - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
@@ -825,12 +858,33 @@ paths:
       - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
     patch:
       tags: [Personal]
-      x-required-capability: alerts.manage.self
+      x-required-capability: alerts.inbox.read.self
       security: [{ SessionCookie: [] }]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [read], properties: { read: { type: boolean, const: true } } } } } }
       responses:
         '200': { description: Alert marked read }
         '404': { $ref: '#/components/responses/NotFound' }
+  /alerts/unread-count:
+    get:
+      tags: [Personal]
+      x-required-capability: alerts.inbox.read.self
+      security: [{ SessionCookie: [] }]
+      responses:
+        '200': { description: Number of unread alerts in the 90-day inbox, content: { application/json: { schema: { type: object, properties: { data: { type: object, properties: { unread: { type: integer } } } } } } } }
+  /alerts/read-all:
+    post:
+      tags: [Personal]
+      x-required-capability: alerts.inbox.read.self
+      security: [{ SessionCookie: [] }]
+      responses:
+        '200': { description: All unread alerts marked read }
+  /industries:
+    get:
+      tags: [Market]
+      x-required-capability: symbols.read
+      security: [{ SessionCookie: [] }]
+      responses:
+        '200': { description: Distinct industries of enabled symbols, content: { application/json: { schema: { type: object, properties: { data: { type: object, properties: { items: { type: array, items: { type: string } } } } } } } } }
   /market/status:
     get:
       tags: [Market]
@@ -986,7 +1040,10 @@ components:
           required: [symbol]
           properties:
             symbol: { type: string, pattern: '^[A-Z0-9.-]{1,12}$' }
+            status: { type: string, enum: [draft, planned], default: planned }
+            entry_price_max: { type: number, exclusiveMinimum: 0, description: Upper bound of the entry zone (entry_price is the lower bound) }
             quantity: { type: number, exclusiveMinimum: 0 }
+            expires_on: { type: string, format: date }
             note: { type: string, maxLength: 1000 }
     JournalUpdate:
       type: object
@@ -996,6 +1053,18 @@ components:
         body: { type: string, maxLength: 4000 }
         tags: { type: array, maxItems: 10, items: { type: string, minLength: 1, maxLength: 24 } }
         lesson: { type: string, maxLength: 3000 }
+    TradePlanUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        entry_price: { type: number, exclusiveMinimum: 0 }
+        entry_price_max: { type: [number, 'null'], exclusiveMinimum: 0 }
+        stop_price: { type: number, exclusiveMinimum: 0 }
+        target_price: { type: number, exclusiveMinimum: 0 }
+        quantity: { type: [number, 'null'], exclusiveMinimum: 0 }
+        note: { type: string, maxLength: 1000 }
+        expires_on: { type: [string, 'null'], format: date }
     ManualJournalInput:
       type: object
       required: [symbol, title]

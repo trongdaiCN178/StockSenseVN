@@ -6,6 +6,7 @@
   "exports": {
     "./access": "./src/access/roles.js",
     "./labels": "./src/labels/forecast.js",
-    "./calc": "./src/calc/riskReward.js"
+    "./calc": "./src/calc/riskReward.js",
+    "./password": "./src/auth/passwordPolicy.js"
   }
 }

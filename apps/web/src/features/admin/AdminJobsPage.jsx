@@ -58,15 +58,16 @@ export function AdminJobsPage() {
     {error && <div className="note bad" role="alert">{error}</div>}
     {notice && <div className="note info" role="status">{notice}</div>}
     <section className="card">
-      <div className="card-h"><div><h2>Tác vụ worker</h2><p className="small muted">Chỉ các tác vụ dữ liệu và thông báo được cho phép mới khả dụng.</p></div></div>
+      <div className="card-h"><div><h2>Tác vụ worker</h2><p className="small muted">Chỉ các tác vụ dữ liệu và thông báo được cho phép mới khả dụng. Khi worker chạy ở chế độ watch, pipeline tự xếp hàng sau 15:30 các ngày giao dịch (T2–T6); tác vụ lỗi được thử lại tối đa 3 lần rồi báo cho Admin.</p></div></div>
       {loading ? <p className="loading-card">Đang tải tác vụ...</p> : <div className="admin-job-list">{jobs.map((job) => <article className="admin-job-row" key={job.key}>
         <div><b>{job.label}</b><p className="small muted">{job.description}</p></div>
         <button className="btn sm pri" type="button" disabled={busy !== '' || activeJobKeys.has(job.key)} onClick={() => enqueue(job.key)}>
           {busy === job.key ? 'Đang gửi...' : activeJobKeys.has(job.key) ? 'Đang chờ/chạy' : 'Chạy lại'}
         </button>
       </article>)}</div>}
-      {!!runs.length && <div className="tw"><table><thead><tr><th>Tác vụ</th><th>Trạng thái</th><th>Thời điểm xếp hàng</th><th>Số lần thử</th><th>Lỗi</th></tr></thead><tbody>{runs.map((run) => <tr key={run.id}>
+      {!!runs.length && <div className="tw"><table><thead><tr><th>Tác vụ</th><th>Nguồn kích hoạt</th><th>Trạng thái</th><th>Thời điểm xếp hàng</th><th>Số lần thử</th><th>Lỗi</th></tr></thead><tbody>{runs.map((run) => <tr key={run.id}>
         <td>{jobs.find((job) => job.key === run.job_key)?.label ?? run.job_key}</td>
+        <td>{run.trigger === 'schedule' ? `Lịch tự động ${run.scheduled_for ?? ''}` : 'Admin chạy tay'}</td>
         <td><span className={`chip ${statusClass[run.status] ?? 'neutral'}`}>{statusLabels[run.status] ?? run.status}</span></td>
         <td>{dateTime.format(new Date(run.queued_at))}</td><td>{run.attempt_count}</td><td>{run.error_code ?? '-'}</td>
       </tr>)}</tbody></table></div>}

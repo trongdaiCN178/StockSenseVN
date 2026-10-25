@@ -5,6 +5,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { randomUUID, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { ROLE_CAPABILITIES, ROLES } from '@stocksense/core/access';
+import { isStrongPassword, PASSWORD_POLICY_TEXT } from '@stocksense/core/password';
 import { databaseEnabled, pool } from './db/pool.js';
 import { createPostgresAuthRepository } from './auth/postgres-repository.js';
 import { createPasswordResetRepository } from './auth/password-reset-repository.js';
@@ -14,7 +15,7 @@ import { createAdminJobsRepository } from './admin/jobs-repository.js';
 import { createPostgresWatchlistRepository, validateNote } from './watchlist/repository.js';
 import { createScreenerRepository, validateSavedFilterName, validateScreenerFilters } from './screener/repository.js';
 import { createPortfolioRepository, validatePortfolioTransaction } from './portfolio/repository.js';
-import { createPlansRepository, validatePlan, validatePlanCalculation, validatePlanClose } from './plans/repository.js';
+import { CLOSE_REASON_LABELS, createPlansRepository, validatePlan, validatePlanCalculation, validatePlanClose, validatePlanUpdate } from './plans/repository.js';
 import { createJournalRepository, validateJournalUpdate, validateManualJournal } from './journal/repository.js';
 import { createInvestmentProfileRepository, validateInvestmentProfile } from './profile/repository.js';
 import { createAccountRepository } from './profile/account-repository.js';
@@ -27,11 +28,6 @@ import { createPdfReport, formatReportValue } from './reports/pdf.js';
 
 if (process.env.NODE_ENV === 'production') {
   throw new Error('The bootstrap API still enables development identities and sample market data. It must not run in production.');
-}
-
-function isStrongPassword(password) {
-  return typeof password === 'string' && password.length >= 12 && password.length <= 128 &&
-    /[A-Za-z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 
 function formatRetryAfterVi(ttlMs) {
@@ -77,9 +73,13 @@ await app.register(cors, {
   origin: process.env.PUBLIC_APP_URL || 'http://localhost:5173',
   credentials: true,
 });
+// Runs after the session hook so signed-in users get their own bucket instead of sharing one per IP
+// (classrooms and offices behind NAT); anonymous traffic is still limited per IP.
 await app.register(rateLimit, {
   global: true,
-  max: 100,
+  hook: 'preHandler',
+  max: (request) => (request.user ? 300 : 100),
+  keyGenerator: (request) => (request.user ? `user:${request.user.id}` : `ip:${request.ip}`),
   timeWindow: '1 minute',
   errorResponseBuilder: (request, context) => new ApiError(
     context.statusCode,
@@ -261,7 +261,7 @@ app.post('/api/v1/auth/reset-password', {
   if (!getPasswordResetAppUrl()) return fail(reply, request, 503, 'PASSWORD_RESET_UNAVAILABLE', 'Password reset is not configured.');
   const { token, new_password: newPassword } = request.body ?? {};
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !isStrongPassword(newPassword)) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Cần mã token hợp lệ và mật khẩu 12-128 ký tự gồm chữ, số và ký tự đặc biệt.');
+    return fail(reply, request, 422, 'VALIDATION_ERROR', `Cần mã token hợp lệ. ${PASSWORD_POLICY_TEXT}`);
   }
   const result = await passwordResets.reset(token, newPassword);
   reply.header('Cache-Control', 'no-store');
@@ -277,7 +277,7 @@ app.post('/api/v1/auth/register', {
       !isStrongPassword(password) ||
       (fullName !== undefined && fullName !== null && (typeof fullName !== 'string' || fullName.trim().length > 100)) ||
       ageConfirmed !== true || termsAccepted !== true || privacyAccepted !== true) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Vui lòng nhập email, mật khẩu hợp lệ (12-128 ký tự gồm chữ, số, ký tự đặc biệt) và xác nhận đủ các điều kiện bắt buộc.');
+    return fail(reply, request, 422, 'VALIDATION_ERROR', `Vui lòng nhập email hợp lệ và xác nhận đủ các điều kiện bắt buộc. ${PASSWORD_POLICY_TEXT}`);
   }
   const appUrl = getPublicAppUrl();
   if (!appUrl) return fail(reply, request, 503, 'REGISTRATION_UNAVAILABLE', 'Thiếu cấu hình PUBLIC_APP_URL.');
@@ -394,7 +394,7 @@ app.post('/api/v1/auth/logout', { preHandler: requireSession }, async (request, 
 app.post('/api/v1/auth/change-password', { preHandler: requireSession }, async (request, reply) => {
   const { current_password: currentPassword, new_password: newPassword } = request.body ?? {};
   if (typeof currentPassword !== 'string' || !currentPassword || !isStrongPassword(newPassword)) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Mật khẩu mới phải dài từ 12 đến 128 ký tự, gồm chữ, số và ký tự đặc biệt.');
+    return fail(reply, request, 422, 'VALIDATION_ERROR', `Mật khẩu mới không hợp lệ. ${PASSWORD_POLICY_TEXT}`);
   }
   if (postgresAuth) {
     const result = await postgresAuth.changePassword(request.user.id, request.sessionToken, currentPassword, newPassword);
@@ -572,8 +572,14 @@ app.get('/api/v1/admin/audit', { preHandler: [requireCapability('admin.audit.rea
   }
   const cursor = request.query.cursor;
   if (cursor !== undefined && (typeof cursor !== 'string' || cursor.length > 256)) return fail(reply, request, 422, 'INVALID_AUDIT_CURSOR', 'The audit cursor is invalid.');
+  const { from, to, actor, target } = request.query;
+  const isDate = (value) => value === undefined || (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)));
+  const isSearch = (value) => value === undefined || (typeof value === 'string' && value.length <= 254);
+  if (!isDate(from) || !isDate(to) || !isSearch(actor) || !isSearch(target)) {
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Bộ lọc nhật ký quản trị không hợp lệ.');
+  }
   reply.header('Cache-Control', 'private, no-store');
-  return envelope(await adminUsers.audit({ limit, cursor, eventType }));
+  return envelope(await adminUsers.audit({ limit, cursor, eventType, from, to, actor: actor?.trim(), target: target?.trim() }));
 });
 app.get('/api/v1/admin/jobs', { preHandler: [requireCapability('admin.jobs.read'), requireAdminJobsStore] }, async (_request, reply) => {
   reply.header('Cache-Control', 'private, no-store');
@@ -624,8 +630,10 @@ app.get('/api/v1/symbols', { preHandler: requireCapability('symbols.read') }, as
   return envelope(await market.symbols({ q, exchange }));
 });
 
+app.get('/api/v1/industries', { preHandler: requireCapability('symbols.read') }, async () => envelope(await market.industries()));
+
 app.get('/api/v1/screener', { preHandler: requireCapability('screener.read') }, async (request, reply) => {
-  const raw = Object.fromEntries(['exchange', 'minPrice', 'maxPrice', 'minChange', 'maxChange', 'minTurnover']
+  const raw = Object.fromEntries(['exchange', 'industry', 'minPrice', 'maxPrice', 'minChange', 'maxChange', 'minTurnover', 'sort', 'direction']
     .filter((key) => request.query[key] !== undefined).map((key) => [key, request.query[key]]));
   let filters;
   try { filters = validateScreenerFilters(raw); }
@@ -652,10 +660,21 @@ app.post('/api/v1/portfolio/transactions', { preHandler: [requireCapability('por
 app.post('/api/v1/portfolio/transactions/import', { preHandler: [requireCapability('portfolio.import.self'), requirePortfolioStore] }, async (request) => {
   const rows = request.body?.transactions;
   if (!Array.isArray(rows) || rows.length < 1 || rows.length > 500) throw new ApiError(422, 'VALIDATION_ERROR', 'CSV import must contain between 1 and 500 transactions.');
-  return envelope(await portfolios.importMany(request.user.id, rows.map(validatePortfolioTransaction)));
+  const checked = rows.map((row, index) => {
+    const line = Number.isInteger(row?.line) ? row.line : index + 2;
+    try { return { line, transaction: validatePortfolioTransaction(row) }; }
+    catch (error) { return { line, error: error.message }; }
+  });
+  return envelope(await portfolios.importMany(request.user.id, checked));
 });
+app.patch('/api/v1/portfolio/transactions/:id', { preHandler: [requireCapability('portfolio.manage.self'), requirePortfolioStore, validateUuid] }, async (request) =>
+  envelope(await portfolios.update(request.user.id, request.params.id, validatePortfolioTransaction(request.body))));
 app.delete('/api/v1/portfolio/transactions/:id', { preHandler: [requireCapability('portfolio.manage.self'), requirePortfolioStore, validateUuid] }, async (request) =>
   envelope(await portfolios.remove(request.user.id, request.params.id)));
+app.delete('/api/v1/portfolio', { preHandler: [requireCapability('portfolio.manage.self'), requirePortfolioStore] }, async (request) => {
+  if (request.body?.confirm !== 'XOA TOAN BO') throw new ApiError(422, 'CONFIRMATION_REQUIRED', 'Nhập đúng cụm xác nhận để xóa toàn bộ danh mục.');
+  return envelope(await portfolios.clear(request.user.id));
+});
 
 app.post('/api/v1/plans/calc', { preHandler: requireCapability('plans.calculate.rr') }, async (request) => {
   const canCalculateQuantity = ROLE_CAPABILITIES[request.user.role]?.includes('plans.calculate.quantity') ?? false;
@@ -670,20 +689,20 @@ app.post('/api/v1/plans', { preHandler: [requireCapability('plans.manage.self'),
   return envelope(await plans.create(request.user.id, plan));
 });
 app.patch('/api/v1/plans/:id', { preHandler: [requireCapability('plans.manage.self'), requirePlansStore, validateUuid] }, async (request) => {
-  const status = request.body?.status;
-  if (!['active', 'cancelled'].includes(status)) throw new ApiError(422, 'VALIDATION_ERROR', 'Only active or cancelled are valid requested plan statuses.');
-  return envelope(await plans.updateStatus(request.user.id, request.params.id, status));
+  if (request.body && Object.hasOwn(request.body, 'status')) {
+    const status = request.body.status;
+    if (Object.keys(request.body).length !== 1 || !['planned', 'active', 'cancelled'].includes(status)) {
+      throw new ApiError(422, 'VALIDATION_ERROR', 'Trạng thái yêu cầu phải là planned, active hoặc cancelled và gửi riêng.');
+    }
+    return envelope(await plans.updateStatus(request.user.id, request.params.id, status));
+  }
+  return envelope(await plans.update(request.user.id, request.params.id, validatePlanUpdate(request.body)));
 });
 app.post('/api/v1/plans/:id/close', { preHandler: [requireCapability('plans.manage.self'), requirePlansStore, validateUuid] }, async (request) =>
   envelope(await plans.close(request.user.id, request.params.id, validatePlanClose(request.body))));
 
 app.get('/api/v1/journal', { preHandler: [requireCapability('journal.read.self'), requireJournalStore] }, async (request, reply) => {
-  const symbol = typeof request.query.symbol === 'string' ? request.query.symbol.toUpperCase() : '';
-  const limit = Number(request.query.limit ?? 50);
-  if ((symbol && !/^[A-Z0-9.-]{1,12}$/.test(symbol)) || !Number.isInteger(limit) || limit < 1 || limit > 100) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Invalid journal filter or limit.');
-  }
-  return envelope(await journal.list(request.user.id, { symbol, limit }));
+  return envelope(await journal.list(request.user.id, parseJournalFilters(request.query)));
 });
 app.patch('/api/v1/journal/:id', { preHandler: [requireCapability('journal.update.self'), requireJournalStore, validateUuid] }, async (request) =>
   envelope(await journal.update(request.user.id, request.params.id, validateJournalUpdate(request.body))));
@@ -691,11 +710,34 @@ app.post('/api/v1/journal', { preHandler: [requireCapability('journal.manual.cre
   reply.code(201);
   return envelope(await journal.createManual(request.user.id, validateManualJournal(request.body)));
 });
-app.get('/api/v1/journal/stats', { preHandler: [requireCapability('journal.stats.read.self'), requireJournalStore] }, async (request) =>
-  envelope(await journal.stats(request.user.id)));
+app.get('/api/v1/journal/stats', { preHandler: [requireCapability('journal.stats.read.self'), requireJournalStore] }, async (request) => {
+  const period = request.query.period ?? 'month';
+  if (!['week', 'month', 'quarter'].includes(period)) throw new ApiError(422, 'VALIDATION_ERROR', 'period phải là week, month hoặc quarter.');
+  const [summary, periods] = await Promise.all([journal.stats(request.user.id), journal.periodStats(request.user.id, period)]);
+  return envelope({ ...summary, periods });
+});
+
+function parseJournalFilters(query) {
+  const symbol = typeof query.symbol === 'string' ? query.symbol.trim().toUpperCase() : '';
+  const limit = Number(query.limit ?? 50);
+  const isDate = (value) => value == null || value === '' || (/^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)));
+  const tag = typeof query.tag === 'string' ? query.tag.trim().toLocaleLowerCase() : '';
+  const q = typeof query.q === 'string' ? query.q.trim() : '';
+  const result = query.result ?? '';
+  if ((symbol && !/^[A-Z0-9.-]{1,12}$/.test(symbol)) || !Number.isInteger(limit) || limit < 1 || limit > 100 ||
+      !isDate(query.from) || !isDate(query.to) || tag.length > 24 || q.length > 100 ||
+      !['', 'win', 'loss', 'breakeven', 'none'].includes(result)) {
+    throw new ApiError(422, 'VALIDATION_ERROR', 'Bộ lọc nhật ký không hợp lệ.');
+  }
+  return { symbol, limit, from: query.from || null, to: query.to || null, tag, result, q };
+}
 
 async function sendPdf(reply, filename, report) {
-  const pdf = await createPdfReport(report);
+  const status = await market.status();
+  const meta = status
+    ? `Ngày dữ liệu: ${status.dataDate} · Phiên bản mô hình: ${status.modelVersion}${status.state === 'demo' ? ' (dữ liệu mẫu, mô hình AI chưa triển khai)' : ''}`
+    : 'Ngày dữ liệu: chưa có batch dữ liệu thị trường';
+  const pdf = await createPdfReport({ ...report, meta });
   return reply.header('Content-Type', 'application/pdf')
     .header('Content-Disposition', `attachment; filename="${filename}"`)
     .header('Cache-Control', 'private, no-store')
@@ -718,10 +760,12 @@ app.get('/api/v1/reports/symbols/:symbol.pdf', { preHandler: requireCapability('
 app.get('/api/v1/reports/portfolio.pdf', { preHandler: [requireCapability('reports.portfolio.export.self'), requirePortfolioStore] }, async (request, reply) => {
   const snapshot = await portfolios.snapshot(request.user.id);
   const positions = snapshot.positions.length ? snapshot.positions.map((item) =>
-    `${item.symbol}: số lượng ${formatReportValue(item.quantity)}, giá vốn ${formatReportValue(item.average_cost)}, giá thị trường ${formatReportValue(item.market_price)}, lãi/lỗ tạm tính ${formatReportValue(item.unrealized_pnl)}`) : ['Chưa có vị thế đang nắm giữ.'];
+    `${item.symbol} (${item.industry ?? 'Chưa phân loại'}): số lượng ${formatReportValue(item.quantity)}, giá vốn ${formatReportValue(item.average_cost)}, giá thị trường ${formatReportValue(item.market_price)}, lãi/lỗ tạm tính ${formatReportValue(item.unrealized_pnl)}, tỷ trọng ${formatReportValue(item.weight_pct)}%`) : ['Chưa có vị thế đang nắm giữ.'];
   return sendPdf(reply, 'stocksense-portfolio.pdf', { title: 'Báo cáo danh mục', subtitle: 'Danh mục riêng của tài khoản đang đăng nhập', sections: [
     { heading: 'Tổng quan', lines: [`Giá trị thị trường: ${formatReportValue(snapshot.summary.market_value)}`, `Giá vốn: ${formatReportValue(snapshot.summary.cost_basis)}`, `Lãi/lỗ đã thực hiện: ${formatReportValue(snapshot.summary.realized_pnl)}`, `Lãi/lỗ tạm tính: ${formatReportValue(snapshot.summary.unrealized_pnl)}`] },
     { heading: 'Vị thế', lines: positions },
+    { heading: 'Phân bổ theo ngành', lines: snapshot.allocation.by_industry.length ? snapshot.allocation.by_industry.map((item) => `${item.industry}: ${formatReportValue(item.weight_pct)}%`) : ['Chưa có vị thế.'] },
+    { heading: 'Tín hiệu hiện tại', lines: ['Mô hình AI chưa sẵn sàng; báo cáo không kèm tín hiệu dự báo.'] },
     { heading: 'Giao dịch gần đây', lines: snapshot.transactions.slice(0, 100).map((tx) => `${formatReportValue(tx.executed_at)} · ${tx.symbol} · ${tx.side} · ${formatReportValue(tx.quantity)} @ ${formatReportValue(tx.unit_price)} · phí ${formatReportValue(tx.fee)}`) },
   ] });
 });
@@ -730,17 +774,30 @@ app.get('/api/v1/reports/plans/:id.pdf', { preHandler: [requireCapability('repor
   const plan = await plans.get(request.user.id, request.params.id);
   if (!plan) return fail(reply, request, 404, 'NOT_FOUND', 'Không tìm thấy kế hoạch giao dịch.');
   const snap = plan.snapshot ?? {};
-  return sendPdf(reply, `stocksense-plan-${plan.symbol}.pdf`, { title: `Kế hoạch giao dịch ${plan.symbol}`, subtitle: `Trạng thái: ${plan.status}`, sections: [
-    { heading: 'Kế hoạch', lines: [`Chiều giao dịch: ${plan.side}`, `Giá vào: ${formatReportValue(plan.entry_price)}`, `Giá dừng lỗ: ${formatReportValue(plan.stop_price)}`, `Giá mục tiêu: ${formatReportValue(plan.target_price)}`, `Khối lượng: ${formatReportValue(plan.quantity)}`, `Ghi chú: ${plan.note || 'Không có'}`] },
+  const statusLabels = { draft: 'Nháp', planned: 'Chờ vào', active: 'Đang mở', closed: 'Đã đóng', cancelled: 'Đã hủy' };
+  const calc = validatePlanCalculation({ side: plan.side, entry_price: plan.entry_price, stop_price: plan.stop_price, target_price: plan.target_price }, false);
+  return sendPdf(reply, `stocksense-plan-${plan.symbol}.pdf`, { title: `Kế hoạch giao dịch ${plan.symbol}`, subtitle: `Trạng thái: ${statusLabels[plan.status] ?? plan.status}${plan.close_reason ? ` · ${CLOSE_REASON_LABELS[plan.close_reason]}` : ''}`, sections: [
+    { heading: 'Kế hoạch', lines: [`Chiều giao dịch: ${plan.side === 'long' ? 'Mua' : 'Bán'}`, `Vùng giá vào: ${formatReportValue(plan.entry_price)}${plan.entry_price_max ? ` – ${formatReportValue(plan.entry_price_max)}` : ''}`, `Giá cắt lỗ: ${formatReportValue(plan.stop_price)} (cách giá vào ${formatReportValue(calc.risk_pct_distance)}%)`, `Giá mục tiêu: ${formatReportValue(plan.target_price)} (cách giá vào ${formatReportValue(calc.reward_pct_distance)}%)`, `R:R: ${formatReportValue(calc.rr_ratio)}:1`, `Khối lượng: ${formatReportValue(plan.quantity)}`, `Hết hạn: ${formatReportValue(plan.expires_on)}`, `Lý do: ${plan.note || 'Không có'}`] },
+    ...(plan.status === 'closed' ? [{ heading: 'Kết quả', lines: [`Giá thoát: ${formatReportValue(plan.exit_price)}`, `Lý do đóng: ${CLOSE_REASON_LABELS[plan.close_reason] ?? 'Chưa có dữ liệu'}`, `Lãi/lỗ: ${formatReportValue(plan.realized_pnl)}`, `Ghi chú: ${plan.close_note || 'Không có'}`] }] : []),
+    ...(plan.revisions?.length ? [{ heading: 'Lịch sử chỉnh sửa', lines: plan.revisions.map((revision) => `${formatReportValue(revision.created_at)}: ${Object.entries(revision.changes).map(([key, value]) => `${key} ${formatReportValue(revision.previous[key])} → ${formatReportValue(value)}`).join('; ')}`) }] : []),
+    { heading: 'Tuyên bố', lines: ['Trade Plan do bạn tự lập; hệ thống không đưa khuyến nghị đầu tư.'] },
     { heading: 'Snapshot lúc tạo', lines: [`Giá thị trường: ${formatReportValue(snap.market_price)}`, `Ngày giá: ${formatReportValue(snap.price_date)}`, 'Dự báo: Mô hình AI chưa sẵn sàng; không có dự báo trong snapshot.'] },
   ] });
 });
 
 app.get('/api/v1/reports/journal.pdf', { preHandler: [requireCapability('reports.journal.export.self'), requireJournalStore] }, async (request, reply) => {
-  const [result, stats] = await Promise.all([journal.list(request.user.id, { limit: 100 }), journal.stats(request.user.id)]);
-  const entries = result.items.length ? result.items.map((entry) => `${formatReportValue(entry.created_at)} · ${entry.symbol} · ${entry.title}\n${entry.body || 'Không có ghi chú'}${entry.lesson ? `\nBài học: ${entry.lesson}` : ''}`) : ['Chưa có mục nhật ký.'];
-  return sendPdf(reply, 'stocksense-journal.pdf', { title: 'Báo cáo nhật ký giao dịch', subtitle: 'Tối đa 100 mục gần nhất của tài khoản đang đăng nhập', sections: [
-    { heading: 'Thống kê', lines: [`Tổng mục: ${formatReportValue(stats.entries)}`, `Kế hoạch đã đóng: ${formatReportValue(stats.closed_plans)}`, `Thắng / hòa / thua: ${stats.wins} / ${stats.breakeven} / ${stats.losses}`, `Lãi/lỗ thực hiện: ${formatReportValue(stats.realized_pnl)}`] },
+  // FR-M13-04: the journal report covers the period chosen by the user (all entries when no range is given).
+  const filters = parseJournalFilters({ from: request.query.from, to: request.query.to, limit: 100 });
+  const [result, periods] = await Promise.all([journal.list(request.user.id, filters), journal.periodStats(request.user.id, 'month')]);
+  const inRange = periods.items.filter((item) => (!filters.from || item.period_start >= filters.from.slice(0, 7) + '-01') && (!filters.to || item.period_start <= filters.to));
+  const wins = result.items.filter((entry) => entry.realized_pnl > 0).length;
+  const losses = result.items.filter((entry) => entry.realized_pnl < 0).length;
+  const realized = result.items.reduce((sum, entry) => sum + (entry.realized_pnl ?? 0), 0);
+  const entries = result.items.length ? result.items.map((entry) => `${formatReportValue(entry.decision_date ?? entry.created_at)} · ${entry.symbol} · ${entry.title}\n${entry.body || 'Không có ghi chú'}${entry.tags?.length ? `\nThẻ: ${entry.tags.join(', ')}` : ''}${entry.lesson ? `\nBài học: ${entry.lesson}` : ''}`) : ['Không có mục nhật ký trong kỳ.'];
+  const periodLabel = filters.from || filters.to ? `Kỳ báo cáo: ${filters.from ?? '…'} đến ${filters.to ?? 'nay'}` : 'Toàn bộ thời gian (tối đa 100 mục gần nhất)';
+  return sendPdf(reply, 'stocksense-journal.pdf', { title: 'Báo cáo nhật ký giao dịch', subtitle: periodLabel, sections: [
+    { heading: 'Tổng kết kỳ', lines: [`Số mục: ${result.items.length}`, `Thắng / thua: ${wins} / ${losses}`, `Lãi/lỗ thực hiện: ${formatReportValue(realized)}`] },
+    { heading: 'Theo tháng', lines: inRange.length ? inRange.map((item) => `${item.period_start.slice(0, 7)}: ${item.closed_plans} kế hoạch đóng · chạm mục tiêu ${item.target_hit_rate ?? 0}% · chạm cắt lỗ ${item.stop_hit_rate ?? 0}% · R thực tế TB ${formatReportValue(item.average_realized_r)} · lãi/lỗ ${formatReportValue(item.realized_pnl)}`) : ['Chưa có kế hoạch đóng trong kỳ.'] },
     { heading: 'Nhật ký', lines: entries },
   ] });
 });
@@ -821,12 +878,18 @@ app.patch('/api/v1/alert-rules/:id', { preHandler: [requireCapability('alerts.ma
 app.delete('/api/v1/alert-rules/:id', { preHandler: [requireCapability('alerts.manage.self'), requirePersonalStore, validateUuid] }, async (request) =>
   envelope(await personalMarketTools.deleteRule(request.user.id, request.params.id)));
 
-app.get('/api/v1/alerts', { preHandler: [requireCapability('alerts.manage.self'), requirePersonalStore] }, async (request, reply) => {
+app.get('/api/v1/alerts', { preHandler: [requireCapability('alerts.inbox.read.self'), requirePersonalStore] }, async (request, reply) => {
   const limit = Number(request.query.limit ?? 50);
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) return fail(reply, request, 422, 'VALIDATION_ERROR', 'limit phải từ 1 đến 100.');
   return envelope(await personalMarketTools.alerts(request.user.id, limit));
 });
-app.patch('/api/v1/alerts/:id', { preHandler: [requireCapability('alerts.manage.self'), requirePersonalStore, validateUuid] }, async (request, reply) => {
+app.get('/api/v1/alerts/unread-count', { preHandler: [requireCapability('alerts.inbox.read.self'), requirePersonalStore] }, async (request, reply) => {
+  reply.header('Cache-Control', 'private, no-store');
+  return envelope(await personalMarketTools.unreadCount(request.user.id));
+});
+app.post('/api/v1/alerts/read-all', { preHandler: [requireCapability('alerts.inbox.read.self'), requirePersonalStore] }, async (request) =>
+  envelope(await personalMarketTools.markAllAlertsRead(request.user.id)));
+app.patch('/api/v1/alerts/:id', { preHandler: [requireCapability('alerts.inbox.read.self'), requirePersonalStore, validateUuid] }, async (request, reply) => {
   if (request.body?.read !== true) return fail(reply, request, 422, 'VALIDATION_ERROR', 'Chỉ hỗ trợ đánh dấu cảnh báo đã đọc.');
   return envelope(await personalMarketTools.markAlertRead(request.user.id, request.params.id));
 });

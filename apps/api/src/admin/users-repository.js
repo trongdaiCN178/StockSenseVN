@@ -149,7 +149,8 @@ export function createAdminUsersRepository(pool) {
     return { revoked_sessions: revoked.rowCount };
   });
 
-  const audit = async ({ limit = 50, cursor, eventType } = {}) => {
+  // FR-M7-11: filter by time range (ICT dates), actor, action type and target account.
+  const audit = async ({ limit = 50, cursor, eventType, from, to, actor, target } = {}) => {
     const after = decodeAuditCursor(cursor);
     const result = await pool.query(`SELECT a.id::text, a.event_type, a.details, a.created_at,
       actor.email AS actor_email, target.email AS target_email
@@ -157,8 +158,13 @@ export function createAdminUsersRepository(pool) {
       LEFT JOIN users target ON target.id = a.target_user_id
       WHERE ($1::text IS NULL OR a.event_type = $1)
         AND ($2::timestamptz IS NULL OR (a.created_at,a.id) < ($2::timestamptz,$3::bigint))
+        AND ($5::date IS NULL OR a.created_at >= ($5::date::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+        AND ($6::date IS NULL OR a.created_at < (($6::date + 1)::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'))
+        AND ($7::text IS NULL OR actor.email ILIKE '%' || $7 || '%')
+        AND ($8::text IS NULL OR target.email ILIKE '%' || $8 || '%')
       ORDER BY a.created_at DESC, a.id DESC LIMIT $4`,
-    [eventType ?? null, after?.createdAt ?? null, after?.id ?? null, Math.min(Math.max(Number(limit) || 50, 1), 100) + 1]);
+    [eventType ?? null, after?.createdAt ?? null, after?.id ?? null, Math.min(Math.max(Number(limit) || 50, 1), 100) + 1,
+      from ?? null, to ?? null, actor || null, target || null]);
     const hasMore = result.rows.length > limit;
     const rows = hasMore ? result.rows.slice(0, limit) : result.rows;
     const items = rows.map((row) => ({ id: row.id, event_type: row.event_type, details: row.details,

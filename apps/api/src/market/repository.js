@@ -17,13 +17,15 @@ export function createFixtureMarketRepository() {
     async screener(filters = {}) {
       const { items } = await this.symbols({ exchange: filters.exchange ?? '' });
       const matches = items.filter((item) =>
+        (!filters.industry || item.industry === filters.industry) &&
         (filters.minPrice == null || item.closePrice >= filters.minPrice) &&
         (filters.maxPrice == null || item.closePrice <= filters.maxPrice) &&
         (filters.minChange == null || item.changePercent >= filters.minChange) &&
         (filters.maxChange == null || item.changePercent <= filters.maxChange) &&
         (filters.minTurnover == null || item.averageTurnover20d >= filters.minTurnover));
-      return { total: matches.length, items: matches };
+      return { total: matches.length, items: sortScreener(matches, filters) };
     },
+    async industries() { return { items: [...new Set(marketMock.symbols.items.map((item) => item.industry).filter(Boolean))].sort() }; },
     async symbol(symbol) { return structuredClone(bySymbol(symbol) ?? null); },
     async prices(symbol, range = '3m') {
       const item = bySymbol(symbol);
@@ -34,7 +36,7 @@ export function createFixtureMarketRepository() {
         const drift = ((index * (seed % 7 + 3)) % 17 - 8) / 100;
         const wave = Math.sin((index + seed) / 3) * 0.012;
         const close = Math.round(item.closePrice * (0.91 + index * 0.003 + drift * 0.01 + wave));
-        return { date: new Date(Date.UTC(2026, 9, 7 - (count - 1 - index) * 3)).toISOString().slice(0, 10), close };
+        return { date: new Date(Date.UTC(2026, 9, 7 - (count - 1 - index) * 3)).toISOString().slice(0, 10), close, volume: 1_000_000 + index * 127 };
       });
       items.at(-1).close = item.closePrice;
         return { symbol: symbol.toUpperCase(), currency: 'VND', interval: '1d', sourceStatus: 'demo', latestDate: items.at(-1).date, items };
@@ -102,7 +104,7 @@ export function createPostgresMarketRepository(pool) {
       return { total: items.length, items };
     },
     async screener(filters = {}) {
-      const { rows } = await pool.query(`SELECT s.symbol, s.name, s.exchange,
+      const { rows } = await pool.query(`SELECT s.symbol, s.name, s.exchange, s.industry,
           price.close_price, price.change_percent, price.average_turnover_20d,
           price.trade_date::text AS price_date, price.source AS price_source
         FROM symbols s
@@ -125,23 +127,30 @@ export function createPostgresMarketRepository(pool) {
           AND ($4::numeric IS NULL OR price.change_percent >= $4)
           AND ($5::numeric IS NULL OR price.change_percent <= $5)
           AND ($6::numeric IS NULL OR price.average_turnover_20d >= $6)
+          AND ($7 = '' OR s.industry = $7)
         ORDER BY s.symbol LIMIT 1000`, [filters.exchange ?? '', filters.minPrice ?? null,
         filters.maxPrice ?? null, filters.minChange ?? null, filters.maxChange ?? null,
-        filters.minTurnover ?? null]);
+        filters.minTurnover ?? null, filters.industry ?? '']);
       const items = rows.map((row) => ({
-        symbol: row.symbol, name: row.name, exchange: row.exchange,
+        symbol: row.symbol, name: row.name, exchange: row.exchange, industry: row.industry,
         closePrice: number(row.close_price), changePercent: number(row.change_percent) ?? 0,
         averageTurnover20d: number(row.average_turnover_20d) ?? 0,
         priceDate: row.price_date, priceDataStatus: row.price_source === 'ssi' ? 'live' : 'demo',
       }));
-      return { total: items.length, items };
+      return { total: items.length, items: sortScreener(items, filters) };
+    },
+    async industries() {
+      const { rows } = await pool.query('SELECT DISTINCT industry FROM symbols WHERE is_enabled=true AND industry IS NOT NULL ORDER BY industry');
+      return { items: rows.map((row) => row.industry) };
     },
     symbol: readSymbol,
     async prices(symbol, range = '3m') {
       const monthCount = range === '1m' ? 1 : range === '6m' ? 6 : 3;
-      const { rows } = await pool.query(`SELECT p.symbol, p.trade_date::text AS date, p.close, p.source
+      const { rows } = await pool.query(`SELECT p.symbol, p.trade_date::text AS date, p.close, p.volume, p.source
         FROM daily_prices p
         WHERE p.symbol = $1 AND p.trade_date >= (timezone('Asia/Ho_Chi_Minh', now())::date - ($2::integer * interval '1 month'))::date
+          -- Once real SSI bars exist for a symbol, seeded demo bars are hidden so the chart never mixes price scales.
+          AND (p.source = 'ssi' OR NOT EXISTS (SELECT 1 FROM daily_prices real WHERE real.symbol = p.symbol AND real.source = 'ssi'))
         ORDER BY p.trade_date`, [symbol.toUpperCase(), monthCount]);
       if (!rows.length) return null;
       const sources = new Set(rows.map((row) => row.source));
@@ -149,7 +158,7 @@ export function createPostgresMarketRepository(pool) {
       return {
         symbol: rows[0].symbol, currency: 'VND', interval: '1d', sourceStatus,
         latestDate: rows.at(-1).date,
-        items: rows.map((row) => ({ date: row.date, close: number(row.close) })),
+        items: rows.map((row) => ({ date: row.date, close: number(row.close), volume: number(row.volume) })),
       };
     },
     async news(symbol) {
@@ -168,7 +177,7 @@ export function createPostgresMarketRepository(pool) {
 }
 
 const symbolSelect = `WITH latest AS (SELECT id FROM market_batches ORDER BY data_date DESC, id DESC LIMIT 1)
-  SELECT s.symbol, s.name, s.exchange, latest.id AS batch_id,
+  SELECT s.symbol, s.name, s.exchange, s.industry, latest.id AS batch_id,
     f2.label AS t2_label, f2.probability_up AS t2_up, f2.probability_hold AS t2_hold, f2.probability_down AS t2_down, f2.confidence AS t2_confidence,
     f5.label AS t5_label, f5.probability_up AS t5_up, f5.probability_hold AS t5_hold, f5.probability_down AS t5_down, f5.confidence AS t5_confidence,
     price.close_price, price.price_date, price.price_source, price.change_percent, price.average_turnover_20d
@@ -190,7 +199,7 @@ const symbolSelect = `WITH latest AS (SELECT id FROM market_batches ORDER BY dat
 
 function mapSymbol(row) {
   return {
-    symbol: row.symbol, name: row.name, exchange: row.exchange,
+    symbol: row.symbol, name: row.name, exchange: row.exchange, industry: row.industry,
     closePrice: number(row.close_price) ?? 0,
     priceDate: row.price_date ?? null,
     priceDataStatus: row.price_source === 'ssi' ? 'live' : row.price_source ? 'demo' : 'unavailable',
@@ -202,4 +211,12 @@ function mapSymbol(row) {
       t5: { label: row.t5_label, probabilities: { up: number(row.t5_up), hold: number(row.t5_hold), down: number(row.t5_down) }, confidence: row.t5_confidence },
     },
   };
+}
+
+// FR-M8-02: screener results can be ordered by price change, liquidity or price.
+const SCREENER_SORTS = { changePercent: 'changePercent', turnover: 'averageTurnover20d', price: 'closePrice', symbol: 'symbol' };
+function sortScreener(items, { sort = 'symbol', direction = 'asc' } = {}) {
+  const key = SCREENER_SORTS[sort] ?? 'symbol';
+  const factor = direction === 'desc' ? -1 : 1;
+  return [...items].sort((a, b) => factor * (key === 'symbol' ? a.symbol.localeCompare(b.symbol) : (a[key] ?? 0) - (b[key] ?? 0)));
 }

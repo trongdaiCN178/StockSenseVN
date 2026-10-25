@@ -1,162 +1,238 @@
 # Báo cáo tiến độ: StockSense VN so với PRD v0.0.3 / SDD v0.0.4
 
-Ngày lập: 25/10/2026 · Phạm vi: rà soát toàn bộ chức năng web hiện có trong code, đối chiếu với `PRODUCT_REQUIREMENTS_DOCUMENT_v0.0.3.md`, `Software_Design_Document_v0.0.4.md`, và tài liệu đề xuất bổ sung `Quy_dinh_va_nghiep_vu_luong_dang_ky_IDSS.md`.
-
-## Phát hiện quan trọng nhất (đọc trước)
-
-**Toàn bộ lõi AI/mô hình dự báo mô tả ở PRD mục 12 (mô hình đa phương thức, SHAP/attention, chấm cảm xúc tin tức PhoBERT, huấn luyện/đánh giá, walk-forward) KHÔNG TỒN TẠI trong code.** Dự báo hiển thị trên toàn bộ web (Market overview, Forecast card, Screener, Portfolio, Trade Plan, PDF...) là **dữ liệu mẫu nạp một lần qua `db/seed-demo.js`**, không được một mô hình nào tính ra và không tự cập nhật sau mỗi phiên như FR-M7-07 yêu cầu. Đây không phải là một module thiếu — đây là **giá trị cốt lõi của sản phẩm theo PRD mục 5**, nên kéo theo một loạt module khác (M3, M6, phần "đổi nhãn" của M1/M5/M9) chỉ còn là khung rỗng hoặc dùng sai loại dữ liệu.
-
----
-
-## M0. Xác thực và tài khoản
-
-**Trạng thái: Đã làm đầy đủ, bao gồm toàn bộ phần mở rộng từ tài liệu "Quy định đăng ký IDSS" (cập nhật 26/10/2026).**
-
-Có: đăng nhập/đăng xuất, đổi mật khẩu, khóa tài khoản sau đăng nhập sai, quên/đặt lại mật khẩu qua email, quản lý tài khoản bởi Admin — đều hoạt động thật trên PostgreSQL (`apps/api/src/auth/postgres-repository.js`, `apps/api/src/admin/users-repository.js`).
-
-Sai lệch so với PRD/SDD đã được **sửa trong phiên 26/10/2026**:
-- FR-M0-04: khóa sau 5 lần sai (trước đây là 8) — `MAX_FAILED_LOGINS = 5`.
-- SDD/NFR-07: phiên đăng nhập 24 giờ (trước đây là 8 giờ) — `TOKEN_TTL_MS`.
-- FR-M0-06: mật khẩu tự đặt (đăng ký, đổi mật khẩu, đặt lại mật khẩu) giờ bắt buộc có chữ + số + ký tự đặc biệt, 12-128 ký tự (`isStrongPassword()` trong `server.js`).
-- Vẫn dùng scrypt thay bcrypt cost 12 — an toàn tương đương, giữ nguyên vì không phải lỗi.
-
-**Đăng ký + xác thực email** (đã làm trước đó): đăng ký tự phục vụ cho retail + xác thực email một lần 24h + chống dò tài khoản + giới hạn tần suất + tự xóa tài khoản `pending` sau 7 ngày.
-
-**Mở rộng vòng đời vai trò — đã làm đầy đủ trong phiên 26/10/2026** (đã kiểm thử thật trên PostgreSQL qua HTTP, không dùng mock):
-- `POST /me/upgrade/trader` — retail tự nâng cấp lên Trader (khai kinh nghiệm + mục đích + xác nhận trách nhiệm), thu hồi toàn bộ phiên, ghi `user_consent` + `admin_audit_log`.
-- `POST /me/downgrade/retail` — trader tự hạ cấp về retail, giữ dữ liệu đã nhập, thu hồi phiên.
-- `POST /me/role-requests`, `GET /me/role-requests` — retail/trader gửi yêu cầu quyền Analyst (tổ chức, chức danh, email cơ quan, mục đích); tối đa 1 yêu cầu chờ xử lý (ràng buộc unique index); bị từ chối thì khóa nộp lại 7 ngày.
-- `GET /admin/role-requests`, `POST /admin/role-requests/:id/approve`, `/reject` — Admin duyệt/từ chối (bắt buộc lý do khi từ chối), không tự duyệt được yêu cầu của chính mình, duyệt xong đổi vai trò + thu hồi phiên người yêu cầu. Có trang quản trị riêng "Yêu cầu nâng quyền".
-- `db/bootstrap-admin.js` (`npm run db:bootstrap-admin`) — tạo Admin đầu tiên qua CLI, đọc email/mật khẩu từ biến môi trường, tự chặn nếu đã có Admin, không có endpoint công khai nào tạo được admin (đã kiểm thử: chạy khi đã có admin bị từ chối đúng như thiết kế).
-- `DELETE /me` — người dùng tự xóa tài khoản (xác nhận lại mật khẩu), chặn với tài khoản admin, xóa toàn bộ dữ liệu liên quan (watchlist, portfolio, trade plan, journal, chat, kênh thông báo) qua cascade DB, giữ lại nhật ký bảo mật dạng ẩn danh (`admin_audit_log` với `actor_user_id`/`target_user_id` tự chuyển NULL).
-- `GET /me/consents` — xem lại lịch sử đồng ý điều khoản/chính sách dữ liệu đã lưu lúc đăng ký/nâng cấp.
-- Màn hình mới: "Tài khoản & vai trò" (`/settings/account`) cho người dùng tự phục vụ; "Yêu cầu nâng quyền" (`/admin/role-requests`) cho Admin.
-
-**Chưa làm (cố ý bỏ qua, theo đúng mục 11 của tài liệu gốc — đây là các điểm mà tài liệu tự ghi "cần bạn quyết định", không phải yêu cầu Must-have chắc chắn):** xác thực hai lớp (TOTP) cho Admin, quy tắc "hai người xác nhận" khi tạo thêm Admin — tài liệu gốc tự liệt kê phương án đơn giản hơn (một Admin tự tạo) là phù hợp hơn cho quy mô đồ án, nên đã chọn phương án đó.
-
----
-
-## M1. Market overview
-
-**Trạng thái: Đã làm một phần.**
-
-Có: danh sách mã (mã, tên, sàn, giá, %, GTGD), lọc/sắp xếp/tìm kiếm, dải VN-Index/HNX-Index + độ rộng thị trường, ngày dữ liệu/giờ batch (`apps/api/src/market/repository.js`).
-
-Thiếu: khối **"Tín hiệu đổi hôm nay"** (FR-M1-07) — không có vì không có gì tính "đổi nhãn so với phiên trước" (hệ quả của việc không có pipeline dự báo).
-
----
-
-## M2. Forecast card & trang chi tiết mã
-
-**Trạng thái: Đã làm một phần — chỉ có khung hiển thị, dữ liệu là mẫu tĩnh.**
-
-Có: hai thẻ T+2/T+5 cạnh nhau, xác suất 3 lớp, timestamp, ngày đáo hạn, tuyên bố tham khảo, biểu đồ giá 6 tháng (`SymbolDetailPage.jsx`, `market/repository.js`).
-
-Thiếu/giả: số liệu dự báo đến từ `db/seed-demo.js`, không có batch sinh lại mỗi ngày; cột "độ tin cậy 3 bậc" tồn tại trong schema nhưng không được một quy tắc batch nào tính; khối **"Điều gì có thể làm dự báo sai"** (FR-M2-09) không tồn tại trong code hay UI.
-
----
-
-## M3. Explainability (Giải thích dự báo)
-
-**Trạng thái: Chưa làm — không có gì, kể cả khung UI.**
-
-Không có bảng `forecast_explanation`/cột tương đương trong bất kỳ migration nào. Không có SHAP/attention, không có 3 câu giải thích retail, không có top-15 đặc trưng cho analyst. Tab **"Phân tích mô hình"** trên trang chi tiết mã bị khoá với nhãn "Sắp có" (`apps/web/src/features/symbol-detail/SymbolDetailPage.jsx:49`) — tức chính code đã tự đánh dấu là chưa làm.
-
-**Mức độ: chặn một phần demo** — US-02, US-09 (giải thích dự báo) không thể hiện diện.
-
----
-
-## M4. News & sentiment
-
-**Trạng thái: Đã làm một phần, có phần giả.**
-
-Có (thật): thu thập tin từ CafeF + VnExpress, loại trùng, gắn theo mã, hiển thị mới nhất trước, lọc theo ngày, mở bài gốc (`apps/worker/src/jobs/sync-news.js`, `apps/worker/src/providers/news.js`).
-
-Giả: mọi tin thật nhập vào đều được gán cứng `sentiment = 'neutral'` (`sync-news.js:87`) — **không có mô hình PhoBERT hay NLP nào chấm cảm xúc**. Vì vậy nhãn sắc thái và biểu đồ cảm xúc 30 phiên hiển thị trên UI không phản ánh nội dung tin thật. Cut-off 15:00 (FR-M4-06) không có ý nghĩa vì không có pipeline dự báo nào tiêu thụ tin.
-
----
-
-## M5. Watchlist & cảnh báo
-
-**Trạng thái: Đã làm một phần, loại cảnh báo khác với PRD.**
-
-Có (thật): watchlist tối đa 10 mã, cảnh báo trong app + lịch sử 90 ngày, liên kết và gửi thật qua Email (SMTP)/Telegram qua hàng đợi `notification_outbox` + worker retry 3 lần (`apps/worker/src/jobs/notification-delivery.js`).
-
-Sai lệch quan trọng: FR-M5-02/03 yêu cầu cảnh báo khi **nhãn dự báo đổi** hoặc **xác suất vượt ngưỡng**; thực tế hệ thống chỉ hỗ trợ cảnh báo **giá đóng cửa vượt ngưỡng trên/dưới** (`price_above`/`price_below`, lấy từ SSI) — vì không có pipeline dự báo để theo dõi đổi nhãn. Đây là tính năng khác, không phải tính năng PRD yêu cầu, dù hạ tầng gửi thông báo là thật.
-
----
-
-## M6. Backtest / lịch sử dự báo / đánh giá mô hình
-
-**Trạng thái: Chưa làm.**
-
-Không có endpoint lịch sử dự báo đúng/sai, không tính hit rate/precision/recall, không tự điền `actual_label` khi đáo hạn. Mục menu **"Đánh giá mô hình"** không có `path` (`apps/web/src/app/AppShell.jsx:14`) — bấm vào không có trang nào mở ra. `/models/evaluation`, `/models/summary` không tồn tại trong `server.js`. Endpoint `history.csv` tồn tại nhưng **chỉ xuất giá đóng cửa (OHLC)**, không phải lịch sử độ chính xác dự báo như FR-M6-05 mô tả — trùng tên nhưng khác nội dung.
-
----
-
-## M7. Admin / model ops
-
-**Trạng thái: Đã làm một phần.**
-
-Có: quản lý tài khoản (tạo/khóa/đổi vai trò), nhật ký audit có lọc + phân trang (chỉ thêm, không sửa/xóa), quản lý nguồn dữ liệu/job (`admin/jobs`, `admin/ingestion-runs`), sự kiện vận hành (`admin/ops-events`), nhật ký gửi thông báo (`admin/notifications`).
-
-Chưa làm (vì không có mô hình thật để quản lý): theo dõi phiên bản mô hình, chọn/rollback phiên bản (FR-M7-06), audit một dự báo cụ thể (FR-M7-04 phần forecast, `/forecasts/{id}/audit`), xem dữ liệu đầu vào một dự báo (FR-M7-09, `/forecasts/{id}/inputs`), chạy lại để tái lập dự báo (FR-M7-10, `/forecasts/{id}/replays`). Không có route nào trong số này tồn tại trong `server.js`.
-
----
-
-## M8. Screener
-
-**Trạng thái: Đã làm đầy đủ về cấu trúc.** Lọc theo kỳ hạn/nhãn/xác suất/sàn/ngành, bộ lọc có sẵn, lưu bộ lọc, liên kết watchlist/Trade Plan (`apps/api/src/screener/repository.js`). Vận hành đúng thiết kế, nhưng do M2 chỉ có dữ liệu mẫu, kết quả lọc không phản ánh một mô hình dự báo thật.
-
-## M9. Portfolio
-
-**Trạng thái: Đã làm đầy đủ.** Nhập/sửa/xóa giao dịch, import CSV 2 bước (xem trước + xác nhận), tính vị thế/giá vốn bình quân/lãi lỗ/tỷ trọng, xóa toàn bộ, không gọi API công ty chứng khoán (`apps/api/src/portfolio/repository.js`).
-
-## M10. Trade Plan
-
-**Trạng thái: Đã làm đầy đủ.** Snapshot dự báo lúc lập kế hoạch (không sửa được), R:R, khối lượng theo lô 100, trạng thái Nháp→Chờ vào→Đang mở→Đã đóng, đóng kế hoạch tự tạo Journal (`apps/api/src/plans/repository.js`). Lưu ý: snapshot dự báo gắn vào kế hoạch cũng là dữ liệu mẫu, không phải dự báo thật.
-
-## M11. Journal
-
-**Trạng thái: Đã làm đầy đủ.** Tự tạo khi đóng Trade Plan, ghi chú/thẻ/bài học, thống kê nhìn lại, chỉ chủ sở hữu xem được (`apps/api/src/journal/repository.js`).
-
----
-
-## M12. Chat hỏi đáp
-
-**Trạng thái: Đã làm một phần — chỉ có khung, không có trả lời thật.**
-
-Có: tạo/xóa session, lưu lịch sử hội thoại, giao diện cửa sổ chat.
-
-Chưa làm: gửi tin nhắn luôn trả lỗi 503 "Chat inference is unavailable until the approved ONNX model and safety pipeline are configured" (`apps/api/src/server.js:394` vùng chat); giao diện tự hiển thị chip **"Mô hình chưa sẵn sàng"** (`apps/web/src/features/chat/ChatPage.jsx:67`). Không có bộ chặn đầu vào/đầu ra, không có bộ kiểm thử chống bịa (FR-M12-08).
-
----
-
-## M13. Báo cáo PDF
-
-**Trạng thái: Đã làm đầy đủ cho Portfolio/Trade Plan/Journal/Symbol** — endpoint thật, dùng cùng truy vấn với màn hình, có tuyên bố + thời điểm + phiên bản (`apps/api/src/reports/pdf.js`). Báo cáo mã sẽ thiếu phần "giải thích" vì M3 chưa có.
-
-## M14. Ứng dụng mobile
-
-**Trạng thái: Chưa làm** (đúng theo kế hoạch GĐ3, chưa đến giai đoạn). Không có thư mục `mobile/` nào trong repo.
-
----
-
-## Tổng kết
-
-| Trạng thái | Số module (trên 15, M0–M14) |
-| --- | --- |
-| Đã làm đầy đủ | M0, M8, M9, M10, M11, M13 (6) |
-| Đã làm một phần (có phần giả/thiếu — gốc rễ: thiếu mô hình AI thật) | M1, M2, M4, M5, M7, M12 (6) |
-| Chưa làm | M3, M6, M14 (3) |
-
-**Cập nhật 26/10/2026:** mọi module KHÔNG phụ thuộc mô hình AI đã được hoàn thiện end-to-end trên dữ liệu thật (PostgreSQL), gồm toàn bộ M0 (đăng ký, xác thực email, nâng cấp Trader, yêu cầu/duyệt Analyst, bootstrap Admin, tự xóa tài khoản) và các sai lệch chính sách (khóa đăng nhập, thời hạn phiên, độ phức tạp mật khẩu). Toàn bộ đã kiểm thử thật qua HTTP trên PostgreSQL, không dùng mock.
-
-**Gốc rễ của phần lớn mục "một phần" còn lại: không có mô hình dự báo/NLP thật.** Đây là việc duy nhất ảnh hưởng tới nhiều module nhất cùng lúc (M2, M3, M4 phần sentiment, M5 loại cảnh báo đúng, M6 toàn bộ) — không thể giải quyết bằng công việc "không liên quan AI" nữa, vì bản chất các module này LÀ phần AI.
-
-**Ưu tiên nếu làm tiếp (theo mức ảnh hưởng tới bảo vệ đồ án):**
-1. Pipeline dự báo thật tối thiểu (dù là baseline Logistic Regression/XGBoost) + cập nhật tự động — đây là yêu cầu Must-have GĐ1 cốt lõi nhất (FR-M7-07) và đang là khoảng trống lớn nhất.
-2. M3 Explainability — chỉ cần tỷ trọng 3 nhóm + 3 câu mẫu cho retail đã đạt Must-have tối thiểu.
-3. M6 lịch sử dự báo/hit rate — cần có trước khi có pipeline dự báo thật (bước 1).
-4. Sentiment thật (dù bằng mô hình nhỏ/rule-based) thay cho `'neutral'` cứng.
-5. M12 Chat — cần quyết định mô hình ngôn ngữ (cục bộ hay API) trước khi làm, vì đây là quyết định kiến trúc, không chỉ là code.
+Ngày lập: 25/10/2026 · **Cập nhật lần cuối: 26/10/2026 (sau đợt hoàn thiện các chức năng không phụ thuộc mô hình AI).**
+
+Phạm vi: đối chiếu toàn bộ **107 yêu cầu chức năng (FR-M0 → FR-M14)** trong `PRODUCT_REQUIREMENTS_DOCUMENT_v0.0.3.md` với code trong `apps/` và `packages/`. Yêu cầu phi chức năng (NFR), kiến trúc trong SDD và các tài liệu đề xuất bổ sung không được tính vào tỷ lệ phần trăm.
+
+## 1. Kết quả tổng hợp
+
+Cách chấm từng FR: **Đạt = 1 điểm**, **Một phần = 0,5 điểm**, **Chưa làm = 0 điểm**. Chức năng có giao diện nhưng chạy trên dữ liệu dự báo mẫu (seed) được chấm là **Một phần**, vì PRD yêu cầu dự báo thật.
+
+| Chỉ số | Trước (25/10) | **Hiện tại (26/10)** |
+| --- | --- | --- |
+| **Mức hoàn thành toàn bộ PRD (M0–M14)** | 41 / 107 ≈ 38% | **54 / 107 ≈ 50%** |
+| Không tính app mobile M14 (giai đoạn 3) | 41 / 102 ≈ 40% | **54 / 102 ≈ 53%** |
+| Số FR đạt đầy đủ | 21 | **43** |
+| Số FR làm một phần | 40 | 22 |
+| Số FR chưa làm | 46 | 42 |
+
+**Kết luận chính:** mọi FR **không phụ thuộc mô hình AI** (trừ app mobile) đã đạt. Toàn bộ 22 FR "một phần" và 42 FR "chưa làm" còn lại đều thuộc một trong ba nhóm:
+- cần mô hình dự báo, sentiment, giải thích hoặc chat;
+- là app mobile M14;
+- là phần dự báo nằm bên trong một FR mà phần còn lại đã làm xong.
+
+| Module | Số FR | Điểm trước | **Điểm hiện tại** | Phần còn thiếu (đều cần AI hoặc mobile) |
+| --- | ---: | ---: | ---: | --- |
+| M0. Xác thực & tài khoản | 7 | 6,5 | **7 (100%)** | — |
+| M1. Market overview | 7 | 3,5 | **4 (57%)** | Lọc/sắp xếp theo dự báo, tỷ lệ nhãn, "tín hiệu đổi hôm nay" |
+| M2. Forecast card & chi tiết mã | 9 | 3 | **3 (33%)** | Toàn bộ phần dự báo |
+| M3. Explainability | 4 | 0 | **0** | Toàn bộ |
+| M4. Tin tức & sentiment | 6 | 1,5 | **1,5 (25%)** | Chấm sentiment, biểu đồ cảm xúc, attention, cut-off |
+| M5. Watchlist & cảnh báo | 8 | 3,5 | **5,5 (69%)** | Cảnh báo đổi nhãn / ngưỡng xác suất |
+| M6. Lịch sử dự báo / đánh giá | 7 | 0 | **0** | Toàn bộ |
+| M7. Admin / model ops | 11 | 4,5 | **5,5 (50%)** | Phiên bản mô hình, audit/inputs/replay dự báo |
+| M8. Screener | 7 | 3 | **4,5 (64%)** | Điều kiện theo nhãn/xác suất/hit rate |
+| M9. Portfolio | 6 | 3 | **5 (83%)** | Tín hiệu T+2/T+5 cạnh vị thế |
+| M10. Trade Plan | 9 | 4,5 | **8 (89%)** | Snapshot dự báo, cảnh báo nhãn ngược |
+| M11. Journal | 7 | 3,5 | **4,5 (64%)** | So sánh quyết định với dự báo |
+| M12. Chat | 8 | 1 | **1 (13%)** | Mô hình ngôn ngữ và pipeline an toàn |
+| M13. Báo cáo PDF | 6 | 3,5 | **4,5 (75%)** | Dự báo, giải thích, hit rate trong PDF |
+| M14. App mobile | 5 | 0 | **0** | Toàn bộ (giai đoạn 3) |
+| **Tổng** | **107** | **41** | **54 (≈ 50%)** | |
+
+## 2. Những gì đã làm trong đợt 26/10/2026
+
+Migration mới: `db/migrations/020_non_ai_completion.sql`.
+
+- **M0:** chính sách mật khẩu đúng PRD (8–64 ký tự, chữ + số + ký tự đặc biệt), dùng chung web/API qua `@stocksense/core/password`. Giới hạn tần suất tính theo người dùng đã đăng nhập (300 request/phút), không còn chung một giới hạn cho cả IP. Giao diện không đẩy người dùng về màn hình đăng nhập khi gặp lỗi 429. Analyst đã vào được trang Tài khoản (tự xóa tài khoản, xem lịch sử đồng ý).
+- **M1:** thêm cột ngành và GTGD trung bình 20 phiên, lọc theo ngành và thanh khoản, sắp xếp theo mã/giá/% thay đổi/thanh khoản, nút ☆ thêm/bỏ watchlist ngay trên bảng.
+- **M2 / M4:** biểu đồ 1/3/6 tháng có khối lượng, chỉ dùng giá SSI khi đã có (không trộn với dữ liệu mẫu), lọc tin theo khoảng ngày. Trang chi tiết có nút watchlist và nút "Lập kế hoạch giao dịch".
+- **M5:**
+  - chuông thông báo có số chưa đọc, trang `/alerts`, nút "đánh dấu tất cả đã đọc";
+  - lịch sử cảnh báo giữ 90 ngày (worker tự dọn);
+  - gửi thông báo: lần đầu + tối đa 3 lần thử lại;
+  - cảnh báo theo mức giá của Trade Plan gửi qua cả app, email và Telegram.
+- **M7:**
+  - lọc nhật ký quản trị theo khoảng ngày, người thực hiện, đối tượng và loại sự kiện;
+  - thao tác chạy job của Admin được ghi vào audit;
+  - worker ở chế độ watch tự xếp hàng pipeline sau 15:30 các ngày T2–T6;
+  - job lỗi được thử lại tối đa 3 lần rồi báo cho mọi Admin (cảnh báo trong app, kèm email/Telegram nếu đã liên kết).
+- **M8:** lọc theo ngành, sắp xếp, 4 bộ lọc có sẵn, tuyên bố "không phải xếp hạng mã nên mua". Từ kết quả có thể thêm vào watchlist hoặc lập Trade Plan.
+- **M9:**
+  - sửa giao dịch;
+  - import CSV bỏ qua dòng lỗi/trùng/bán vượt và báo lý do theo số dòng;
+  - tỷ trọng từng vị thế, phân bổ theo mã và theo ngành, biểu đồ giá trị danh mục 180 ngày;
+  - xóa toàn bộ danh mục (phải gõ cụm xác nhận).
+- **M10:**
+  - trạng thái Nháp → Chờ vào → Đang mở → Đã đóng/Đã hủy/Hết hạn;
+  - vùng giá vào (từ–đến), ngày hết hạn (tự chuyển "Hết hạn" kèm cảnh báo);
+  - lý do đóng (chạm mục tiêu/chạm cắt lỗ/hết hạn/thủ công);
+  - sửa kế hoạch có lưu lịch sử chỉnh sửa;
+  - khoảng cách % tới cắt lỗ/mục tiêu, khối lượng tối đa làm tròn lô 100;
+  - lập kế hoạch từ trang chi tiết mã hoặc Screener;
+  - cảnh báo khi giá chạm vùng vào, cắt lỗ hoặc mục tiêu.
+- **M11:** lọc/tìm kiếm theo mã, khoảng ngày, thẻ, kết quả, từ khóa. Thống kê theo tuần/tháng/quý gồm số kế hoạch, tỷ lệ chạm mục tiêu/cắt lỗ, R:R kế hoạch, R thực tế và lãi/lỗ. Nhật ký thủ công có ngày quyết định. Journal lưu cả kế hoạch gốc và lịch sử sửa.
+- **M13:**
+  - mọi PDF in ngày dữ liệu và phiên bản mô hình;
+  - PDF danh mục có tỷ trọng và phân bổ ngành;
+  - PDF Trade Plan có vùng giá, % khoảng cách, R:R, kết quả và lịch sử sửa;
+  - PDF Journal xuất theo kỳ (từ ngày – đến ngày).
+- **Sửa lỗi vận hành:**
+  - API và web không khởi động sau khi đổi tên thư mục: chạy lại `npm install`;
+  - PDF lỗi 503 do đường dẫn font tương đối.
+
+## 3. Kiểm thử ngày 26/10/2026
+
+Chạy thật trên PostgreSQL, API và web qua proxy Vite, không dùng mock:
+
+- Unit test: **37/37 pass**, thêm test cho chính sách mật khẩu, làm tròn lô 100 và khoảng cách %. `npm run build:web` thành công.
+- Kịch bản API (cookie phiên thật, 4 vai trò, vòng đời tài khoản đầy đủ): **107/107 bước pass**.
+- Giao diện trên Chrome: 4 vai trò mở toàn bộ 19 route, không có lỗi JavaScript và lỗi 5xx. Ngoài ra có **24/24 kịch bản tương tác pass**, gồm:
+  - lọc ngành, sắp xếp, ☆ watchlist ở Tổng quan;
+  - biểu đồ khối lượng và đổi khoảng thời gian;
+  - lọc tin theo ngày;
+  - nút lập kế hoạch tự điền mã;
+  - Nháp → sửa → Chờ vào → Đang mở → đóng "Chạm mục tiêu";
+  - thống kê theo tuần, lọc nhật ký, PDF theo kỳ;
+  - import CSV bỏ 3 dòng lỗi, sửa giao dịch;
+  - bộ lọc có sẵn ở Screener;
+  - lọc audit;
+  - trang job hiển thị nguồn kích hoạt.
+- Worker:
+  - lịch tự động đã xếp hàng và chạy thành công đồng bộ giá SSI và tin tức;
+  - cảnh báo chạm cắt lỗ của Trade Plan được tạo đúng và không bị trùng;
+  - plan quá hạn tự chuyển "Hết hạn";
+  - job lỗi được thử lại 3 lần rồi gửi cảnh báo cho Admin.
+
+**Cấu hình còn thiếu (không phải lỗi code):** `.env` chưa có SMTP/Telegram thật, nên job gửi thông báo kết thúc ở trạng thái `partial` ("chờ nhà cung cấp"), và quên mật khẩu/xác thực email chưa gửi được mail thật.
+
+## 4. Chấm điểm chi tiết từng FR
+
+Ký hiệu: ✅ Đạt · 🟡 Một phần · ❌ Chưa làm. Cột "Ghi chú" ghi rõ phần còn thiếu.
+
+### M0. Xác thực và tài khoản — 7/7
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M0-01 → M0-05, M0-07 | ✅ | Đăng nhập, phiên 24h, khóa 15 phút sau 5 lần sai, đổi mật khẩu, mật khẩu tạm do Admin cấp |
+| M0-06 Chính sách mật khẩu 8–64 ký tự | ✅ | Sửa từ 12–128 về đúng PRD |
+
+### M1. Market overview — 4/7
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M1-01 Danh sách mã có ngành, GTGD 20 phiên | ✅ | |
+| M1-02 Lọc sàn, ngành, thanh khoản, xu hướng, kỳ hạn | 🟡 | Thiếu lọc theo xu hướng dự báo (cần AI) |
+| M1-03 Tín hiệu T+2/T+5 | 🟡 | Dữ liệu dự báo mẫu |
+| M1-04 Sắp xếp + tìm kiếm | 🟡 | Đã sắp xếp theo thanh khoản, %, giá; thiếu sắp xếp theo xác suất (cần AI) |
+| M1-05 Ngày dữ liệu, giờ cập nhật | ✅ | |
+| M1-06 Dải chỉ số, độ rộng, tỷ lệ theo nhãn | 🟡 | Tỷ lệ theo nhãn cần AI |
+| M1-07 Tín hiệu đổi hôm nay | ❌ | Cần AI |
+
+### M2. Forecast card & chi tiết mã — 3/9
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M2-01, M2-02 | 🟡 | Dữ liệu dự báo mẫu |
+| M2-03, M2-05, M2-08, M2-09 | ❌ | Phụ thuộc dự báo thật (ngày đáo hạn, T+5, tin cậy, rủi ro sai) |
+| M2-04 Tuyên bố tham khảo | ✅ | |
+| M2-06 Biểu đồ 6 tháng có khối lượng | 🟡 | Đã có giá + khối lượng; đánh dấu "tin mạnh" cần sentiment |
+| M2-07 Trạng thái dữ liệu, độ tin cậy | 🟡 | Độ tin cậy cần AI |
+
+### M3. Explainability — 0/4
+M3-01 → M3-04: ❌, cần mô hình và SHAP/attention.
+
+### M4. Tin tức & sentiment — 1,5/6
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M4-01 Thu thập, gắn mã, loại trùng | ✅ | |
+| M4-02, M4-04, M4-05, M4-06 | ❌ | Cần mô hình sentiment / pipeline dự báo |
+| M4-03 Danh sách, lọc, mở tab mới | 🟡 | Đã lọc theo ngày; nhãn/lọc sắc thái cần AI |
+
+### M5. Watchlist & cảnh báo — 5,5/8
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M5-01 Thêm/xóa từ overview/chi tiết, tối đa 10 | ✅ | |
+| M5-02, M5-03 Cảnh báo đổi nhãn / ngưỡng xác suất | ❌ | Cần AI (đang có cảnh báo giá và cảnh báo Trade Plan) |
+| M5-04 Lịch sử 90 ngày | ✅ | |
+| M5-05 Chuông + danh sách | ✅ | |
+| M5-06 Email/Telegram cho M5-02/03, M10-06 | 🟡 | Đã gửi cho cảnh báo giá và Trade Plan; M5-02/03 cần AI |
+| M5-07 Liên kết Telegram, xác thực email | ✅ | |
+| M5-08 Chống trùng, retry 3 lần, log | ✅ | |
+
+### M6. Lịch sử dự báo / đánh giá mô hình — 0/7
+M6-01 → M6-07: ❌, cần dự báo thật.
+
+### M7. Admin / model ops — 5,5/11
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M7-01, M7-02, M7-05 | ✅ | Quản lý user, nguồn dữ liệu/job, log hành động Admin (cả chạy job) |
+| M7-03, M7-04, M7-06, M7-09, M7-10 | ❌ | Cần mô hình (phiên bản, audit/inputs/replay dự báo) |
+| M7-07 Pipeline tự chạy sau 15:30 | 🟡 | Đã tự chạy giá, tin, cảnh báo; bước sentiment/đặc trưng/dự báo cần AI |
+| M7-08 Báo Admin khi lỗi sau 3 lần | ✅ | |
+| M7-11 Nhật ký có lọc + phân trang | ✅ | |
+
+### M8. Screener — 4,5/7
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M8-01 Lọc kỳ hạn/nhãn/xác suất/sàn/ngành/thanh khoản | 🟡 | Đã có sàn, ngành, thanh khoản, giá, %; điều kiện dự báo cần AI |
+| M8-02 Kết quả kèm nhãn, xác suất, tin cậy; sắp xếp | 🟡 | Đã sắp xếp, có ngày dữ liệu; nhãn/xác suất cần AI |
+| M8-03 Bộ lọc có sẵn cho retail | 🟡 | Có 4 bộ lọc giá/thanh khoản; bộ lọc theo tín hiệu cần AI |
+| M8-04 Lưu bộ lọc có tên | ✅ | |
+| M8-05 Điều kiện nâng cao | ❌ | Đổi nhãn, hit rate cần AI |
+| M8-06 Watchlist / chi tiết / Trade Plan từ kết quả | ✅ | |
+| M8-07 Không xếp hạng, có tuyên bố | ✅ | |
+
+### M9. Portfolio — 5/6
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M9-01 Nhập, sửa, xóa | ✅ | |
+| M9-02 CSV xem trước, bỏ dòng lỗi, loại trùng | ✅ | |
+| M9-03 Vị thế, giá vốn, lãi/lỗ, tỷ trọng | ✅ | |
+| M9-04 Tín hiệu cạnh vị thế | ❌ | Cần AI |
+| M9-05 Tổng quan, phân bổ mã/ngành, giá trị theo thời gian | ✅ | |
+| M9-06 Riêng tư, xóa toàn bộ | ✅ | |
+
+### M10. Trade Plan — 8/9
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M10-01 Tạo từ chi tiết mã / trang Trade Plan, vùng giá, lý do | ✅ | |
+| M10-02 Snapshot dự báo | 🟡 | Đang lưu snapshot giá; phần dự báo cần AI |
+| M10-03 R:R + khoảng cách % | ✅ | |
+| M10-04 Khối lượng theo lô 100 | ✅ | |
+| M10-05 Nháp/Chờ vào/Đang mở/Đã đóng (lý do) | ✅ | |
+| M10-06 Cảnh báo chạm vùng vào/cắt lỗ/mục tiêu, nhãn ngược | 🟡 | Phần giá đã xong; "nhãn ngược" cần AI |
+| M10-07 Đóng → Journal | ✅ | |
+| M10-08 Tuyên bố trên trang và PDF | ✅ | |
+| M10-09 Sửa + lịch sử chỉnh sửa | ✅ | |
+
+### M11. Journal — 4,5/7
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M11-01 Tự tạo khi đóng plan | 🟡 | Có kế hoạch gốc, kết quả, R thực tế; snapshot dự báo cần AI |
+| M11-02, M11-05, M11-07 | ✅ | Ghi chú/thẻ/bài học, lọc & tìm kiếm, riêng tư |
+| M11-03 So sánh với dự báo | ❌ | Cần AI |
+| M11-04 Nhật ký thủ công | 🟡 | Có ngày quyết định; gắn dự báo ngày đó cần AI |
+| M11-06 Thống kê tuần/tháng/quý | 🟡 | Đủ các chỉ số trừ "tỷ lệ làm theo tín hiệu" (cần AI) |
+
+### M12. Chat — 1/8
+M12-06 (tuyên bố) ✅. Các FR còn lại ❌, cần mô hình ngôn ngữ và pipeline an toàn.
+
+### M13. Báo cáo PDF — 4,5/6
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M13-01 PDF mã | 🟡 | Dự báo, giải thích, hit rate cần AI |
+| M13-02 PDF danh mục | 🟡 | Đã có tỷ trọng/phân bổ; tín hiệu cần AI |
+| M13-03 PDF Trade Plan | 🟡 | Snapshot dự báo cần AI |
+| M13-04 PDF Journal theo kỳ | ✅ | |
+| M13-05 Tuyên bố, thời điểm, ngày dữ liệu, phiên bản mô hình, số trang | ✅ | |
+| M13-06 Cùng nguồn, chỉ dữ liệu của mình | ✅ | |
+
+### M14. App mobile — 0/5
+❌, thuộc giai đoạn 3.
+
+## 5. Ưu tiên tiếp theo
+
+1. **Pipeline dự báo tối thiểu** (baseline Logistic Regression/XGBoost) ghi vào bảng `forecasts` và chạy trong lịch 15:30 đã có. Riêng bước này mở khóa khoảng 25 FR đang ở mức "một phần" hoặc "chưa làm" (M1, M2, M5-02/03, M8, M9-04, M10-02/06, M11, M13). Hạ tầng hiển thị, cảnh báo và PDF đã sẵn sàng nhận dự báo thật.
+2. **M6** lịch sử dự báo và hit rate (cần bước 1).
+3. **M3** giải thích tối thiểu: tỷ trọng 3 nhóm + 3 câu mẫu.
+4. **Sentiment thật** cho M4.
+5. **M12 Chat**: cần chọn mô hình ngôn ngữ trước.
+6. **Cấu hình vận hành:** SMTP/Telegram thật trong `.env`, chạy `npm run worker:admin-jobs:watch` thường trực để pipeline 15:30 tự chạy.

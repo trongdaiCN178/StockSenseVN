@@ -50,11 +50,11 @@ try {
     summary.labelDistribution.up, summary.labelDistribution.hold, summary.labelDistribution.down]);
 
   for (const item of marketMock.symbols.items) {
-    await client.query(`INSERT INTO symbols(symbol, name, exchange, currency, is_enabled)
-      VALUES ($1, $2, $3, 'VND', true)
-      ON CONFLICT (symbol) DO UPDATE SET name=EXCLUDED.name, exchange=EXCLUDED.exchange,
+    await client.query(`INSERT INTO symbols(symbol, name, exchange, industry, currency, is_enabled)
+      VALUES ($1, $2, $3, $4, 'VND', true)
+      ON CONFLICT (symbol) DO UPDATE SET name=EXCLUDED.name, exchange=EXCLUDED.exchange, industry=EXCLUDED.industry,
         currency=EXCLUDED.currency, is_enabled=EXCLUDED.is_enabled, updated_at=now()`,
-    [item.symbol, item.name, item.exchange]);
+    [item.symbol, item.name, item.exchange, item.industry]);
 
     for (const horizon of ['t2', 't5']) {
       const forecast = item.forecasts[horizon];

@@ -1,7 +1,8 @@
 import { emailProviderConfigured, sendNotificationEmail, sendTelegramMessage } from '../providers/notifications.js';
 
 const DELIVERY_LOCK_KEY = 'stocksense:notification-outbox:v1';
-const MAX_ATTEMPTS = 5;
+// FR-M5-08: first delivery plus at most 3 retries per channel.
+const MAX_ATTEMPTS = 4;
 
 export async function processNotificationOutbox({ pool, batchSize = 25, logger = console }) {
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100) throw new Error('batchSize must be from 1 to 100.');

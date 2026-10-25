@@ -173,6 +173,7 @@ export const mockApi = {
     async status() { await delay(); return structuredClone(marketMock.status); },
     async summary() { await delay(); return structuredClone(marketMock.summary); },
     async symbols() { await delay(); return structuredClone(marketMock.symbols); },
+    async industries() { await delay(); return { items: [...new Set(marketMock.symbols.items.map((item) => item.industry).filter(Boolean))].sort() }; },
   },
   screener: {
     async run(filters = {}) {
@@ -183,7 +184,10 @@ export const mockApi = {
         (filters.maxPrice === '' || filters.maxPrice == null || item.closePrice <= Number(filters.maxPrice)) &&
         (filters.minChange === '' || filters.minChange == null || item.changePercent >= Number(filters.minChange)) &&
         (filters.maxChange === '' || filters.maxChange == null || item.changePercent <= Number(filters.maxChange)) &&
-        (filters.minTurnover === '' || filters.minTurnover == null || item.averageTurnover20d >= Number(filters.minTurnover)));
+        (filters.minTurnover === '' || filters.minTurnover == null || item.averageTurnover20d >= Number(filters.minTurnover)) &&
+        (!filters.industry || item.industry === filters.industry));
+      const key = { changePercent: 'changePercent', turnover: 'averageTurnover20d', price: 'closePrice' }[filters.sort];
+      if (key) items.sort((a, b) => (filters.direction === 'desc' ? -1 : 1) * (a[key] - b[key]));
       return { total: items.length, items: structuredClone(items) };
     },
     async saved() { await delay(); return { items: structuredClone(userCollection(mockSavedScreeners)) }; },
@@ -220,10 +224,28 @@ export const mockApi = {
       await delay();
       if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > 500) { const error = new Error('Import between 1 and 500 rows at a time.'); error.status = 422; throw error; }
       const ledger = userCollection(mockPortfolioLedger);
-      const additions = inputs.map(validateMockTransaction);
-      const snapshot = portfolioSnapshot([...ledger, ...additions]);
-      ledger.push(...additions);
+      const skipped = [];
+      for (const [index, input] of inputs.entries()) {
+        try { const tx = validateMockTransaction(input); portfolioSnapshot([...ledger, tx]); ledger.push(tx); }
+        catch (error) { skipped.push({ line: input.line ?? index + 2, reason: error.message }); }
+      }
+      return { imported: inputs.length - skipped.length, skipped, portfolio: structuredClone(portfolioSnapshot(ledger)) };
+    },
+    async update(id, input) {
+      await delay();
+      const ledger = userCollection(mockPortfolioLedger);
+      const index = ledger.findIndex((item) => item.id === id);
+      if (index < 0) { const error = new Error('Portfolio transaction was not found.'); error.status = 404; throw error; }
+      const next = [...ledger]; next[index] = { ...validateMockTransaction(input), id };
+      const snapshot = portfolioSnapshot(next);
+      mockPortfolioLedger.set(readSession()?.id, next);
       return structuredClone(snapshot);
+    },
+    async clear() {
+      await delay();
+      const removed = userCollection(mockPortfolioLedger).length;
+      mockPortfolioLedger.set(readSession()?.id, []);
+      return { removed };
     },
     async remove(id) {
       await delay();
@@ -254,7 +276,8 @@ export const mockApi = {
       if (!canQuantity && (Object.hasOwn(input, 'capital_vnd') || Object.hasOwn(input, 'risk_pct'))) { const error = new Error('Capital and risk fields are not available for this role.'); error.status = 403; throw error; }
       const calculation = calculateRiskReward(input);
       const quote = marketMock.symbols.items.find((item) => item.symbol === input.symbol);
-      const plan = { id: `demo-plan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ...input, status: 'planned',
+      const plan = { id: `demo-plan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ...input, status: input.status === 'draft' ? 'draft' : 'planned', revisions: [],
+        entry_price_max: input.entry_price_max ? Number(input.entry_price_max) : null, expires_on: input.expires_on || null,
         quantity: input.quantity ? Number(input.quantity) : calculation.max_quantity > 0 ? calculation.max_quantity : null,
         entry_price: Number(input.entry_price), stop_price: Number(input.stop_price), target_price: Number(input.target_price),
         capital_vnd: input.capital_vnd == null ? null : Number(input.capital_vnd), risk_pct: input.risk_pct == null ? null : Number(input.risk_pct),
@@ -267,26 +290,37 @@ export const mockApi = {
       await delay();
       const plan = userCollection(mockTradePlans).find((item) => item.id === id);
       if (!plan) { const error = new Error('Trade plan was not found.'); error.status = 404; throw error; }
-      const allowed = (plan.status === 'planned' && ['active', 'cancelled'].includes(status)) || (plan.status === 'active' && status === 'cancelled');
+      const allowed = { draft: ['planned', 'cancelled'], planned: ['active', 'cancelled'], active: ['cancelled'] }[plan.status]?.includes(status);
       if (!allowed) { const error = new Error('This plan status transition is not allowed.'); error.status = 409; throw error; }
       plan.status = status; plan.updated_at = new Date().toISOString();
       return structuredClone(plan);
     },
-    async close(id, { exit_price, note }) {
+    async update(id, changes) {
+      await delay();
+      const plan = userCollection(mockTradePlans).find((item) => item.id === id);
+      if (!plan) { const error = new Error('Trade plan was not found.'); error.status = 404; throw error; }
+      if (!['draft', 'planned', 'active'].includes(plan.status)) { const error = new Error('Chỉ sửa được kế hoạch chưa đóng.'); error.status = 409; throw error; }
+      const previous = Object.fromEntries(Object.keys(changes).map((key) => [key, plan[key] ?? null]));
+      Object.assign(plan, changes);
+      plan.revisions = [{ id: `demo-rev-${Date.now()}`, previous, changes, created_at: new Date().toISOString() }, ...(plan.revisions ?? [])];
+      return structuredClone(plan);
+    },
+    async close(id, { exit_price, note, reason = 'manual' }) {
       await delay();
       const plan = userCollection(mockTradePlans).find((item) => item.id === id);
       if (!plan) { const error = new Error('Trade plan was not found.'); error.status = 404; throw error; }
       if (plan.status !== 'active') { const error = new Error('Only active plans can be closed.'); error.status = 409; throw error; }
       const realized = plan.quantity == null ? null : (plan.side === 'long' ? Number(exit_price) - plan.entry_price : plan.entry_price - Number(exit_price)) * plan.quantity;
-      plan.status = 'closed'; plan.exit_price = Number(exit_price); plan.close_note = note; plan.realized_pnl = realized; plan.closed_at = new Date().toISOString();
+      plan.status = 'closed'; plan.close_reason = reason; plan.exit_price = Number(exit_price); plan.close_note = note; plan.realized_pnl = realized; plan.closed_at = new Date().toISOString();
       userCollection(mockJournalEntries).unshift({ id: `demo-journal-${Date.now()}`, plan_id: plan.id, symbol: plan.symbol, kind: 'plan_close', title: `${plan.symbol} trade plan closed`, body: note, realized_pnl: realized, snapshot: { plan_snapshot: plan.snapshot, exit_price: plan.exit_price, closed_at: plan.closed_at }, created_at: plan.closed_at });
       return structuredClone(plan);
     },
   },
   journal: {
-    async list({ symbol = '', limit = 50 } = {}) {
+    async list({ symbol = '', limit = 50, tag = '', q = '' } = {}) {
       await delay();
-      const items = userCollection(mockJournalEntries).filter((entry) => !symbol || entry.symbol === symbol.toUpperCase()).slice(0, limit);
+      const items = userCollection(mockJournalEntries).filter((entry) => (!symbol || entry.symbol === symbol.toUpperCase()) &&
+        (!tag || entry.tags?.includes(tag)) && (!q || `${entry.title} ${entry.body}`.toLowerCase().includes(q.toLowerCase()))).slice(0, limit);
       return { items: structuredClone(items) };
     },
     async update(id, changes) {
@@ -315,7 +349,8 @@ export const mockApi = {
       const entries = userCollection(mockJournalEntries); const closed = entries.filter((item) => item.realized_pnl != null);
       const wins = closed.filter((item) => item.realized_pnl > 0).length; const losses = closed.filter((item) => item.realized_pnl < 0).length;
       return { entries: entries.length, closed_plans: closed.length, wins, losses, breakeven: closed.length - wins - losses,
-        realized_pnl: closed.reduce((sum, item) => sum + item.realized_pnl, 0), average_realized_pnl: closed.length ? closed.reduce((sum, item) => sum + item.realized_pnl, 0) / closed.length : null };
+        realized_pnl: closed.reduce((sum, item) => sum + item.realized_pnl, 0), average_realized_pnl: closed.length ? closed.reduce((sum, item) => sum + item.realized_pnl, 0) / closed.length : null,
+        periods: { period: 'month', items: [] } };
     },
   },
   profile: {
@@ -469,7 +504,14 @@ export const mockApi = {
       mockAlertRules.set(readSession()?.id, next);
       return { id, removed: true };
     },
-    async list() { await delay(); return { items: structuredClone(userCollection(mockUserAlerts)) }; },
+    async list() { await delay(); return { items: structuredClone(userCollection(mockUserAlerts)), retention_days: 90 }; },
+    async unreadCount() { await delay(); return { unread: userCollection(mockUserAlerts).filter((item) => !item.read_at).length }; },
+    async markAllRead() {
+      await delay();
+      const items = userCollection(mockUserAlerts).filter((item) => !item.read_at);
+      for (const item of items) item.read_at = new Date().toISOString();
+      return { updated: items.length };
+    },
     async markRead(id) {
       await delay();
       const alert = userCollection(mockUserAlerts).find((item) => item.id === id);

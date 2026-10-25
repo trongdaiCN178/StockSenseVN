@@ -9,6 +9,8 @@ export function AdminUsersPage() {
   const [audit, setAudit] = useState([]);
   const [auditNextCursor, setAuditNextCursor] = useState(null);
   const [auditEventType, setAuditEventType] = useState('');
+  const [auditFilters, setAuditFilters] = useState({ from: '', to: '', actor: '', target: '' });
+  const [appliedAuditFilters, setAppliedAuditFilters] = useState({ from: '', to: '', actor: '', target: '' });
   const [auditLoadingMore, setAuditLoadingMore] = useState(false);
   const [query, setQuery] = useState('');
   const [form, setForm] = useState({ email: '', role: ROLES.RETAIL });
@@ -20,13 +22,13 @@ export function AdminUsersPage() {
   const refresh = useCallback(async () => {
     const [userResult, auditResult] = await Promise.allSettled([
       api.admin.users.list({ q: query }),
-      api.admin.audit({ eventType: auditEventType || undefined }),
+      api.admin.audit({ eventType: auditEventType || undefined, ...appliedAuditFilters }),
     ]);
     if (userResult.status === 'rejected') throw userResult.reason;
     setUsers(userResult.value.items);
     setAudit(auditResult.status === 'fulfilled' ? auditResult.value.items : []);
     setAuditNextCursor(auditResult.status === 'fulfilled' ? auditResult.value.next_cursor : null);
-  }, [query, auditEventType]);
+  }, [query, auditEventType, appliedAuditFilters]);
 
   useEffect(() => {
     let active = true;
@@ -59,7 +61,7 @@ export function AdminUsersPage() {
     if (!auditNextCursor || auditLoadingMore) return;
     setAuditLoadingMore(true);
     try {
-      const page = await api.admin.audit({ eventType: auditEventType || undefined, cursor: auditNextCursor });
+      const page = await api.admin.audit({ eventType: auditEventType || undefined, ...appliedAuditFilters, cursor: auditNextCursor });
       setAudit((current) => [...current, ...page.items]);
       setAuditNextCursor(page.next_cursor);
     } catch (requestError) { setError(requestError.message || 'Không tải được thêm sự kiện audit.'); }
@@ -100,13 +102,22 @@ export function AdminUsersPage() {
 
     <section className="card">
       <div className="card-h"><div><h2>Audit gần đây</h2><p className="small muted">Lịch sử thao tác quản trị; không lưu mật khẩu hoặc session token.</p></div></div>
-      <label className="field small"><span>Lọc theo sự kiện</span><select value={auditEventType} onChange={(event) => setAuditEventType(event.target.value)}><option value="">Tất cả sự kiện</option><option value="user.created">Tạo tài khoản</option><option value="user.updated">Cập nhật tài khoản</option><option value="user.password_reset">Đặt lại mật khẩu</option><option value="user.sessions_revoked">Thu hồi phiên</option></select></label>
-      {!audit.length ? <p className="small muted">Chưa có sự kiện.</p> : <div className="audit-list">{audit.map((item) => <article className="audit-row" key={item.id}><div><b>{auditLabel(item.event_type)}</b><span className="small muted">{item.target_email || 'Tài khoản đã xóa'} · bởi {item.actor_email || 'quản trị viên đã xóa'}</span></div><time className="small muted">{dateTime.format(new Date(item.created_at))}</time></article>)}</div>}
+      <label className="field small"><span>Lọc theo sự kiện</span><select value={auditEventType} onChange={(event) => setAuditEventType(event.target.value)}><option value="">Tất cả sự kiện</option><option value="user.created">Tạo tài khoản</option><option value="user.updated">Cập nhật tài khoản</option><option value="user.password_reset">Đặt lại mật khẩu</option><option value="user.sessions_revoked">Thu hồi phiên</option><option value="user.role_request_approved">Duyệt quyền Analyst</option><option value="user.role_request_rejected">Từ chối quyền Analyst</option><option value="user.self_upgrade">Tự nâng cấp Trader</option><option value="user.self_downgrade">Tự hạ cấp</option><option value="user.self_deleted">Tự xóa tài khoản</option><option value="job.enqueued">Chạy tác vụ dữ liệu</option></select></label>
+      <form className="audit-filter-form" onSubmit={(event) => { event.preventDefault(); setAppliedAuditFilters(auditFilters); }}>
+        <label className="field small"><span>Từ ngày</span><input type="date" value={auditFilters.from} onChange={(event) => setAuditFilters({ ...auditFilters, from: event.target.value })} /></label>
+        <label className="field small"><span>Đến ngày</span><input type="date" value={auditFilters.to} onChange={(event) => setAuditFilters({ ...auditFilters, to: event.target.value })} /></label>
+        <label className="field small"><span>Người thực hiện (email)</span><input maxLength="254" value={auditFilters.actor} onChange={(event) => setAuditFilters({ ...auditFilters, actor: event.target.value })} /></label>
+        <label className="field small"><span>Tài khoản bị tác động (email)</span><input maxLength="254" value={auditFilters.target} onChange={(event) => setAuditFilters({ ...auditFilters, target: event.target.value })} /></label>
+        <div className="watchlist-actions"><button className="btn sm pri" type="submit">Lọc audit</button><button className="btn sm" type="button" onClick={() => { const empty = { from: '', to: '', actor: '', target: '' }; setAuditFilters(empty); setAppliedAuditFilters(empty); }}>Bỏ lọc</button></div>
+      </form>
+      {!audit.length ? <p className="small muted">Chưa có sự kiện.</p> : <div className="audit-list">{audit.map((item) => <article className="audit-row" key={item.id}><div><b>{auditLabel(item.event_type)}</b><span className="small muted">{item.event_type === 'job.enqueued' ? `Tác vụ ${item.details?.job_key ?? ''}` : item.target_email || 'Tài khoản đã xóa'} · bởi {item.actor_email || 'người dùng đã xóa'}</span></div><time className="small muted">{dateTime.format(new Date(item.created_at))}</time></article>)}</div>}
       {auditNextCursor && <button className="btn sm" type="button" disabled={auditLoadingMore} onClick={loadMoreAudit}>{auditLoadingMore ? 'Đang tải...' : 'Tải thêm sự kiện audit'}</button>}
     </section>
   </section>;
 }
 
 function auditLabel(event) {
-  return ({ 'user.created': 'Tạo tài khoản', 'user.updated': 'Cập nhật tài khoản', 'user.password_reset': 'Đặt lại mật khẩu', 'user.sessions_revoked': 'Thu hồi phiên' })[event] || event;
+  return ({ 'user.created': 'Tạo tài khoản', 'user.updated': 'Cập nhật tài khoản', 'user.password_reset': 'Đặt lại mật khẩu', 'user.sessions_revoked': 'Thu hồi phiên',
+    'user.role_request_approved': 'Duyệt quyền Analyst', 'user.role_request_rejected': 'Từ chối quyền Analyst', 'user.self_upgrade': 'Tự nâng cấp Trader',
+    'user.self_downgrade': 'Tự hạ cấp', 'user.self_deleted': 'Tự xóa tài khoản', 'job.enqueued': 'Chạy tác vụ dữ liệu' })[event] || event;
 }

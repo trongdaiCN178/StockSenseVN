@@ -25,6 +25,20 @@ describe('calculateRiskReward', () => {
     expect(result.max_quantity).toBe(200_000);
   });
 
+  it('rounds the maximum quantity down to a board lot of 100 shares', () => {
+    const result = calculateRiskReward({
+      side: 'long', entry_price: 25_000, stop_price: 24_000, target_price: 28_000,
+      capital_vnd: 50_000_000, risk_pct: 1.5,
+    });
+    expect(result.max_quantity).toBe(700);
+  });
+
+  it('reports percentage distance from entry to stop and target', () => {
+    const result = calculateRiskReward({ side: 'long', entry_price: 100, stop_price: 95, target_price: 115 });
+    expect(result.risk_pct_distance).toBe(5);
+    expect(result.reward_pct_distance).toBe(15);
+  });
+
   it('throws TypeError for an invalid side', () => {
     expect(() => calculateRiskReward({ side: 'sideways', entry_price: 100, stop_price: 95, target_price: 115 }))
       .toThrow(TypeError);

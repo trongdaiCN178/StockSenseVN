@@ -20,6 +20,12 @@ const rows = [
   ['VGT', 'Vietnam National Textile and Garment', 'UPCOM', 14200, 1.08, 'up', [0.57, 0.28, 0.15], 'up', [0.61, 0.24, 0.15]],
 ];
 
+const industries = {
+  FPT: 'Công nghệ', HPG: 'Thép', VCB: 'Ngân hàng', MBB: 'Ngân hàng', ACB: 'Ngân hàng', VNM: 'Thực phẩm & đồ uống', QNS: 'Thực phẩm & đồ uống',
+  SSI: 'Chứng khoán', SHS: 'Chứng khoán', MWG: 'Bán lẻ', VIC: 'Bất động sản', IDC: 'Bất động sản', GAS: 'Dầu khí', PVS: 'Dầu khí', BSR: 'Dầu khí',
+  HUT: 'Xây dựng & hạ tầng', VGT: 'Dệt may',
+};
+
 const forecastFrom = (label, values) => {
   const [up, hold, down] = values;
   const confidence = Math.max(up, hold, down) >= 0.58 ? 'high' : Math.max(up, hold, down) < 0.45 ? 'low' : 'mid';
@@ -48,6 +54,7 @@ export const marketMock = {
       symbol,
       name,
       exchange,
+      industry: industries[symbol] ?? null,
       closePrice,
       changePercent,
       averageTurnover20d: 125000000000,

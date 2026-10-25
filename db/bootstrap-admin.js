@@ -1,13 +1,14 @@
 import pg from 'pg';
 import { hashPassword } from '../apps/api/src/auth/password.js';
+import { isStrongPassword, PASSWORD_POLICY_TEXT } from '@stocksense/core/password';
 
 const { Pool } = pg;
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required to bootstrap the first admin.');
 
 const email = process.env.BOOTSTRAP_ADMIN_EMAIL;
 const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
-if (!email || !/^\S+@\S+\.\S+$/.test(email.trim()) || !password || password.length < 12 || password.length > 128) {
-  throw new Error('Set BOOTSTRAP_ADMIN_EMAIL (valid email) and BOOTSTRAP_ADMIN_PASSWORD (12-128 chars) env vars before running this script.');
+if (!email || !/^\S+@\S+\.\S+$/.test(email.trim()) || !isStrongPassword(password)) {
+  throw new Error(`Set BOOTSTRAP_ADMIN_EMAIL (valid email) and BOOTSTRAP_ADMIN_PASSWORD env vars before running this script. ${PASSWORD_POLICY_TEXT}`);
 }
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });

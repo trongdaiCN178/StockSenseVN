@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { navigate } from '../../app/navigation.js';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_POLICY_TEXT } from '@stocksense/core/password';
 
 export function RegisterPage() {
   const [form, setForm] = useState({ email: '', fullName: '', password: '', confirmPassword: '' });
@@ -55,14 +56,14 @@ export function RegisterPage() {
             value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
         </label>
         <label className="field"><span>Mật khẩu</span>
-          <input type="password" autoComplete="new-password" minLength="12" maxLength="128" required disabled={busy}
+          <input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required disabled={busy}
             value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
         </label>
         <label className="field"><span>Nhập lại mật khẩu</span>
-          <input type="password" autoComplete="new-password" minLength="12" maxLength="128" required disabled={busy}
+          <input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required disabled={busy}
             value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} />
         </label>
-        <p className="small muted">Mật khẩu dài từ 12 đến 128 ký tự.</p>
+        <p className="small muted">{PASSWORD_POLICY_TEXT}</p>
 
         <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
           <input type="checkbox" checked={consents.age} disabled={busy}

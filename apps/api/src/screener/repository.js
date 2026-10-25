@@ -42,12 +42,24 @@ export function validateScreenerFilters(filters) {
   if (!filters || typeof filters !== 'object' || Array.isArray(filters)) {
     throw new ApiError(422, 'VALIDATION_ERROR', 'Filters must be an object.');
   }
-  const allowed = new Set(['exchange', 'minPrice', 'maxPrice', 'minChange', 'maxChange', 'minTurnover']);
+  const allowed = new Set(['exchange', 'industry', 'minPrice', 'maxPrice', 'minChange', 'maxChange', 'minTurnover', 'sort', 'direction']);
   if (Object.keys(filters).some((key) => !allowed.has(key))) throw new ApiError(422, 'VALIDATION_ERROR', 'Unknown screener filter.');
   const normalized = {};
   if (filters.exchange !== undefined && filters.exchange !== '') {
     if (!['HOSE', 'HNX', 'UPCOM'].includes(filters.exchange)) throw new ApiError(422, 'VALIDATION_ERROR', 'Invalid exchange.');
     normalized.exchange = filters.exchange;
+  }
+  if (filters.industry !== undefined && filters.industry !== '') {
+    if (typeof filters.industry !== 'string' || filters.industry.trim().length > 80) throw new ApiError(422, 'VALIDATION_ERROR', 'Invalid industry.');
+    normalized.industry = filters.industry.trim();
+  }
+  if (filters.sort !== undefined && filters.sort !== '') {
+    if (!['symbol', 'price', 'changePercent', 'turnover'].includes(filters.sort)) throw new ApiError(422, 'VALIDATION_ERROR', 'Invalid sort.');
+    normalized.sort = filters.sort;
+  }
+  if (filters.direction !== undefined && filters.direction !== '') {
+    if (!['asc', 'desc'].includes(filters.direction)) throw new ApiError(422, 'VALIDATION_ERROR', 'Invalid sort direction.');
+    normalized.direction = filters.direction;
   }
   for (const key of ['minPrice', 'maxPrice', 'minChange', 'maxChange', 'minTurnover']) {
     if (filters[key] === undefined || filters[key] === null || filters[key] === '') continue;

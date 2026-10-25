@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { api } from '../../api/index.js';
+import { ROLE_LABELS, hasCapability } from '@stocksense/core/access';
 
 const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' });
 
@@ -27,11 +28,14 @@ export function AccountPage() {
   const [deletePassword, setDeletePassword] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
+  const canManageRole = hasCapability(user.role, 'profile.role.manage.self');
   const refresh = useCallback(async () => {
-    const [requestsResult, consentsResult] = await Promise.allSettled([api.account.myRoleRequests(), api.account.consents()]);
+    const [requestsResult, consentsResult] = await Promise.allSettled([
+      canManageRole ? api.account.myRoleRequests() : Promise.resolve({ items: [] }), api.account.consents(),
+    ]);
     setRoleRequests(requestsResult.status === 'fulfilled' ? requestsResult.value.items : []);
     setConsents(consentsResult.status === 'fulfilled' ? consentsResult.value.items : []);
-  }, []);
+  }, [canManageRole]);
 
   useEffect(() => {
     let active = true;
@@ -97,7 +101,7 @@ export function AccountPage() {
   if (loading) return <section className="content"><p className="loading-card">Đang tải…</p></section>;
 
   return <section className="content account-page">
-    <header className="pagehead"><div><span className="eyebrow">TÀI KHOẢN</span><h1>Nâng cấp quyền & quản lý tài khoản</h1><p>Vai trò hiện tại: <strong>{user.role}</strong></p></div></header>
+    <header className="pagehead"><div><span className="eyebrow">TÀI KHOẢN</span><h1>Nâng cấp quyền & quản lý tài khoản</h1><p>Vai trò hiện tại: <strong>{ROLE_LABELS[user.role] ?? user.role}</strong></p></div></header>
     {error && <div className="note bad" role="alert">{error}</div>}
     {notice && <div className="note info" role="status">{notice}</div>}
 

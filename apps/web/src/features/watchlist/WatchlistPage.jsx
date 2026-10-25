@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api/index.js';
+import { AlertInbox } from '../alerts/AlertsPage.jsx';
 
 const money = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
-const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' });
 
 export function WatchlistPage() {
   const [symbols, setSymbols] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
   const [rules, setRules] = useState([]);
-  const [alerts, setAlerts] = useState([]);
   const [selectedSymbol, setSelectedSymbol] = useState('');
   const [selectedRuleSymbol, setSelectedRuleSymbol] = useState('');
   const [noteDrafts, setNoteDrafts] = useState({});
@@ -20,13 +19,12 @@ export function WatchlistPage() {
   const [notice, setNotice] = useState('');
 
   async function refresh() {
-    const [universe, list, alertRules, userAlerts] = await Promise.all([
-      api.market.symbols(), api.watchlist.list(), api.alerts.rules(), api.alerts.list(),
+    const [universe, list, alertRules] = await Promise.all([
+      api.market.symbols(), api.watchlist.list(), api.alerts.rules(),
     ]);
     setSymbols(universe.items);
     setWatchlist(list.items);
     setRules(alertRules.items);
-    setAlerts(userAlerts.items);
     setNoteDrafts(Object.fromEntries(list.items.map((item) => [item.symbol, item.note])));
   }
 
@@ -80,7 +78,7 @@ export function WatchlistPage() {
 
   return <section className="content watchlist-page">
     <header className="pagehead"><div><span className="eyebrow">THEO DÕI CỦA BẠN</span><h1>Watchlist và cảnh báo</h1><p>Danh sách và cảnh báo chỉ thuộc tài khoản hiện tại.</p></div><span className="chip acc">{watchlist.length}/10 mã</span></header>
-    <div className="note warn"><strong>Phạm vi cảnh báo hiện tại:</strong> chỉ phát sinh khi giá SSI vượt qua ngưỡng tăng/giảm đã đặt. Không có điều kiện dựa trên dự báo AI; giá không có nguồn SSI sẽ không kích hoạt cảnh báo.</div>
+    <div className="note warn"><strong>Phạm vi cảnh báo hiện tại:</strong> cảnh báo khi giá SSI cắt qua ngưỡng bạn đặt, và khi giá chạm vùng vào/cắt lỗ/mục tiêu của Trade Plan. Cảnh báo theo dự báo AI sẽ có khi mô hình sẵn sàng.</div>
     {error && <div className="note bad" role="alert">{error}</div>}
     {notice && <div className="note info" role="status">{notice}</div>}
 
@@ -118,12 +116,6 @@ export function WatchlistPage() {
       </article>)}{!rules.length && <p className="empty-row">Chưa có quy tắc cảnh báo.</p>}</div>
     </section>
 
-    <section className="card">
-      <div className="card-h"><div><h2>Lịch sử cảnh báo</h2><p className="small muted">Cảnh báo chỉ xuất hiện khi worker xử lý giá SSI và điều kiện được cắt qua.</p></div></div>
-      <div className="alert-inbox">{alerts.map((alert) => <article className={`alert-inbox-row ${alert.read_at ? 'read' : ''}`} key={alert.id}>
-        <div><b>{alert.title}</b><p>{alert.message}</p><small className="muted">{alert.symbol} · {dateTime.format(new Date(alert.created_at))}</small></div>
-        {!alert.read_at && <button className="btn sm" type="button" disabled={busy} onClick={() => perform(() => api.alerts.markRead(alert.id), 'Đã đánh dấu đã đọc.')}>Đã đọc</button>}
-      </article>)}{!alerts.length && <p className="empty-row">Chưa có cảnh báo nào.</p>}</div>
-    </section>
+    <AlertInbox />
   </section>;
 }

@@ -1,6 +1,8 @@
 import { ApiError } from '../errors.js';
 
 const NOTE_LIMIT = 500;
+// FR-M5-04: the alert inbox keeps 90 days of history.
+export const ALERT_HISTORY_DAYS = 90;
 
 export function createPostgresWatchlistRepository(pool) {
   return {
@@ -76,10 +78,20 @@ export function createPostgresWatchlistRepository(pool) {
     },
     async alerts(userId, limit = 50) {
       const { rows } = await pool.query(`SELECT a.id, a.symbol, s.name, a.alert_type, a.title, a.message,
-        a.payload, a.read_at, a.created_at, a.trade_date::text AS trade_date
-        FROM user_alerts a JOIN symbols s ON s.symbol=a.symbol
-        WHERE a.user_id=$1 ORDER BY a.created_at DESC, a.id DESC LIMIT $2`, [userId, limit]);
-      return { items: rows };
+        a.payload, a.read_at, a.created_at, a.trade_date::text AS trade_date, a.plan_id::text AS plan_id
+        FROM user_alerts a LEFT JOIN symbols s ON s.symbol=a.symbol
+        WHERE a.user_id=$1 AND a.created_at > now() - ($3::integer * interval '1 day')
+        ORDER BY a.created_at DESC, a.id DESC LIMIT $2`, [userId, limit, ALERT_HISTORY_DAYS]);
+      return { items: rows, retention_days: ALERT_HISTORY_DAYS };
+    },
+    async unreadCount(userId) {
+      const { rows } = await pool.query(`SELECT count(*)::integer AS unread FROM user_alerts
+        WHERE user_id=$1 AND read_at IS NULL AND created_at > now() - ($2::integer * interval '1 day')`, [userId, ALERT_HISTORY_DAYS]);
+      return { unread: rows[0].unread };
+    },
+    async markAllAlertsRead(userId) {
+      const { rowCount } = await pool.query('UPDATE user_alerts SET read_at=now() WHERE user_id=$1 AND read_at IS NULL', [userId]);
+      return { updated: rowCount };
     },
     async markAlertRead(userId, alertId) {
       const { rows } = await pool.query(`UPDATE user_alerts SET read_at=COALESCE(read_at, now())

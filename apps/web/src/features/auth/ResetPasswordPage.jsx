@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/index.js';
 import { navigate } from '../../app/navigation.js';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_POLICY_TEXT } from '@stocksense/core/password';
 
 export function ResetPasswordPage() {
   const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '');
@@ -26,9 +27,9 @@ export function ResetPasswordPage() {
     {complete ? <><div className="note info" role="status">Mật khẩu đã được cập nhật. Các phiên đăng nhập khác đã bị thu hồi.</div><button className="btn pri" type="button" onClick={() => navigate('/login')}>Đến đăng nhập</button></>
       : <form onSubmit={submit}>
         {!token && <div className="note warn">Liên kết thiếu token. Hãy yêu cầu email đặt lại mật khẩu mới.</div>}
-        <label className="field"><span>Mật khẩu mới</span><input type="password" autoComplete="new-password" minLength="12" maxLength="128" required disabled={!token} value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-        <label className="field"><span>Nhập lại mật khẩu</span><input type="password" autoComplete="new-password" minLength="12" maxLength="128" required disabled={!token} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>
-        <p className="small muted">Mật khẩu dài từ 12 đến 128 ký tự. Liên kết chỉ dùng được một lần và hết hạn sau 30 phút.</p>
+        <label className="field"><span>Mật khẩu mới</span><input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required disabled={!token} value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+        <label className="field"><span>Nhập lại mật khẩu</span><input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required disabled={!token} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>
+        <p className="small muted">{PASSWORD_POLICY_TEXT} Liên kết chỉ dùng được một lần và hết hạn sau 30 phút.</p>
         {error && <div className="note bad" role="alert">{error}</div>}
         <button className="btn pri" type="submit" disabled={busy || !token}>{busy ? 'Đang cập nhật…' : 'Đặt mật khẩu mới'}</button>
         <button className="text-button" type="button" onClick={() => navigate('/forgot-password')}>Yêu cầu liên kết khác</button>

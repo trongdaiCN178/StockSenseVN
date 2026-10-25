@@ -15,6 +15,8 @@ export const ROLE_LABELS = Object.freeze({
 const commonUserCapabilities = [
   'market.read',
   'models.summary.read',
+  'alerts.inbox.read.self',
+  'account.manage.self',
 ];
 
 export const ROLE_CAPABILITIES = Object.freeze({
@@ -59,7 +61,7 @@ export const ROLE_CAPABILITIES = Object.freeze({
     'admin.chat-log.read.redacted', 'notifications.channels.manage.self',
   ],
   [ROLES.ADMIN]: [
-    'market.read', 'models.summary.read', 'models.evaluation.read',
+    'market.read', 'models.summary.read', 'alerts.inbox.read.self', 'models.evaluation.read',
     'models.versions.read', 'forecast.audit.read', 'forecast.inputs.read',
     'forecast.replay.create', 'admin.users.manage', 'admin.jobs.read',
     'admin.jobs.enqueue', 'admin.models.manage', 'admin.audit.read',

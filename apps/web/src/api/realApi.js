@@ -1,5 +1,7 @@
 import { download, request } from './client.js';
 
+const toQuery = (filters = {}) => new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== '' && value != null).map(([key, value]) => [key, String(value)]));
+
 export const realApi = {
   auth: {
     me: () => request('/me'),
@@ -29,12 +31,10 @@ export const realApi = {
     status: () => request('/market/status'),
     summary: () => request('/market/summary'),
     symbols: () => request('/symbols'),
+    industries: () => request('/industries'),
   },
   screener: {
-    run: (filters) => {
-      const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== '' && value != null));
-      return request(`/screener?${params}`);
-    },
+    run: (filters) => request(`/screener?${toQuery(filters)}`),
     saved: () => request('/screener/saved-filters'),
     save: (payload) => request('/screener/saved-filters', { method: 'POST', body: JSON.stringify(payload) }),
     remove: (id) => request(`/screener/saved-filters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
@@ -43,20 +43,23 @@ export const realApi = {
     snapshot: () => request('/portfolio'),
     add: (payload) => request('/portfolio/transactions', { method: 'POST', body: JSON.stringify(payload) }),
     importMany: (transactions) => request('/portfolio/transactions/import', { method: 'POST', body: JSON.stringify({ transactions }) }),
+    update: (id, payload) => request(`/portfolio/transactions/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     remove: (id) => request(`/portfolio/transactions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    clear: (confirm) => request('/portfolio', { method: 'DELETE', body: JSON.stringify({ confirm }) }),
   },
   plans: {
     calculate: (payload) => request('/plans/calc', { method: 'POST', body: JSON.stringify(payload) }),
     list: () => request('/plans'),
     create: (payload) => request('/plans', { method: 'POST', body: JSON.stringify(payload) }),
     updateStatus: (id, status) => request(`/plans/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    update: (id, payload) => request(`/plans/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     close: (id, payload) => request(`/plans/${encodeURIComponent(id)}/close`, { method: 'POST', body: JSON.stringify(payload) }),
   },
   journal: {
-    list: ({ symbol = '', limit = 50 } = {}) => request(`/journal?${new URLSearchParams({ ...(symbol ? { symbol } : {}), limit: String(limit) })}`),
+    list: (filters = {}) => request(`/journal?${toQuery({ limit: 50, ...filters })}`),
     update: (id, payload) => request(`/journal/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
     createManual: (payload) => request('/journal', { method: 'POST', body: JSON.stringify(payload) }),
-    stats: () => request('/journal/stats'),
+    stats: (period = 'month') => request(`/journal/stats?period=${encodeURIComponent(period)}`),
   },
   profile: {
     get: () => request('/me/profile'),
@@ -81,7 +84,7 @@ export const realApi = {
   },
   symbols: {
     detail: (symbol) => request(`/symbols/${encodeURIComponent(symbol)}`),
-    prices: (symbol, range = '3m') => request(`/symbols/${encodeURIComponent(symbol)}/prices?range=${encodeURIComponent(range)}`),
+    prices: (symbol, range = '6m') => request(`/symbols/${encodeURIComponent(symbol)}/prices?range=${encodeURIComponent(range)}`),
     news: (symbol) => request(`/symbols/${encodeURIComponent(symbol)}/news`),
     historyCsv: (symbol, range = '6m') => download(`/symbols/${encodeURIComponent(symbol)}/history.csv?range=${encodeURIComponent(range)}`, `stocksense-${symbol}-history.csv`, 'text/csv'),
   },
@@ -98,12 +101,14 @@ export const realApi = {
     deleteRule: (id) => request(`/alert-rules/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     list: () => request('/alerts?limit=50'),
     markRead: (id) => request(`/alerts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ read: true }) }),
+    markAllRead: () => request('/alerts/read-all', { method: 'POST' }),
+    unreadCount: () => request('/alerts/unread-count'),
   },
   reports: {
     symbol: (symbol) => download(`/reports/symbols/${encodeURIComponent(symbol)}.pdf`, `stocksense-${symbol}.pdf`),
     portfolio: () => download('/reports/portfolio.pdf', 'stocksense-portfolio.pdf'),
     plan: (id, symbol = 'plan') => download(`/reports/plans/${encodeURIComponent(id)}.pdf`, `stocksense-plan-${symbol}.pdf`),
-    journal: () => download('/reports/journal.pdf', 'stocksense-journal.pdf'),
+    journal: (period = {}) => download(`/reports/journal.pdf?${toQuery(period)}`, 'stocksense-journal.pdf'),
   },
   admin: {
     users: {
@@ -113,12 +118,8 @@ export const realApi = {
       resetPassword: (id) => request(`/admin/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST' }),
       revokeSessions: (id) => request(`/admin/users/${encodeURIComponent(id)}/revoke-sessions`, { method: 'POST' }),
     },
-    audit: ({ limit = 50, cursor, eventType } = {}) => {
-      const query = new URLSearchParams({ limit: String(limit) });
-      if (cursor) query.set('cursor', cursor);
-      if (eventType) query.set('event_type', eventType);
-      return request(`/admin/audit?${query}`);
-    },
+    audit: ({ limit = 50, cursor, eventType, from, to, actor, target } = {}) =>
+      request(`/admin/audit?${toQuery({ limit, cursor, event_type: eventType, from, to, actor, target })}`),
     ingestionRuns: () => request('/admin/ingestion-runs?limit=50'),
     notifications: () => request('/admin/notifications?limit=50'),
     opsEvents: () => request('/admin/ops-events?limit=50'),

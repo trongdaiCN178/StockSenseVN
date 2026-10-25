@@ -1,17 +1,20 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { api } from '../api/index.js';
 import { ROLE_LABELS, hasCapability } from '@stocksense/core/access';
 import { navigate } from './navigation.js';
 
 const navItems = [
   { label: 'Tổng quan', capability: 'market.read', icon: '⌂', path: '/overview' },
   { label: 'Watchlist & Cảnh báo', capability: 'watchlist.manage.self', icon: '☆', path: '/watchlist' },
+  { label: 'Cảnh báo', capability: 'alerts.inbox.read.self', icon: '♪', path: '/alerts' },
   { label: 'Bộ lọc cổ phiếu', capability: 'screener.read', icon: '⌕', path: '/screener' },
   { label: 'Danh mục đầu tư', capability: 'portfolio.manage.self', icon: '▤', path: '/portfolio' },
   { label: 'Kế hoạch giao dịch', capability: 'plans.manage.self', icon: '◇', path: '/plans' },
   { label: 'Nhật ký giao dịch', capability: 'journal.read.self', icon: '▧', path: '/journal' },
   { label: 'Hồ sơ đầu tư', capability: 'profile.investment.manage.self', icon: '◉', path: '/settings/investment' },
   { label: 'Kênh thông báo', capability: 'notifications.channels.manage.self', icon: '♧', path: '/settings/notifications' },
-  { label: 'Tài khoản & vai trò', capability: 'profile.role.manage.self', icon: '◈', path: '/settings/account' },
+  { label: 'Tài khoản & vai trò', capability: 'account.manage.self', icon: '◈', path: '/settings/account' },
   { label: 'Đánh giá mô hình', capability: 'models.evaluation.read', icon: '▥' },
   { label: 'Trò chuyện', capability: 'chat.use.self', icon: '◌', path: '/chat' },
   { label: 'Quản trị', capability: 'admin.users.manage', icon: '⚙', path: '/admin/users' },
@@ -20,6 +23,22 @@ const navItems = [
   { label: 'Nhật ký gửi thông báo', capability: 'admin.notifications.read', icon: '↗', path: '/admin/notifications' },
   { label: 'Sự kiện vận hành', capability: 'admin.ops-events.read', icon: '!', path: '/admin/ops-events' },
 ];
+
+// FR-M5-05: bell with the unread alert count, refreshed every minute and after inbox actions.
+function AlertBell() {
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    let active = true;
+    const load = () => api.alerts.unreadCount().then((result) => { if (active) setUnread(result.unread); }).catch(() => {});
+    load();
+    const timer = window.setInterval(load, 60_000);
+    window.addEventListener('stocksense:alerts-changed', load);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('stocksense:alerts-changed', load); };
+  }, []);
+  return <button className="btn sm alert-bell" type="button" onClick={() => navigate('/alerts')} aria-label={`Cảnh báo, ${unread} chưa đọc`}>
+    <span aria-hidden="true">🔔</span>{unread > 0 && <span className="alert-bell-count">{unread > 99 ? '99+' : unread}</span>}
+  </button>;
+}
 
 export function AppShell({ children }) {
   const { user, logout } = useAuth();
@@ -56,6 +75,7 @@ export function AppShell({ children }) {
         <header className="top">
           {isMockMode && <div className="datastat"><span className="dot" /><span>Đang xem dữ liệu demo</span></div>}
           <span className="grow" />
+          {hasCapability(user.role, 'alerts.inbox.read.self') && <AlertBell />}
           <span className="user-email">{user.email}</span>
           <button className="btn sm top-logout" type="button" onClick={logout}>Đăng xuất</button>
         </header>

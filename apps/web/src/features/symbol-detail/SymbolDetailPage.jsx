@@ -17,28 +17,59 @@ export function SymbolDetailPage({ symbol }) {
   const [error, setError] = useState('');
   const [reportError, setReportError] = useState('');
   const [tab, setTab] = useState('forecast');
+  const [range, setRange] = useState('6m');
+  const [newsFrom, setNewsFrom] = useState('');
+  const [newsTo, setNewsTo] = useState('');
+  const canWatch = hasCapability(user.role, 'watchlist.manage.self');
+  const canPlan = hasCapability(user.role, 'plans.manage.self');
+  const [watching, setWatching] = useState(false);
+  const [watchBusy, setWatchBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
     setLoading(true); setError('');
-    Promise.all([api.symbols.detail(symbol), api.symbols.prices(symbol), api.symbols.news(symbol)])
-      .then(([detail, prices, news]) => { if (active) setData({ detail, prices, news }); })
+    Promise.all([api.symbols.detail(symbol), api.symbols.prices(symbol, '6m'), api.symbols.news(symbol)])
+      .then(([detail, prices, news]) => { if (active) { setData({ detail, prices, news }); setRange('6m'); } })
       .catch((requestError) => { if (active) setError(requestError.message || 'Không tải được dữ liệu mã cổ phiếu.'); })
       .finally(() => { if (active) setLoading(false); });
+    if (canWatch) api.watchlist.list().then((result) => { if (active) setWatching(result.items.some((item) => item.symbol === symbol)); }).catch(() => {});
     return () => { active = false; };
-  }, [symbol]);
+  }, [symbol, canWatch]);
+
+  async function changeRange(nextRange) {
+    setRange(nextRange);
+    try { const prices = await api.symbols.prices(symbol, nextRange); setData((current) => ({ ...current, prices })); }
+    catch (requestError) { setReportError(requestError.message || 'Không tải được lịch sử giá.'); }
+  }
+
+  // FR-M5-01: watchlist toggle from the symbol page.
+  async function toggleWatch() {
+    setWatchBusy(true); setReportError('');
+    try {
+      if (watching) await api.watchlist.remove(symbol); else await api.watchlist.add(symbol);
+      setWatching(!watching);
+    } catch (requestError) { setReportError(requestError.message || 'Không cập nhật được watchlist.'); }
+    finally { setWatchBusy(false); }
+  }
 
   if (loading) return <section className="content"><div className="card loading-card">Đang tải dữ liệu {symbol}…</div></section>;
   if (error) return <section className="content"><div className="card"><button className="text-button" onClick={() => navigate('/overview')}>← Về tổng quan</button><div className="note bad" role="alert">{error}</div></div></section>;
   if (!data) return null;
 
   const { detail, prices, news } = data;
+  // FR-M4-03: filter news by publication date (ICT calendar day).
+  const newsDay = (item) => new Date(item.publishedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+  const filteredNews = news.items.filter((item) => (!newsFrom || newsDay(item) >= newsFrom) && (!newsTo || newsDay(item) <= newsTo));
+  const rangeSwitch = <div className="seg" role="group" aria-label="Khoảng thời gian">{[['1m', '1 tháng'], ['3m', '3 tháng'], ['6m', '6 tháng']].map(([value, label]) => <button key={value} type="button" className={range === value ? 'on' : ''} onClick={() => changeRange(value)}>{label}</button>)}</div>;
   return <section className="content symbol-detail">
     <button className="text-button back-link" onClick={() => navigate('/overview')}>← Tổng quan thị trường</button>
     <header className="pagehead detail-head">
-      <div><span className="eyebrow">CHI TIẾT MÃ · {detail.exchange}</span><h1>{detail.symbol} <span className="muted">· {detail.name}</span></h1>
+      <div><span className="eyebrow">CHI TIẾT MÃ · {detail.exchange}{detail.industry ? ` · ${detail.industry}` : ''}</span><h1>{detail.symbol} <span className="muted">· {detail.name}</span></h1>
         <p className="detail-price">{money.format(detail.closePrice)} ₫ <span className={detail.changePercent >= 0 ? 'c-up' : 'c-down'}>{detail.changePercent > 0 ? '+' : ''}{detail.changePercent.toFixed(2)}%</span></p>
-        <div className="pagehead-actions"><button className="btn sm" type="button" onClick={() => api.reports.symbol(symbol).catch((e) => setReportError(e.message))}>Xuất báo cáo PDF</button>
+        <div className="pagehead-actions">
+          {canWatch && <button className={`btn sm ${watching ? '' : 'pri'}`} type="button" disabled={watchBusy} onClick={toggleWatch}>{watching ? '★ Bỏ theo dõi' : '☆ Thêm vào watchlist'}</button>}
+          {canPlan && <button className="btn sm" type="button" onClick={() => navigate(`/plans?symbol=${encodeURIComponent(symbol)}`)}>Lập kế hoạch giao dịch</button>}
+          <button className="btn sm" type="button" onClick={() => api.reports.symbol(symbol).catch((e) => setReportError(e.message))}>Xuất báo cáo PDF</button>
           {canExportHistory && <button className="btn sm" type="button" onClick={() => api.symbols.historyCsv(symbol).catch((e) => setReportError(e.message))}>Xuất lịch sử CSV</button>}</div>
       </div>
       <span className={`chip ${detail.priceDataStatus === 'live' ? 'up' : 'info'}`}>{detail.priceDataStatus === 'live' ? 'GIÁ SSI' : 'GIÁ MẪU'}</span>
@@ -50,12 +81,12 @@ export function SymbolDetailPage({ symbol }) {
     </nav>
     {tab === 'history' ? <article className="card detail-history">
       <div className="card-h"><div><h2>Lịch sử giá</h2><p className="small muted">Giá đóng cửa · {prices.latestDate ? `cập nhật đến ${prices.latestDate}` : 'chưa có ngày cập nhật'}</p></div>
-        <span className={`chip ${prices.sourceStatus === 'live' ? 'up' : 'info'}`}>{prices.sourceStatus === 'live' ? 'SSI' : prices.sourceStatus === 'mixed' ? 'DỮ LIỆU TRỘN' : 'MẪU'}</span></div>
+        <div className="watchlist-actions">{rangeSwitch}<span className={`chip ${prices.sourceStatus === 'live' ? 'up' : 'info'}`}>{prices.sourceStatus === 'live' ? 'SSI' : prices.sourceStatus === 'mixed' ? 'DỮ LIỆU TRỘN' : 'MẪU'}</span></div></div>
       <PriceChart items={prices.items} />
       {prices.items.length === 0 ? <div className="note">Chưa có dữ liệu lịch sử giá cho mã {symbol}.</div> : <div className="history-table-wrap">
         <table className="history-table">
-          <thead><tr><th>Ngày</th><th>Đóng cửa</th></tr></thead>
-          <tbody>{prices.items.slice().reverse().map((item) => <tr key={item.date}><td>{item.date}</td><td>{money.format(item.close)} ₫</td></tr>)}</tbody>
+          <thead><tr><th>Ngày</th><th>Đóng cửa</th><th>Khối lượng</th></tr></thead>
+          <tbody>{prices.items.slice().reverse().map((item) => <tr key={item.date}><td>{item.date}</td><td>{money.format(item.close)} ₫</td><td>{item.volume == null ? '—' : money.format(item.volume)}</td></tr>)}</tbody>
         </table>
       </div>}
     </article> : tab === 'forecast' ? <div className="detail-grid">
@@ -64,11 +95,13 @@ export function SymbolDetailPage({ symbol }) {
         <div className="probability-list">{[['up', 'Tăng'], ['hold', 'Đi ngang'], ['down', 'Giảm']].map(([key, label]) => <div className="probability-row" key={key}><span>{label}</span><div className="prob-track"><i className={`prob-fill ${key}`} style={{ width: `${detail.forecasts.t2.probabilities[key] * 100}%` }} /></div><b>{Math.round(detail.forecasts.t2.probabilities[key] * 100)}%</b></div>)}</div>
         <p className="small muted">Xác suất là ước lượng của mô hình, không phải cam kết kết quả.</p>
       </article>
-      <article className="card"><div className="card-h"><div><h2>Lịch sử giá</h2><p className="small muted">Giá đóng cửa · {prices.latestDate ? `cập nhật đến ${prices.latestDate}` : 'chưa có ngày cập nhật'}</p></div><span className={`chip ${prices.sourceStatus === 'live' ? 'up' : 'info'}`}>{prices.sourceStatus === 'live' ? 'SSI' : prices.sourceStatus === 'mixed' ? 'DỮ LIỆU TRỘN' : 'MẪU'}</span></div><PriceChart items={prices.items} /></article>
+      <article className="card"><div className="card-h"><div><h2>Diễn biến giá</h2><p className="small muted">Giá đóng cửa và khối lượng · {prices.latestDate ? `cập nhật đến ${prices.latestDate}` : 'chưa có ngày cập nhật'}</p></div>{rangeSwitch}</div><PriceChart items={prices.items} /></article>
       <article className="card detail-news"><div className="card-h"><div><h2>Tin liên quan</h2><p className="small muted">Thông tin minh họa theo mã {symbol}</p></div><button className="text-button" onClick={() => setTab('news')}>Xem tất cả →</button></div>
         {news.items.length === 0 ? <div className="note">Chưa có tin tức nào cho mã {symbol}.</div> : news.items.slice(0, 2).map((item) => <NewsItem key={item.id} item={item} />)}
       </article>
-    </div> : <article className="card news-list"><div className="card-h"><div><h2>Tin liên quan đến {symbol}</h2><p className="small muted">Kiểm tra nguồn và thời điểm công bố trước khi sử dụng.</p></div></div>{news.items.length === 0 ? <div className="note">Chưa có tin tức nào cho mã {symbol}.</div> : news.items.map((item) => <NewsItem key={item.id} item={item} />)}</article>}
+    </div> : <article className="card news-list"><div className="card-h"><div><h2>Tin liên quan đến {symbol}</h2><p className="small muted">Mới nhất trước · kiểm tra nguồn và thời điểm công bố trước khi sử dụng.</p></div>
+        <div className="news-filters"><label className="field"><span>Từ ngày</span><input type="date" value={newsFrom} max={newsTo || undefined} onChange={(e) => setNewsFrom(e.target.value)} /></label><label className="field"><span>Đến ngày</span><input type="date" value={newsTo} min={newsFrom || undefined} onChange={(e) => setNewsTo(e.target.value)} /></label>{(newsFrom || newsTo) && <button className="btn sm" type="button" onClick={() => { setNewsFrom(''); setNewsTo(''); }}>Bỏ lọc</button>}</div></div>
+      {news.items.length === 0 ? <div className="note">Chưa có tin tức nào cho mã {symbol}.</div> : filteredNews.length === 0 ? <div className="note">Không có tin trong khoảng ngày đã chọn.</div> : filteredNews.map((item) => <NewsItem key={item.id} item={item} />)}</article>}
     <p className="disclaimer">StockSense VN là công cụ tham khảo và nghiên cứu, không phải dịch vụ tư vấn đầu tư. Dự báo không cam kết lợi nhuận và không tự động đặt lệnh.</p>
   </section>;
 }

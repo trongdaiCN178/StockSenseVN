@@ -1,11 +1,17 @@
 import { access } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import { ApiError } from '../errors.js';
 
+// Relative font paths in .env are written from the repo root, where .env lives; npm workspaces run the API from apps/api.
+const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+const fontEnv = (name) => (process.env[name] ? resolve(REPO_ROOT, process.env[name]) : undefined);
+
 const DISCLAIMER = 'Báo cáo chỉ cung cấp thông tin tham khảo, không phải khuyến nghị đầu tư. Dữ liệu có thể chậm hoặc chưa đầy đủ.';
 
-export async function createPdfReport({ title, subtitle, sections }) {
-  const fontPath = process.env.REPORT_FONT_PATH;
+export async function createPdfReport({ title, subtitle, sections, meta }) {
+  const fontPath = fontEnv('REPORT_FONT_PATH');
   if (!fontPath) throw new ApiError(503, 'REPORT_FONT_NOT_CONFIGURED', 'Set REPORT_FONT_PATH to a Unicode TrueType font (for Vietnamese PDF output).');
   try { await access(fontPath); }
   catch { throw new ApiError(503, 'REPORT_FONT_UNAVAILABLE', 'The configured report font file is unavailable.'); }
@@ -14,12 +20,12 @@ export async function createPdfReport({ title, subtitle, sections }) {
   doc.registerFont('StockSense', fontPath);
   doc.font('StockSense');
 
-  const boldFontPath = process.env.REPORT_FONT_BOLD_PATH;
+  const boldFontPath = fontEnv('REPORT_FONT_BOLD_PATH');
   if (boldFontPath) {
     try { await access(boldFontPath); doc.registerFont('StockSense-Bold', boldFontPath); }
     catch { /* fall back to the regular weight below */ }
   }
-  const italicFontPath = process.env.REPORT_FONT_ITALIC_PATH;
+  const italicFontPath = fontEnv('REPORT_FONT_ITALIC_PATH');
   if (italicFontPath) {
     try { await access(italicFontPath); doc.registerFont('StockSense-Italic', italicFontPath); }
     catch { /* fall back to the regular weight below */ }
@@ -37,6 +43,8 @@ export async function createPdfReport({ title, subtitle, sections }) {
   doc.font(boldFont).moveDown(0.7).fillColor('#132b3a').fontSize(22).text(title, { width: 500 });
   if (subtitle) doc.font(italicFont).moveDown(0.25).fillColor('#526575').fontSize(10).text(subtitle);
   doc.font('StockSense').moveDown(0.5).fillColor('#526575').fontSize(9).text(`Ngày tạo: ${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'long', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())}`);
+  // FR-M13-05: data date and serving model version are printed on every report.
+  if (meta) doc.moveDown(0.2).text(meta);
   doc.moveDown(1);
 
   for (const section of sections) {

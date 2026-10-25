@@ -11,7 +11,7 @@ export function createAdminJobsRepository(pool) {
     async list() {
       const [runsResult, workersResult] = await Promise.all([
         pool.query(`SELECT id::text, job_key, status, attempt_count, queued_at, started_at,
-          finished_at, error_code FROM admin_job_runs ORDER BY queued_at DESC, id DESC LIMIT 50`),
+          finished_at, error_code, scheduled_for::text AS scheduled_for, payload->>'trigger' AS trigger FROM admin_job_runs ORDER BY queued_at DESC, id DESC LIMIT 50`),
         pool.query(`SELECT worker_id, mode, started_at, heartbeat_at, active_job_key, stopped_at,
           stopped_at IS NULL AND heartbeat_at > now() - interval '45 seconds' AS online
           FROM admin_worker_instances ORDER BY heartbeat_at DESC LIMIT 10`),
@@ -23,6 +23,9 @@ export function createAdminJobsRepository(pool) {
       try {
         const { rows } = await pool.query(`INSERT INTO admin_job_runs(job_key,requested_by)
           VALUES ($1,$2) RETURNING id::text,job_key,status,attempt_count,queued_at,started_at,finished_at,error_code`, [jobKey, requestedBy]);
+        // FR-M7-05: manual job runs are part of the admin action log.
+        await pool.query(`INSERT INTO admin_audit_log(actor_user_id, event_type, details)
+          VALUES ($1, 'job.enqueued', jsonb_build_object('job_key', $2::text, 'job_run_id', $3::text))`, [requestedBy, jobKey, rows[0].id]);
         return rows[0];
       } catch (error) {
         if (error.code === '23505') throw new ApiError(409, 'JOB_ALREADY_ACTIVE', 'A run for this job is already queued or running.');

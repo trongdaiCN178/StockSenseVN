@@ -14,6 +14,10 @@ function formatDataDate(value) {
   return sessionDate.format(new Date(`${value}T00:00:00+07:00`));
 }
 
+const compactMoney = new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 });
+const LIQUIDITY_OPTIONS = [['', 'Mọi thanh khoản'], ['10000000000', '≥ 10 tỷ/phiên'], ['50000000000', '≥ 50 tỷ/phiên'], ['100000000000', '≥ 100 tỷ/phiên']];
+const SORTS = { symbol: (item) => item.symbol, closePrice: (item) => item.closePrice, changePercent: (item) => item.changePercent, averageTurnover20d: (item) => item.averageTurnover20d };
+
 function formatChange(value) {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
@@ -26,6 +30,31 @@ export function OverviewPage() {
   const [query, setQuery] = useState('');
   const [exchange, setExchange] = useState('Tất cả sàn');
   const [horizon, setHorizon] = useState('t2');
+  const [industry, setIndustry] = useState('');
+  const [minTurnover, setMinTurnover] = useState('');
+  const [sort, setSort] = useState({ key: 'symbol', direction: 'asc' });
+  const [watchlist, setWatchlist] = useState(new Set());
+  const [watchError, setWatchError] = useState('');
+  const canWatch = hasCapability(user.role, 'watchlist.manage.self');
+
+  useEffect(() => {
+    if (!canWatch) return;
+    api.watchlist.list().then((result) => setWatchlist(new Set(result.items.map((item) => item.symbol)))).catch(() => {});
+  }, [canWatch]);
+
+  // FR-M5-01: add/remove a symbol from the watchlist straight from the overview.
+  async function toggleWatch(event, symbol) {
+    event.stopPropagation();
+    setWatchError('');
+    try {
+      if (watchlist.has(symbol)) await api.watchlist.remove(symbol); else await api.watchlist.add(symbol);
+      setWatchlist((current) => { const next = new Set(current); if (next.has(symbol)) next.delete(symbol); else next.add(symbol); return next; });
+    } catch (requestError) { setWatchError(requestError.message || 'Không cập nhật được watchlist.'); }
+  }
+
+  function sortBy(key) {
+    setSort((current) => ({ key, direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc' }));
+  }
 
   useEffect(() => {
     let active = true;
@@ -44,12 +73,18 @@ export function OverviewPage() {
   const rows = useMemo(() => {
     if (!data) return [];
     const q = query.trim().toLocaleUpperCase('vi-VN');
-    return data.symbols.items.filter((item) => {
+    const filtered = data.symbols.items.filter((item) => {
       const matchesQuery = !q || item.symbol.includes(q) || item.name.toLocaleUpperCase('vi-VN').includes(q);
       const matchesExchange = exchange === 'Tất cả sàn' || item.exchange === exchange;
-      return matchesQuery && matchesExchange;
+      const matchesIndustry = !industry || item.industry === industry;
+      const matchesLiquidity = !minTurnover || item.averageTurnover20d >= Number(minTurnover);
+      return matchesQuery && matchesExchange && matchesIndustry && matchesLiquidity;
     });
-  }, [data, query, exchange]);
+    const value = SORTS[sort.key];
+    const factor = sort.direction === 'asc' ? 1 : -1;
+    return filtered.sort((a, b) => factor * (sort.key === 'symbol' ? value(a).localeCompare(value(b)) : value(a) - value(b)));
+  }, [data, query, exchange, industry, minTurnover, sort]);
+  const industries = useMemo(() => [...new Set((data?.symbols.items ?? []).map((item) => item.industry).filter(Boolean))].sort(), [data]);
 
   if (loading) return <section className="content"><div className="card loading-card">Đang tải dữ liệu tổng quan…</div></section>;
   if (error) return <section className="content"><div className="note bad" role="alert">{error}</div></section>;
@@ -112,6 +147,12 @@ export function OverviewPage() {
             <select value={exchange} onChange={(event) => setExchange(event.target.value)} aria-label="Lọc theo sàn">
               <option>Tất cả sàn</option><option>HOSE</option><option>HNX</option><option>UPCOM</option>
             </select>
+            <select value={industry} onChange={(event) => setIndustry(event.target.value)} aria-label="Lọc theo ngành">
+              <option value="">Tất cả ngành</option>{industries.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+            <select value={minTurnover} onChange={(event) => setMinTurnover(event.target.value)} aria-label="Lọc theo thanh khoản">
+              {LIQUIDITY_OPTIONS.map(([value, label]) => <option key={label} value={value}>{label}</option>)}
+            </select>
             <div className="seg" role="group" aria-label="Kỳ hạn dự báo">
               <button type="button" className={horizon === 't2' ? 'on' : ''} onClick={() => setHorizon('t2')}>T+2</button>
               <button type="button" className={horizon === 't5' ? 'on' : ''} onClick={() => setHorizon('t5')}>T+5</button>
@@ -119,23 +160,35 @@ export function OverviewPage() {
           </div>}
         </div>
 
+        {watchError && <div className="note bad" role="alert">{watchError}</div>}
         {canReadSymbols ? <div className="tw">
           <table>
-            <thead><tr><th>Mã / Công ty</th><th>Sàn</th><th className="r">Giá đóng cửa</th><th className="r">Thay đổi</th><th>Kỳ hạn</th><th>Dự báo</th><th className="r">Xác suất nhãn</th></tr></thead>
+            <thead><tr>
+              {canWatch && <th aria-label="Watchlist" />}
+              <SortHeader label="Mã / Công ty" sortKey="symbol" sort={sort} onSort={sortBy} />
+              <th>Sàn</th><th>Ngành</th>
+              <SortHeader label="Giá đóng cửa" sortKey="closePrice" sort={sort} onSort={sortBy} align="r" />
+              <SortHeader label="Thay đổi" sortKey="changePercent" sort={sort} onSort={sortBy} align="r" />
+              <SortHeader label="GTGD TB 20 phiên" sortKey="averageTurnover20d" sort={sort} onSort={sortBy} align="r" />
+              <th>Kỳ hạn</th><th>Dự báo</th><th className="r">Xác suất nhãn</th>
+            </tr></thead>
             <tbody>
               {rows.map((item) => {
                 const forecast = item.forecasts[horizon];
                 return <tr key={item.symbol} className="symbol-row" onClick={() => navigate(`/symbols/${item.symbol}`)} onKeyDown={(event) => { if (event.key === 'Enter') navigate(`/symbols/${item.symbol}`); }} tabIndex={0} aria-label={`Mở chi tiết ${item.symbol}`}>
+                  {canWatch && <td><button type="button" className={`watch-star ${watchlist.has(item.symbol) ? 'on' : ''}`} onClick={(event) => toggleWatch(event, item.symbol)} aria-label={watchlist.has(item.symbol) ? `Bỏ ${item.symbol} khỏi watchlist` : `Thêm ${item.symbol} vào watchlist`} aria-pressed={watchlist.has(item.symbol)}>{watchlist.has(item.symbol) ? '★' : '☆'}</button></td>}
                   <td><span className="sym">{item.symbol}</span><small className="company-name">{item.name}</small></td>
                   <td><span className="tag">{item.exchange}</span></td>
+                  <td className="small">{item.industry ?? '—'}</td>
                   <td className="r num">{money.format(item.closePrice)} ₫</td>
                   <td className={`r num ${item.changePercent >= 0 ? 'c-up' : 'c-down'}`}>{formatChange(item.changePercent)}</td>
+                  <td className="r num">{item.averageTurnover20d ? `${compactMoney.format(item.averageTurnover20d)} ₫` : '—'}</td>
                   <td><span className="hz">{horizon.toUpperCase()}</span></td>
                   <td><ForecastBadge label={forecast.label} /></td>
                   <td className="r num">{Math.round(forecast.probabilities[forecast.label] * 100)}%</td>
                 </tr>;
               })}
-              {!rows.length && <tr><td colSpan="7" className="empty-row">Không tìm thấy mã phù hợp.</td></tr>}
+              {!rows.length && <tr><td colSpan={canWatch ? 11 : 10} className="empty-row">Không tìm thấy mã phù hợp.</td></tr>}
             </tbody>
           </table>
         </div> : <div className="admin-summary-card"><p>Vai trò quản trị có quyền xem trạng thái thị trường và mô hình. Danh sách mã và dữ liệu phân tích người dùng không nằm trong quyền truy cập màn hình này.</p></div>}
@@ -147,4 +200,11 @@ export function OverviewPage() {
       </p>
     </section>
   );
+}
+
+function SortHeader({ label, sortKey, sort, onSort, align = '' }) {
+  const active = sort.key === sortKey;
+  return <th className={align} aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+    <button type="button" className="sort-button" onClick={() => onSort(sortKey)}>{label}{active ? (sort.direction === 'asc' ? ' ▲' : ' ▼') : ''}</button>
+  </th>;
 }

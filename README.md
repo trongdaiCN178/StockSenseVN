@@ -55,4 +55,19 @@ Khôi phục mật khẩu tự phục vụ dùng các migration tới `015_passw
 
 Chức năng quản trị worker yêu cầu migration `016_admin_job_queue.sql` và `017_admin_worker_heartbeat.sql`. API chỉ đưa vào hàng đợi các tác vụ sync dữ liệu và thông báo đã được allowlist; API không bao giờ chạy trực tiếp các tác vụ này trong request HTTP. Để chạy một lần, dùng `npm run worker:admin-jobs:run`; để chạy worker dài hạn, poll mỗi 10 giây khi idle, dùng `npm run worker:admin-jobs:watch`. Trang Admin báo cáo worker đang online dựa trên heartbeat mỗi 15 giây và đánh dấu offline sau 45 giây không heartbeat. Các job Forecast/ONNX vẫn chưa khả dụng cho tới khi có mô hình và pipeline suy luận.
 
+Migration `020_non_ai_completion.sql` hoàn thiện các yêu cầu PRD không phụ thuộc mô hình AI:
+- **Thị trường:** cột ngành (`symbols.industry`), lọc ngành/thanh khoản và sắp xếp ở Tổng quan và Screener, bộ lọc có sẵn.
+- **Trade Plan:** trạng thái Nháp → Chờ vào → Đang mở → Đã đóng, vùng giá vào, ngày hết hạn, lý do đóng, sửa kế hoạch có lưu lịch sử. Khối lượng tối đa được làm tròn theo lô 100.
+- **Cảnh báo:** cảnh báo khi giá chạm vùng vào/cắt lỗ/mục tiêu của Trade Plan, chuông thông báo, lịch sử cảnh báo giữ 90 ngày.
+- **Portfolio:** sửa giao dịch, import CSV bỏ qua dòng lỗi/trùng kèm báo cáo, tỷ trọng và phân bổ theo ngành, giá trị danh mục theo thời gian, xóa toàn bộ.
+- **Journal:** lọc theo mã/ngày/thẻ/kết quả/từ khóa, thống kê theo tuần/tháng/quý, PDF theo kỳ.
+- **Admin:** lọc audit theo thời gian/người thực hiện/đối tượng.
+
+Chính sách mật khẩu tự đặt là 8-64 ký tự, gồm chữ, số và ít nhất 1 ký tự đặc biệt. Chính sách này dùng chung qua `@stocksense/core/password`.
+
+Khi chạy `npm run worker:admin-jobs:watch`, worker tự xếp hàng pipeline hằng ngày (đồng bộ giá SSI → tin tức → gửi thông báo) sau 15:30 giờ Việt Nam các ngày T2-T6.
+- Đổi giờ chạy bằng `ADMIN_JOBS_SCHEDULE_TIME=HH:MM`; tắt lịch bằng `ADMIN_JOBS_SCHEDULE=off`.
+- Job lỗi được thử lại tối đa 3 lần. Nếu vẫn lỗi, mọi Admin nhận cảnh báo trong app, kèm email/Telegram nếu đã liên kết.
+- Gửi thông báo cho người dùng: gửi lần đầu, rồi thử lại tối đa 3 lần.
+
 Hợp đồng API dạng máy đọc được ở [openapi.yaml](openapi.yaml); lý do thiết kế kiến trúc và quy tắc vai trò ở [docs/web.md](docs/web.md). Khi đã cấu hình PostgreSQL, danh tính demo dùng hash mật khẩu và session lưu trong DB (có thể revoke). Ở chế độ fixture, danh tính/session chỉ lưu trong bộ nhớ. Forecast, tổng hợp chỉ số và tin tức vẫn là dữ liệu mẫu; giá hàng ngày theo từng mã có thể được import bởi worker SSI. Hệ thống này chưa sẵn sàng cho production.

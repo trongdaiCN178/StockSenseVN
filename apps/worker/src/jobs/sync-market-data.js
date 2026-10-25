@@ -1,4 +1,4 @@
-import { createPriceCrossingAlerts } from './price-alerts.js';
+import { createPriceCrossingAlerts, createTradePlanAlerts, expireTradePlans, pruneAlertHistory } from './price-alerts.js';
 
 const LOCK_KEY = 'stocksense:daily-prices:ssi:v1';
 
@@ -39,6 +39,7 @@ export async function syncMarketData({ pool, provider, startDate, endDate, logge
         const records = await provider.fetchHistory(symbol, startDate, endDate);
         const written = await upsertRecords(client, records, symbol, startDate, endDate);
         await createPriceCrossingAlerts(client, symbol);
+        await createTradePlanAlerts(client, symbol);
         symbolsSucceeded += 1;
         rowsUpserted += written;
         logger.info(`[StockSense worker] ${symbol}: ${written} OHLCV rows upserted.`);
@@ -47,6 +48,9 @@ export async function syncMarketData({ pool, provider, startDate, endDate, logge
         logger.error(`[StockSense worker] ${symbol}: ${safeMessage(error)}`);
       }
     }
+
+    await expireTradePlans(client);
+    await pruneAlertHistory(client);
 
     if (errors.length && symbolsSucceeded === 0 && symbolsTotal > 0) status = 'failed';
     else if (errors.length) status = 'partial';
