@@ -26,6 +26,7 @@ export const ROLE_CAPABILITIES = Object.freeze({
     'plans.calculate.rr', 'journal.read.self', 'journal.update.self',
     'chat.use.self', 'reports.symbol.export', 'reports.portfolio.export.self',
     'reports.plan.export.self', 'notifications.channels.manage.self',
+    'profile.role.manage.self',
   ],
   [ROLES.TRADER]: [
     ...commonUserCapabilities,
@@ -39,6 +40,7 @@ export const ROLE_CAPABILITIES = Object.freeze({
     'journal.stats.read.self', 'chat.use.self', 'reports.symbol.export',
     'reports.portfolio.export.self', 'reports.plan.export.self',
     'reports.journal.export.self', 'notifications.channels.manage.self',
+    'profile.role.manage.self',
   ],
   [ROLES.ANALYST]: [
     ...commonUserCapabilities,
@@ -62,7 +64,7 @@ export const ROLE_CAPABILITIES = Object.freeze({
     'forecast.replay.create', 'admin.users.manage', 'admin.jobs.read',
     'admin.jobs.enqueue', 'admin.models.manage', 'admin.audit.read',
     'admin.notifications.read', 'admin.ops-events.read',
-    'admin.chat-log.read.redacted',
+    'admin.chat-log.read.redacted', 'admin.role-requests.manage',
   ],
 });
 

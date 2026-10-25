@@ -19,6 +19,7 @@
     "worker:admin-jobs:watch": "npm --workspace @stocksense/worker run admin-jobs:watch",
     "db:migrate": "npm --workspace @stocksense/api run db:migrate",
     "db:seed:demo": "npm --workspace @stocksense/api run db:seed:demo",
+    "db:bootstrap-admin": "npm --workspace @stocksense/api run db:bootstrap-admin",
     "build:web": "npm --workspace @stocksense/web run build",
     "preview:web": "npm --workspace @stocksense/web run preview",
     "test": "vitest run"

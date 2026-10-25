@@ -17,6 +17,7 @@ import { createPortfolioRepository, validatePortfolioTransaction } from './portf
 import { createPlansRepository, validatePlan, validatePlanCalculation, validatePlanClose } from './plans/repository.js';
 import { createJournalRepository, validateJournalUpdate, validateManualJournal } from './journal/repository.js';
 import { createInvestmentProfileRepository, validateInvestmentProfile } from './profile/repository.js';
+import { createAccountRepository } from './profile/account-repository.js';
 import { createChatRepository, validateChatSession } from './chat/repository.js';
 import { createNotificationPreferencesRepository, createNotificationChannelsRepository, validateNotificationPreferences, hashVerificationCode } from './notifications/repository.js';
 import { emailProviderConfigured, telegramProviderConfigured, sendVerificationEmail, sendPasswordResetEmail, sendRegistrationVerificationEmail, sendAccountAlreadyExistsEmail, sendTestEmail, sendTelegramMessage } from './notifications/providers.js';
@@ -26,6 +27,11 @@ import { createPdfReport, formatReportValue } from './reports/pdf.js';
 
 if (process.env.NODE_ENV === 'production') {
   throw new Error('The bootstrap API still enables development identities and sample market data. It must not run in production.');
+}
+
+function isStrongPassword(password) {
+  return typeof password === 'string' && password.length >= 12 && password.length <= 128 &&
+    /[A-Za-z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 
 function formatRetryAfterVi(ttlMs) {
@@ -50,6 +56,7 @@ const portfolios = databaseEnabled ? createPortfolioRepository(pool) : null;
 const plans = databaseEnabled ? createPlansRepository(pool) : null;
 const journal = databaseEnabled ? createJournalRepository(pool) : null;
 const investmentProfiles = databaseEnabled ? createInvestmentProfileRepository(pool) : null;
+const account = databaseEnabled ? createAccountRepository(pool) : null;
 const chat = databaseEnabled ? createChatRepository(pool) : null;
 const notificationPreferences = databaseEnabled ? createNotificationPreferencesRepository(pool) : null;
 const notificationChannels = databaseEnabled ? createNotificationChannelsRepository(pool) : null;
@@ -182,6 +189,9 @@ async function requireJournalStore(request, reply) {
 async function requireInvestmentProfileStore(request, reply) {
   if (!investmentProfiles) return fail(reply, request, 503, 'PROFILE_STORE_UNAVAILABLE', 'Investment profile requires PostgreSQL.');
 }
+async function requireAccountStore(request, reply) {
+  if (!account) return fail(reply, request, 503, 'ACCOUNT_STORE_UNAVAILABLE', 'Chức năng nâng cấp/quản lý tài khoản cần PostgreSQL.');
+}
 async function requireChatStore(request, reply) {
   if (!chat) return fail(reply, request, 503, 'CHAT_STORE_UNAVAILABLE', 'Chat sessions require PostgreSQL.');
 }
@@ -250,9 +260,8 @@ app.post('/api/v1/auth/reset-password', {
 }, async (request, reply) => {
   if (!getPasswordResetAppUrl()) return fail(reply, request, 503, 'PASSWORD_RESET_UNAVAILABLE', 'Password reset is not configured.');
   const { token, new_password: newPassword } = request.body ?? {};
-  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{40,64}$/.test(token) ||
-      typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'A valid reset token and a password of 12 to 128 characters are required.');
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !isStrongPassword(newPassword)) {
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Cần mã token hợp lệ và mật khẩu 12-128 ký tự gồm chữ, số và ký tự đặc biệt.');
   }
   const result = await passwordResets.reset(token, newPassword);
   reply.header('Cache-Control', 'no-store');
@@ -265,10 +274,10 @@ app.post('/api/v1/auth/register', {
 }, async (request, reply) => {
   const { email, password, full_name: fullName, age_confirmed: ageConfirmed, terms_accepted: termsAccepted, privacy_accepted: privacyAccepted } = request.body ?? {};
   if (typeof email !== 'string' || email.length > 254 || !/^\S+@\S+\.\S+$/.test(email.trim()) ||
-      typeof password !== 'string' || password.length < 12 || password.length > 128 ||
+      !isStrongPassword(password) ||
       (fullName !== undefined && fullName !== null && (typeof fullName !== 'string' || fullName.trim().length > 100)) ||
       ageConfirmed !== true || termsAccepted !== true || privacyAccepted !== true) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Vui lòng nhập email, mật khẩu hợp lệ (12-128 ký tự) và xác nhận đủ các điều kiện bắt buộc.');
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Vui lòng nhập email, mật khẩu hợp lệ (12-128 ký tự gồm chữ, số, ký tự đặc biệt) và xác nhận đủ các điều kiện bắt buộc.');
   }
   const appUrl = getPublicAppUrl();
   if (!appUrl) return fail(reply, request, 503, 'REGISTRATION_UNAVAILABLE', 'Thiếu cấu hình PUBLIC_APP_URL.');
@@ -384,8 +393,8 @@ app.post('/api/v1/auth/logout', { preHandler: requireSession }, async (request, 
 
 app.post('/api/v1/auth/change-password', { preHandler: requireSession }, async (request, reply) => {
   const { current_password: currentPassword, new_password: newPassword } = request.body ?? {};
-  if (typeof currentPassword !== 'string' || !currentPassword || typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Mật khẩu mới phải dài từ 12 đến 128 ký tự.');
+  if (typeof currentPassword !== 'string' || !currentPassword || !isStrongPassword(newPassword)) {
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Mật khẩu mới phải dài từ 12 đến 128 ký tự, gồm chữ, số và ký tự đặc biệt.');
   }
   if (postgresAuth) {
     const result = await postgresAuth.changePassword(request.user.id, request.sessionToken, currentPassword, newPassword);
@@ -407,6 +416,34 @@ app.post('/api/v1/auth/change-password', { preHandler: requireSession }, async (
 });
 
 app.get('/api/v1/me', { preHandler: requireSession }, async (request) => envelope({ user: request.user }));
+
+app.post('/api/v1/me/upgrade/trader', { preHandler: [requireCapability('profile.role.manage.self'), requireAccountStore] }, async (request, reply) => {
+  const result = await account.upgradeToTrader(request.user.id, request.body ?? {});
+  clearSessionCookie(reply);
+  return envelope(result);
+});
+app.post('/api/v1/me/downgrade/retail', { preHandler: [requireCapability('profile.role.manage.self'), requireAccountStore] }, async (request, reply) => {
+  const result = await account.downgradeToRetail(request.user.id);
+  clearSessionCookie(reply);
+  return envelope(result);
+});
+app.post('/api/v1/me/role-requests', {
+  config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+  preHandler: [requireCapability('profile.role.manage.self'), requireAccountStore],
+}, async (request, reply) => {
+  reply.code(201);
+  return envelope(await account.requestAnalyst(request.user.id, request.body ?? {}));
+});
+app.get('/api/v1/me/role-requests', { preHandler: [requireCapability('profile.role.manage.self'), requireAccountStore] }, async (request) =>
+  envelope(await account.listOwnRequests(request.user.id)));
+app.get('/api/v1/me/consents', { preHandler: [requireSession, requireAccountStore] }, async (request) =>
+  envelope(await account.listConsents(request.user.id)));
+app.delete('/api/v1/me', { preHandler: [requireSession, requireAccountStore] }, async (request, reply) => {
+  const result = await account.deleteSelf(request.user.id, request.body?.password);
+  clearSessionCookie(reply);
+  return envelope(result);
+});
+
 app.get('/api/v1/me/profile', { preHandler: [requireCapability('profile.investment.manage.self'), requireInvestmentProfileStore] }, async (request) =>
   envelope(await investmentProfiles.get(request.user.id)));
 app.put('/api/v1/me/profile', { preHandler: [requireCapability('profile.investment.manage.self'), requireInvestmentProfileStore] }, async (request) =>
@@ -512,6 +549,19 @@ app.post('/api/v1/admin/users/:userId/reset-password', { preHandler: [requireCap
 });
 app.post('/api/v1/admin/users/:userId/revoke-sessions', { preHandler: [requireCapability('admin.users.manage'), requireAdminStore, validateUserId] }, async (request) => {
   return envelope(await adminUsers.revokeSessions(request.user.id, request.params.userId));
+});
+app.get('/api/v1/admin/role-requests', { preHandler: [requireCapability('admin.role-requests.manage'), requireAccountStore] }, async (request, reply) => {
+  const status = request.query.status;
+  if (status !== undefined && !['pending_review', 'approved', 'rejected'].includes(status)) {
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'status không hợp lệ.');
+  }
+  return envelope(await account.listRequestsAdmin({ status }));
+});
+app.post('/api/v1/admin/role-requests/:id/approve', { preHandler: [requireCapability('admin.role-requests.manage'), requireAccountStore, validateUuid] }, async (request) => {
+  return envelope(await account.approveRequest(request.user.id, request.params.id));
+});
+app.post('/api/v1/admin/role-requests/:id/reject', { preHandler: [requireCapability('admin.role-requests.manage'), requireAccountStore, validateUuid] }, async (request) => {
+  return envelope(await account.rejectRequest(request.user.id, request.params.id, request.body?.note));
 });
 app.get('/api/v1/admin/audit', { preHandler: [requireCapability('admin.audit.read'), requireAdminStore] }, async (request, reply) => {
   const limit = Number(request.query.limit ?? 50);

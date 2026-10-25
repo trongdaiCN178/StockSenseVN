@@ -161,6 +161,14 @@ export const mockApi = {
       return { user: updated };
     },
   },
+  account: {
+    async upgradeToTrader() { throw new Error('Nâng cấp vai trò cần API thật kết nối PostgreSQL.'); },
+    async downgradeToRetail() { throw new Error('Hạ cấp vai trò cần API thật kết nối PostgreSQL.'); },
+    async requestAnalyst() { throw new Error('Yêu cầu quyền Analyst cần API thật kết nối PostgreSQL.'); },
+    async myRoleRequests() { await delay(); return { items: [] }; },
+    async consents() { await delay(); return { items: [] }; },
+    async deleteAccount() { throw new Error('Xóa tài khoản cần API thật kết nối PostgreSQL.'); },
+  },
   market: {
     async status() { await delay(); return structuredClone(marketMock.status); },
     async summary() { await delay(); return structuredClone(marketMock.summary); },
@@ -538,5 +546,10 @@ export const mockApi = {
       { key: 'notifications.deliver', label: 'Deliver pending notifications', description: 'Send queued email and Telegram notifications.' },
     ], runs: [], workers: [] }; },
     async enqueueJob() { throw new Error('Hàng đợi worker cần API thật, PostgreSQL và migration 016.'); },
+    roleRequests: {
+      async list() { await delay(); return { items: [] }; },
+      async approve() { throw new Error('Duyệt yêu cầu nâng quyền cần API thật kết nối PostgreSQL.'); },
+      async reject() { throw new Error('Từ chối yêu cầu nâng quyền cần API thật kết nối PostgreSQL.'); },
+    },
   },
 };

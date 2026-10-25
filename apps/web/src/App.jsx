@@ -23,6 +23,8 @@ import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage.jsx';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage.jsx';
 import { RegisterPage } from './features/auth/RegisterPage.jsx';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage.jsx';
+import { AccountPage } from './features/settings/AccountPage.jsx';
+import { AdminRoleRequestsPage } from './features/admin/AdminRoleRequestsPage.jsx';
 
 function usePathname() {
   const [pathname, setPathname] = useState(window.location.pathname);
@@ -75,6 +77,8 @@ export function App() {
   const isInvestmentProfile = pathname === '/settings/investment';
   const isChat = pathname === '/chat';
   const isNotificationSettings = pathname === '/settings/notifications';
+  const isAccount = pathname === '/settings/account';
+  const isAdminRoleRequests = pathname === '/admin/role-requests';
 
   return (
     <AppShell>
@@ -90,6 +94,10 @@ export function App() {
         <RequireCapability capability="admin.notifications.read"><AdminNotificationsPage /></RequireCapability>
       ) : isAdminOpsEvents ? (
         <RequireCapability capability="admin.ops-events.read"><AdminOpsEventsPage /></RequireCapability>
+      ) : isAdminRoleRequests ? (
+        <RequireCapability capability="admin.role-requests.manage"><AdminRoleRequestsPage /></RequireCapability>
+      ) : isAccount ? (
+        <RequireCapability capability="profile.role.manage.self"><AccountPage /></RequireCapability>
       ) : isWatchlist ? (
         <RequireCapability capability="watchlist.manage.self"><WatchlistPage /></RequireCapability>
       ) : isAlerts ? (

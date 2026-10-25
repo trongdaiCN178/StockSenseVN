@@ -17,6 +17,14 @@ export const realApi = {
     verifyEmail: (token) => request('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
     resendVerification: (email) => request('/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email }) }),
   },
+  account: {
+    upgradeToTrader: (payload) => request('/me/upgrade/trader', { method: 'POST', body: JSON.stringify(payload) }),
+    downgradeToRetail: () => request('/me/downgrade/retail', { method: 'POST' }),
+    requestAnalyst: (payload) => request('/me/role-requests', { method: 'POST', body: JSON.stringify(payload) }),
+    myRoleRequests: () => request('/me/role-requests'),
+    consents: () => request('/me/consents'),
+    deleteAccount: (password) => request('/me', { method: 'DELETE', body: JSON.stringify({ password }) }),
+  },
   market: {
     status: () => request('/market/status'),
     summary: () => request('/market/summary'),
@@ -116,5 +124,10 @@ export const realApi = {
     opsEvents: () => request('/admin/ops-events?limit=50'),
     jobs: () => request('/admin/jobs'),
     enqueueJob: (job) => request(`/admin/jobs/${encodeURIComponent(job)}/run`, { method: 'POST' }),
+    roleRequests: {
+      list: (status) => request(`/admin/role-requests${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+      approve: (id) => request(`/admin/role-requests/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
+      reject: (id, note) => request(`/admin/role-requests/${encodeURIComponent(id)}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
+    },
   },
 };

@@ -2,8 +2,8 @@ import { createHash, randomBytes } from 'node:crypto';
 import { hashPassword, verifyPassword } from './password.js';
 import { ApiError } from '../errors.js';
 
-const TOKEN_TTL_MS = 8 * 60 * 60 * 1000;
-const MAX_FAILED_LOGINS = 8;
+const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_FAILED_LOGINS = 5;
 const dummyPasswordHash = await hashPassword('not-a-valid-user-password');
 
 function sessionTokenHash(token) {
