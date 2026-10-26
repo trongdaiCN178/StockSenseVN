@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { navigate } from '../../app/navigation.js';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_POLICY_TEXT } from '@stocksense/core/password';
+import { AuthLayout } from './AuthLayout.jsx';
 
 export function RegisterPage() {
   const [form, setForm] = useState({ email: '', fullName: '', password: '', confirmPassword: '' });
@@ -40,7 +41,7 @@ export function RegisterPage() {
     }
   }
 
-  return <main className="public-auth-page"><form className="card public-auth-card" onSubmit={submit}>
+  return <AuthLayout><form className="card public-auth-card" onSubmit={submit}>
     <span className="eyebrow">STOCKSENSE VN</span>
     <h1>Đăng ký tài khoản</h1>
     <p className="muted">Tài khoản mới ở vai trò Nhà đầu tư cá nhân. Bạn có thể nâng cấp quyền sau khi xác thực email.</p>
@@ -85,5 +86,5 @@ export function RegisterPage() {
         <button className="btn pri" type="submit" disabled={busy}>{busy ? 'Đang gửi…' : 'Đăng ký'}</button>
       </>}
     <button className="text-button" type="button" onClick={() => navigate('/login')}>Quay lại đăng nhập</button>
-  </form></main>;
+  </form></AuthLayout>;
 }

@@ -1,35 +1,39 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/index.js';
 import { navigate } from '../../app/navigation.js';
-import { ForecastBadge } from '../../components/ForecastBadge.jsx';
 import { PriceChart } from './PriceChart.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { hasCapability } from '@stocksense/core/access';
+import { Disclaimer, Icon } from '../../app/icons.jsx';
+import { ForecastCard, addTradingDays } from '../../components/forecast.jsx';
 
 const money = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
-const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' });
+const dateTime = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' });
+const SENTIMENT = { positive: ['up', 'Tích cực'], neutral: ['neutral', 'Trung tính'], negative: ['down', 'Tiêu cực'] };
+const formatChange = (value) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(2).replace('.', ',')}%`;
+const changeClass = (value) => (value > 0 ? 'c-up' : value < 0 ? 'c-down' : 'c-hold');
 
 export function SymbolDetailPage({ symbol }) {
   const { user } = useAuth();
   const canExportHistory = hasCapability(user.role, 'history.csv.export') && import.meta.env.VITE_HISTORY_CSV_EXPORT_ENABLED === 'true';
+  const canWatch = hasCapability(user.role, 'watchlist.manage.self');
+  const canPlan = hasCapability(user.role, 'plans.manage.self');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [reportError, setReportError] = useState('');
-  const [tab, setTab] = useState('forecast');
+  const [actionError, setActionError] = useState('');
+  const [tab, setTab] = useState('fc');
   const [range, setRange] = useState('6m');
   const [newsFrom, setNewsFrom] = useState('');
   const [newsTo, setNewsTo] = useState('');
-  const canWatch = hasCapability(user.role, 'watchlist.manage.self');
-  const canPlan = hasCapability(user.role, 'plans.manage.self');
   const [watching, setWatching] = useState(false);
   const [watchBusy, setWatchBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
-    setLoading(true); setError('');
-    Promise.all([api.symbols.detail(symbol), api.symbols.prices(symbol, '6m'), api.symbols.news(symbol)])
-      .then(([detail, prices, news]) => { if (active) { setData({ detail, prices, news }); setRange('6m'); } })
+    setLoading(true); setError(''); setTab('fc'); setRange('6m');
+    Promise.all([api.symbols.detail(symbol), api.symbols.prices(symbol, '6m'), api.symbols.news(symbol), api.market.status().catch(() => null)])
+      .then(([detail, prices, news, status]) => { if (active) setData({ detail, prices, news, status }); })
       .catch((requestError) => { if (active) setError(requestError.message || 'Không tải được dữ liệu mã cổ phiếu.'); })
       .finally(() => { if (active) setLoading(false); });
     if (canWatch) api.watchlist.list().then((result) => { if (active) setWatching(result.items.some((item) => item.symbol === symbol)); }).catch(() => {});
@@ -39,73 +43,89 @@ export function SymbolDetailPage({ symbol }) {
   async function changeRange(nextRange) {
     setRange(nextRange);
     try { const prices = await api.symbols.prices(symbol, nextRange); setData((current) => ({ ...current, prices })); }
-    catch (requestError) { setReportError(requestError.message || 'Không tải được lịch sử giá.'); }
+    catch (requestError) { setActionError(requestError.message || 'Không tải được lịch sử giá.'); }
   }
-
   // FR-M5-01: watchlist toggle from the symbol page.
   async function toggleWatch() {
-    setWatchBusy(true); setReportError('');
+    setWatchBusy(true); setActionError('');
     try {
       if (watching) await api.watchlist.remove(symbol); else await api.watchlist.add(symbol);
       setWatching(!watching);
-    } catch (requestError) { setReportError(requestError.message || 'Không cập nhật được watchlist.'); }
+    } catch (requestError) { setActionError(requestError.message || 'Không cập nhật được watchlist.'); }
     finally { setWatchBusy(false); }
   }
 
-  if (loading) return <section className="content"><div className="card loading-card">Đang tải dữ liệu {symbol}…</div></section>;
-  if (error) return <section className="content"><div className="card"><button className="text-button" onClick={() => navigate('/overview')}>← Về tổng quan</button><div className="note bad" role="alert">{error}</div></div></section>;
+  if (loading) return <main className="content"><div className="card muted">Đang tải dữ liệu {symbol}…</div></main>;
+  if (error) return <main className="content"><div><button className="btn sm" type="button" onClick={() => navigate('/overview')}>← Tổng quan</button></div><div className="note bad" role="alert">{error}</div></main>;
   if (!data) return null;
 
-  const { detail, prices, news } = data;
+  const { detail, prices, news, status } = data;
+  const t2 = detail.forecasts?.t2; const t5 = detail.forecasts?.t5;
+  const conflict = (t2?.label === 'up' && t5?.label === 'down') || (t2?.label === 'down' && t5?.label === 'up');
+  const labelText = { up: 'Tăng', hold: 'Đi ngang', down: 'Giảm' };
   // FR-M4-03: filter news by publication date (ICT calendar day).
   const newsDay = (item) => new Date(item.publishedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
   const filteredNews = news.items.filter((item) => (!newsFrom || newsDay(item) >= newsFrom) && (!newsTo || newsDay(item) <= newsTo));
   const rangeSwitch = <div className="seg" role="group" aria-label="Khoảng thời gian">{[['1m', '1 tháng'], ['3m', '3 tháng'], ['6m', '6 tháng']].map(([value, label]) => <button key={value} type="button" className={range === value ? 'on' : ''} onClick={() => changeRange(value)}>{label}</button>)}</div>;
-  return <section className="content symbol-detail">
-    <button className="text-button back-link" onClick={() => navigate('/overview')}>← Tổng quan thị trường</button>
-    <header className="pagehead detail-head">
-      <div><span className="eyebrow">CHI TIẾT MÃ · {detail.exchange}{detail.industry ? ` · ${detail.industry}` : ''}</span><h1>{detail.symbol} <span className="muted">· {detail.name}</span></h1>
-        <p className="detail-price">{money.format(detail.closePrice)} ₫ <span className={detail.changePercent >= 0 ? 'c-up' : 'c-down'}>{detail.changePercent > 0 ? '+' : ''}{detail.changePercent.toFixed(2)}%</span></p>
-        <div className="pagehead-actions">
-          {canWatch && <button className={`btn sm ${watching ? '' : 'pri'}`} type="button" disabled={watchBusy} onClick={toggleWatch}>{watching ? '★ Bỏ theo dõi' : '☆ Thêm vào watchlist'}</button>}
-          {canPlan && <button className="btn sm" type="button" onClick={() => navigate(`/plans?symbol=${encodeURIComponent(symbol)}`)}>Lập kế hoạch giao dịch</button>}
-          <button className="btn sm" type="button" onClick={() => api.reports.symbol(symbol).catch((e) => setReportError(e.message))}>Xuất báo cáo PDF</button>
-          {canExportHistory && <button className="btn sm" type="button" onClick={() => api.symbols.historyCsv(symbol).catch((e) => setReportError(e.message))}>Xuất lịch sử CSV</button>}</div>
+  const priceDate = detail.priceDate ? new Date(`${detail.priceDate}T00:00:00`).toLocaleDateString('vi-VN') : '—';
+
+  return <main className="content">
+    <div><button className="btn sm" type="button" onClick={() => navigate('/overview')}>← Tổng quan</button></div>
+    <div className="dhead">
+      <div><div className="small muted">{detail.exchange}{detail.industry ? ` · ${detail.industry}` : ''}</div>
+        <h1 style={{ fontSize: 28 }}>{detail.symbol} <span style={{ fontWeight: 500, fontSize: 16 }} className="muted">{detail.name}</span></h1>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', marginTop: 4, flexWrap: 'wrap' }}><span className="px num">{money.format(detail.closePrice)}</span><span className={`num ${changeClass(detail.changePercent)}`}>{formatChange(detail.changePercent)}</span><span className="small muted">đóng cửa {priceDate} · {detail.priceDataStatus === 'live' ? 'giá SSI' : 'giá minh họa'}</span></div></div>
+      <div className="actions">
+        {canWatch && <button className="btn" type="button" disabled={watchBusy} onClick={toggleWatch}><Icon name={watching ? 'star' : 'plus'} />{watching ? 'Đang theo dõi' : 'Thêm watchlist'}</button>}
+        {canPlan && <button className="btn" type="button" onClick={() => navigate(`/plans?symbol=${encodeURIComponent(symbol)}`)}><Icon name="target" />Lập Trade Plan</button>}
+        <button className="btn" type="button" onClick={() => api.reports.symbol(symbol).catch((e) => setActionError(e.message))}><Icon name="pdf" />Xuất PDF</button>
+        {canExportHistory && <button className="btn" type="button" onClick={() => api.symbols.historyCsv(symbol).catch((e) => setActionError(e.message))}><Icon name="dl" />CSV giá</button>}
       </div>
-      <span className={`chip ${detail.priceDataStatus === 'live' ? 'up' : 'info'}`}>{detail.priceDataStatus === 'live' ? 'GIÁ SSI' : 'GIÁ MẪU'}</span>
-    </header>
-    {reportError && <div className="note bad" role="alert">{reportError}</div>}
-    <div className="note warn demo-disclaimer"><strong>Nguồn dữ liệu:</strong> {detail.priceDataStatus === 'live' ? `Giá thị trường từ SSI cập nhật đến ${detail.priceDate}.` : 'Giá đang dùng dữ liệu minh họa.'} Dự báo và tin tức hiện vẫn là dữ liệu mẫu.</div>
-    <nav className="detail-tabs" aria-label="Nội dung chi tiết mã">
-      {[['forecast', 'Dự báo'], ['news', 'Tin tức'], ['history', 'Lịch sử'], ['audit', 'Phân tích mô hình']].map(([id, label]) => <button key={id} type="button" className={tab === id ? 'on' : ''} disabled={!['forecast', 'news', 'history'].includes(id)} onClick={() => setTab(id)}>{label}{!['forecast', 'news', 'history'].includes(id) && <small>Sắp có</small>}</button>)}
-    </nav>
-    {tab === 'history' ? <article className="card detail-history">
-      <div className="card-h"><div><h2>Lịch sử giá</h2><p className="small muted">Giá đóng cửa · {prices.latestDate ? `cập nhật đến ${prices.latestDate}` : 'chưa có ngày cập nhật'}</p></div>
-        <div className="watchlist-actions">{rangeSwitch}<span className={`chip ${prices.sourceStatus === 'live' ? 'up' : 'info'}`}>{prices.sourceStatus === 'live' ? 'SSI' : prices.sourceStatus === 'mixed' ? 'DỮ LIỆU TRỘN' : 'MẪU'}</span></div></div>
-      <PriceChart items={prices.items} />
-      {prices.items.length === 0 ? <div className="note">Chưa có dữ liệu lịch sử giá cho mã {symbol}.</div> : <div className="history-table-wrap">
-        <table className="history-table">
-          <thead><tr><th>Ngày</th><th>Đóng cửa</th><th>Khối lượng</th></tr></thead>
-          <tbody>{prices.items.slice().reverse().map((item) => <tr key={item.date}><td>{item.date}</td><td>{money.format(item.close)} ₫</td><td>{item.volume == null ? '—' : money.format(item.volume)}</td></tr>)}</tbody>
-        </table>
-      </div>}
-    </article> : tab === 'forecast' ? <div className="detail-grid">
-      <article className="card detail-forecast"><div className="card-h"><div><h2>Dự báo ngắn hạn</h2><p className="small muted">Kết quả batch gần nhất</p></div><span className="tag">T+2</span></div>
-        <div className="forecast-result"><ForecastBadge label={detail.forecasts.t2.label} /><span className="muted">Độ tin cậy: <b>{detail.forecasts.t2.confidence}</b></span></div>
-        <div className="probability-list">{[['up', 'Tăng'], ['hold', 'Đi ngang'], ['down', 'Giảm']].map(([key, label]) => <div className="probability-row" key={key}><span>{label}</span><div className="prob-track"><i className={`prob-fill ${key}`} style={{ width: `${detail.forecasts.t2.probabilities[key] * 100}%` }} /></div><b>{Math.round(detail.forecasts.t2.probabilities[key] * 100)}%</b></div>)}</div>
-        <p className="small muted">Xác suất là ước lượng của mô hình, không phải cam kết kết quả.</p>
-      </article>
-      <article className="card"><div className="card-h"><div><h2>Diễn biến giá</h2><p className="small muted">Giá đóng cửa và khối lượng · {prices.latestDate ? `cập nhật đến ${prices.latestDate}` : 'chưa có ngày cập nhật'}</p></div>{rangeSwitch}</div><PriceChart items={prices.items} /></article>
-      <article className="card detail-news"><div className="card-h"><div><h2>Tin liên quan</h2><p className="small muted">Thông tin minh họa theo mã {symbol}</p></div><button className="text-button" onClick={() => setTab('news')}>Xem tất cả →</button></div>
-        {news.items.length === 0 ? <div className="note">Chưa có tin tức nào cho mã {symbol}.</div> : news.items.slice(0, 2).map((item) => <NewsItem key={item.id} item={item} />)}
-      </article>
-    </div> : <article className="card news-list"><div className="card-h"><div><h2>Tin liên quan đến {symbol}</h2><p className="small muted">Mới nhất trước · kiểm tra nguồn và thời điểm công bố trước khi sử dụng.</p></div>
-        <div className="news-filters"><label className="field"><span>Từ ngày</span><input type="date" value={newsFrom} max={newsTo || undefined} onChange={(e) => setNewsFrom(e.target.value)} /></label><label className="field"><span>Đến ngày</span><input type="date" value={newsTo} min={newsFrom || undefined} onChange={(e) => setNewsTo(e.target.value)} /></label>{(newsFrom || newsTo) && <button className="btn sm" type="button" onClick={() => { setNewsFrom(''); setNewsTo(''); }}>Bỏ lọc</button>}</div></div>
-      {news.items.length === 0 ? <div className="note">Chưa có tin tức nào cho mã {symbol}.</div> : filteredNews.length === 0 ? <div className="note">Không có tin trong khoảng ngày đã chọn.</div> : filteredNews.map((item) => <NewsItem key={item.id} item={item} />)}</article>}
-    <p className="disclaimer">StockSense VN là công cụ tham khảo và nghiên cứu, không phải dịch vụ tư vấn đầu tư. Dự báo không cam kết lợi nhuận và không tự động đặt lệnh.</p>
-  </section>;
+    </div>
+    {actionError && <div className="note bad" role="alert">{actionError}</div>}
+    <div className="tabs" role="tablist">{[['fc', 'Dự báo'], ['news', 'Tin tức'], ['hist', 'Lịch sử giá']].map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
+      <button type="button" disabled title="Cần mô hình AI">Giải thích mô hình <span className="tag">Sắp có</span></button></div>
+
+    {tab === 'fc' && <>
+      {conflict && <div className="note warn"><b>Mâu thuẫn kỳ hạn.</b> T+2 dự báo {labelText[t2.label]}, T+5 dự báo {labelText[t5.label]}. Nên đọc cả hai thẻ trước khi quyết định.</div>}
+      {status?.state === 'demo' && <div className="note info">Dự báo hiển thị là <b>dữ liệu mẫu</b> trong khi mô hình AI chưa triển khai; giá thị trường {detail.priceDataStatus === 'live' ? 'lấy từ SSI' : 'là dữ liệu minh họa'}.</div>}
+      <div className="fcs"><ForecastCard horizon="t2" forecast={t2} dueDate={addTradingDays(status?.dataDate, 2)} /><ForecastCard horizon="t5" forecast={t5} dueDate={addTradingDays(status?.dataDate, 5)} /></div>
+      <div className="grid g2">
+        <section className="card"><div className="card-h"><h2>Tin mới nhất</h2><button className="btn sm" type="button" onClick={() => setTab('news')}>Xem tất cả</button></div>
+          <div className="news">{news.items.slice(0, 3).map((item) => <NewsItem key={item.id} item={item} />)}{!news.items.length && <p className="muted">Chưa có tin tức cho mã {symbol}.</p>}</div></section>
+        <section className="card"><div className="card-h"><h2>Trạng thái dữ liệu</h2></div>
+          <dl className="kv"><dt>Giá</dt><dd>{detail.priceDataStatus === 'live' ? <span className="chip up">SSI · {priceDate}</span> : <span className="chip hold">Dữ liệu minh họa</span>}</dd>
+            <dt>Tin tức</dt><dd>{news.items.length ? <span className="chip up">{news.items.length} bài</span> : <span className="chip hold">Thiếu tin</span>}</dd>
+            <dt>Dự báo</dt><dd>{status?.state === 'demo' ? <span className="chip hold">Dữ liệu mẫu</span> : <span className="chip up">Mô hình {status?.modelVersion}</span>}</dd>
+            <dt>Batch</dt><dd className="num">{status?.batchCompletedAt ? dateTime.format(new Date(status.batchCompletedAt)) : '—'}</dd></dl>
+          <div className="small muted" style={{ marginTop: 12 }}>Phần “Vì sao?” và “Điều gì có thể làm dự báo sai” sẽ có khi mô hình AI và giải thích (SHAP) sẵn sàng.</div></section>
+      </div>
+      <section className="card chart"><div className="card-h"><h2>Giá và khối lượng</h2>{rangeSwitch}</div><PriceChart items={prices.items} /></section>
+      <Disclaimer />
+    </>}
+
+    {tab === 'news' && <section className="card"><div className="card-h"><h2>Tin liên quan</h2>
+      <div className="actions news-filters"><div className="field"><label htmlFor="news-from">Từ ngày</label><input id="news-from" type="date" value={newsFrom} max={newsTo || undefined} onChange={(e) => setNewsFrom(e.target.value)} /></div>
+        <div className="field"><label htmlFor="news-to">Đến ngày</label><input id="news-to" type="date" value={newsTo} min={newsFrom || undefined} onChange={(e) => setNewsTo(e.target.value)} /></div>
+        {(newsFrom || newsTo) && <button className="btn sm" type="button" onClick={() => { setNewsFrom(''); setNewsTo(''); }}>Bỏ lọc</button>}</div></div>
+      <div className="news">{filteredNews.map((item) => <NewsItem key={item.id} item={item} />)}
+        {!news.items.length ? <p className="muted">Chưa có tin tức nào cho mã {symbol}.</p> : !filteredNews.length && <p className="muted">Không có tin trong khoảng ngày đã chọn.</p>}</div>
+      <div className="small muted" style={{ marginTop: 8 }}>Mới nhất trước. Hệ thống chỉ hiển thị tiêu đề, sapo và link gốc. Nhãn sắc thái sẽ chính xác khi mô hình sentiment sẵn sàng.</div>
+    </section>}
+
+    {tab === 'hist' && <>
+      <section className="card chart"><div className="card-h"><h2>Lịch sử giá</h2>{rangeSwitch}</div><PriceChart items={prices.items} /></section>
+      <section className="card"><div className="card-h"><h2>Giá đóng cửa theo phiên</h2><span className="small muted">{prices.sourceStatus === 'live' ? 'Nguồn SSI' : 'Dữ liệu minh họa'}</span></div>
+        <div className="tw" style={{ maxHeight: 420, overflowY: 'auto' }}><table><thead><tr><th>Ngày</th><th className="r">Đóng cửa</th><th className="r">Khối lượng</th></tr></thead>
+          <tbody>{prices.items.slice().reverse().map((item) => <tr key={item.date}><td className="num">{new Date(`${item.date}T00:00:00`).toLocaleDateString('vi-VN')}</td><td className="r num">{money.format(item.close)}</td><td className="r num">{item.volume == null ? '—' : money.format(item.volume)}</td></tr>)}
+            {!prices.items.length && <tr><td colSpan="3" className="muted">Chưa có dữ liệu giá.</td></tr>}</tbody></table></div>
+      </section>
+    </>}
+  </main>;
 }
 
 function NewsItem({ item }) {
-  return <article className="news-item"><div className="news-meta"><span>{item.source}</span><time dateTime={item.publishedAt}>{dateTime.format(new Date(item.publishedAt))}</time></div><h3>{item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.title}</a> : item.title}</h3><p>{item.summary}</p></article>;
+  const [tone, text] = SENTIMENT[item.sentiment] ?? SENTIMENT.neutral;
+  return <article><h4>{item.title}</h4><span className={`chip ${tone}`} style={{ gridRow: 'span 2', alignSelf: 'start' }}>{text}</span><p>{item.summary}</p>
+    <div className="meta">{item.source} · <span className="num">{dateTime.format(new Date(item.publishedAt))}</span>{item.url && <> · <a href={item.url} target="_blank" rel="noopener noreferrer">Đọc bài gốc ↗</a></>}</div></article>;
 }

@@ -26,6 +26,21 @@ import { VerifyEmailPage } from './features/auth/VerifyEmailPage.jsx';
 import { AccountPage } from './features/settings/AccountPage.jsx';
 import { AdminRoleRequestsPage } from './features/admin/AdminRoleRequestsPage.jsx';
 import { AlertsPage } from './features/alerts/AlertsPage.jsx';
+import { TabbedHub } from './app/TabbedHub.jsx';
+
+const SETTINGS_TABS = [
+  { path: '/settings/notifications', label: 'Kênh thông báo', capability: 'notifications.channels.manage.self', component: NotificationSettingsPage },
+  { path: '/settings/investment', label: 'Hồ sơ đầu tư', capability: 'profile.investment.manage.self', component: InvestmentProfilePage },
+  { path: '/settings/account', label: 'Tài khoản & vai trò', capability: 'account.manage.self', component: AccountPage },
+  { path: '/settings/password', label: 'Đổi mật khẩu', capability: null, component: ChangePasswordPage },
+];
+const ADMIN_TABS = [
+  { path: '/admin/users', label: 'Người dùng & audit', capability: 'admin.users.manage', component: AdminUsersPage },
+  { path: '/admin/role-requests', label: 'Yêu cầu nâng quyền', capability: 'admin.role-requests.manage', component: AdminRoleRequestsPage },
+  { path: '/admin/jobs', label: 'Nguồn dữ liệu & job', capability: 'admin.jobs.read', component: AdminJobsPage },
+  { path: '/admin/notifications', label: 'Nhật ký thông báo', capability: 'admin.notifications.read', component: AdminNotificationsPage },
+  { path: '/admin/ops-events', label: 'Sự kiện vận hành', capability: 'admin.ops-events.read', component: AdminOpsEventsPage },
+];
 
 function usePathname() {
   const [pathname, setPathname] = useState(window.location.pathname);
@@ -42,7 +57,7 @@ export function App() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (user && !user.must_change_password && ['/login', '/forgot-password', '/reset-password', '/register', '/verify-email'].includes(pathname)) navigate('/overview');
+    if (user && !user.must_change_password && ['/login', '/forgot-password', '/reset-password', '/register', '/verify-email'].includes(pathname)) navigate(user.role === 'admin' ? '/admin' : '/overview');
   }, [user, pathname]);
 
   if (loading) {
@@ -64,62 +79,31 @@ export function App() {
 
   const symbolMatch = pathname.match(/^\/symbols\/([A-Za-z0-9.-]+)\/?$/);
   const isOverview = pathname === '/' || pathname === '/overview';
-  const isPasswordPage = pathname === '/settings/password';
-  const isAdminUsers = pathname === '/admin/users';
-  const isAdminJobs = pathname === '/admin/jobs';
-  const isAdminNotifications = pathname === '/admin/notifications';
-  const isAdminOpsEvents = pathname === '/admin/ops-events';
-  const isWatchlist = pathname === '/watchlist';
-  const isAlerts = pathname === '/alerts';
-  const isScreener = pathname === '/screener';
-  const isPortfolio = pathname === '/portfolio';
-  const isPlans = pathname === '/plans';
-  const isJournal = pathname === '/journal';
-  const isInvestmentProfile = pathname === '/settings/investment';
-  const isChat = pathname === '/chat';
-  const isNotificationSettings = pathname === '/settings/notifications';
-  const isAccount = pathname === '/settings/account';
-  const isAdminRoleRequests = pathname === '/admin/role-requests';
+  const routes = {
+    '/watchlist': ['watchlist.manage.self', WatchlistPage],
+    '/alerts': ['alerts.inbox.read.self', AlertsPage],
+    '/screener': ['screener.read', ScreenerPage],
+    '/portfolio': ['portfolio.manage.self', PortfolioPage],
+    '/plans': ['plans.manage.self', PlansPage],
+    '/journal': ['journal.read.self', JournalPage],
+    '/chat': ['chat.use.self', ChatPage],
+  };
+  const route = routes[pathname];
+  const Page = route?.[1];
 
   return (
     <AppShell>
       {symbolMatch ? (
         <RequireCapability capability="symbols.read"><SymbolDetailPage symbol={decodeURIComponent(symbolMatch[1]).toUpperCase()} /></RequireCapability>
-      ) : isPasswordPage ? (
-        <ChangePasswordPage />
-      ) : isAdminUsers ? (
-        <RequireCapability capability="admin.users.manage"><AdminUsersPage /></RequireCapability>
-      ) : isAdminJobs ? (
-        <RequireCapability capability="admin.jobs.read"><AdminJobsPage /></RequireCapability>
-      ) : isAdminNotifications ? (
-        <RequireCapability capability="admin.notifications.read"><AdminNotificationsPage /></RequireCapability>
-      ) : isAdminOpsEvents ? (
-        <RequireCapability capability="admin.ops-events.read"><AdminOpsEventsPage /></RequireCapability>
-      ) : isAdminRoleRequests ? (
-        <RequireCapability capability="admin.role-requests.manage"><AdminRoleRequestsPage /></RequireCapability>
-      ) : isAccount ? (
-        <RequireCapability capability="account.manage.self"><AccountPage /></RequireCapability>
-      ) : isWatchlist ? (
-        <RequireCapability capability="watchlist.manage.self"><WatchlistPage /></RequireCapability>
-      ) : isAlerts ? (
-        <RequireCapability capability="alerts.inbox.read.self"><AlertsPage /></RequireCapability>
-      ) : isScreener ? (
-        <RequireCapability capability="screener.read"><ScreenerPage /></RequireCapability>
-      ) : isPortfolio ? (
-        <RequireCapability capability="portfolio.manage.self"><PortfolioPage /></RequireCapability>
-      ) : isPlans ? (
-        <RequireCapability capability="plans.manage.self"><PlansPage /></RequireCapability>
-      ) : isJournal ? (
-        <RequireCapability capability="journal.read.self"><JournalPage /></RequireCapability>
-      ) : isInvestmentProfile ? (
-        <RequireCapability capability="profile.investment.manage.self"><InvestmentProfilePage /></RequireCapability>
-      ) : isChat ? (
-        <RequireCapability capability="chat.use.self"><ChatPage /></RequireCapability>
-      ) : isNotificationSettings ? (
-        <RequireCapability capability="notifications.channels.manage.self"><NotificationSettingsPage /></RequireCapability>
+      ) : pathname === '/settings' || pathname.startsWith('/settings/') ? (
+        <TabbedHub title="Cài đặt" description="Kênh nhận cảnh báo, hồ sơ đầu tư và tài khoản của bạn." tabs={SETTINGS_TABS} pathname={pathname} />
+      ) : pathname === '/admin' || pathname.startsWith('/admin/') ? (
+        <TabbedHub title="Quản trị" description="Người dùng, nguồn dữ liệu, thông báo và nhật ký vận hành." tabs={ADMIN_TABS} pathname={pathname} />
+      ) : route ? (
+        <RequireCapability capability={route[0]}><Page /></RequireCapability>
       ) : isOverview ? (
         <RequireCapability capability="market.read"><OverviewPage /></RequireCapability>
-      ) : <section className="content"><div className="card access-denied"><span className="access-denied-code">404</span><h1>Không tìm thấy trang</h1><a className="btn primary" href="/overview" onClick={(event) => { event.preventDefault(); navigate('/overview'); }}>Về tổng quan</a></div></section>}
+      ) : <section className="content"><div className="empty403"><div className="code">404</div><h2>Không tìm thấy trang</h2><button className="btn pri" type="button" onClick={() => navigate('/overview')}>Về trang chính</button></div></section>}
     </AppShell>
   );
 }

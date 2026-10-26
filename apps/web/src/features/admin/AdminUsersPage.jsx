@@ -119,5 +119,6 @@ export function AdminUsersPage() {
 function auditLabel(event) {
   return ({ 'user.created': 'Tạo tài khoản', 'user.updated': 'Cập nhật tài khoản', 'user.password_reset': 'Đặt lại mật khẩu', 'user.sessions_revoked': 'Thu hồi phiên',
     'user.role_request_approved': 'Duyệt quyền Analyst', 'user.role_request_rejected': 'Từ chối quyền Analyst', 'user.self_upgrade': 'Tự nâng cấp Trader',
-    'user.self_downgrade': 'Tự hạ cấp', 'user.self_deleted': 'Tự xóa tài khoản', 'job.enqueued': 'Chạy tác vụ dữ liệu' })[event] || event;
+    'user.self_downgrade': 'Tự hạ cấp', 'user.self_deleted': 'Tự xóa tài khoản', 'job.enqueued': 'Chạy tác vụ dữ liệu',
+    'auth.email_verified': 'Xác thực email đăng ký', 'auth.password_reset': 'Tự đặt lại mật khẩu' })[event] || event;
 }

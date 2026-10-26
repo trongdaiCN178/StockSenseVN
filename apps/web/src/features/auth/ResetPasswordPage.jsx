@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/index.js';
 import { navigate } from '../../app/navigation.js';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_POLICY_TEXT } from '@stocksense/core/password';
+import { AuthLayout } from './AuthLayout.jsx';
 
 export function ResetPasswordPage() {
   const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '');
@@ -22,7 +23,7 @@ export function ResetPasswordPage() {
     finally { setBusy(false); }
   }
 
-  return <main className="public-auth-page"><section className="card public-auth-card">
+  return <AuthLayout><section className="card public-auth-card">
     <span className="eyebrow">STOCKSENSE VN</span><h1>Đặt lại mật khẩu</h1>
     {complete ? <><div className="note info" role="status">Mật khẩu đã được cập nhật. Các phiên đăng nhập khác đã bị thu hồi.</div><button className="btn pri" type="button" onClick={() => navigate('/login')}>Đến đăng nhập</button></>
       : <form onSubmit={submit}>
@@ -34,5 +35,5 @@ export function ResetPasswordPage() {
         <button className="btn pri" type="submit" disabled={busy || !token}>{busy ? 'Đang cập nhật…' : 'Đặt mật khẩu mới'}</button>
         <button className="text-button" type="button" onClick={() => navigate('/forgot-password')}>Yêu cầu liên kết khác</button>
       </form>}
-  </section></main>;
+  </section></AuthLayout>;
 }

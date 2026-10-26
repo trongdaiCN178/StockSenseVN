@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { ROLE_LABELS, ROLES } from '@stocksense/core/access';
 import { navigate } from '../../app/navigation.js';
 
 export function LoginPage() {
   const { login } = useAuth();
   const isMockMode = import.meta.env.VITE_API_MODE !== 'real';
-  const [form, setForm] = useState({ email: isMockMode ? 'retail@stocksense.vn' : '', password: isMockMode ? `${ROLES.RETAIL}12345678` : '', role: ROLES.RETAIL });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,66 +23,38 @@ export function LoginPage() {
   }
 
   return (
-    <main className="login-page">
-      <section className="login-brand-panel">
-        <div className="brand brand-inverse">
-          <span className="brand-mark">S</span>
-          <span><b>StockSense VN</b><small>Hệ thống hỗ trợ quyết định đầu tư</small></span>
+    <div className="login">
+      <div className="login-l">
+        <div className="brand"><div className="brand-mark" style={{ background: 'var(--accent-ink)', color: 'var(--accent)' }}>SS</div><div><b>StockSense VN</b></div></div>
+        <div>
+          <h1>Dự báo xu hướng T+2 và T+5 cho cổ phiếu HOSE, HNX</h1>
+          <p style={{ marginTop: 12, opacity: 0.85, maxWidth: '44ch' }}>Kết hợp chỉ báo tài chính, kỹ thuật và cảm xúc tin tức. Cập nhật mỗi ngày sau 15:30, kèm giải thích cho từng dự báo.</p>
         </div>
-        <div className="login-intro">
-          <span className="eyebrow">TỔNG QUAN THỊ TRƯỜNG · T+2 / T+5</span>
-          <h1>Dữ liệu rõ ràng cho quyết định có kỷ luật.</h1>
-          <p>Xem dự báo, xác suất và lý do trong một giao diện thống nhất.</p>
-        </div>
-        <p className="login-footnote">StockSense VN là công cụ tham khảo và nghiên cứu, không phải dịch vụ tư vấn đầu tư.</p>
-      </section>
-
-      <section className="login-form-panel">
+        <div className="small" style={{ opacity: 0.8 }}>Dự báo chỉ mang tính tham khảo, không phải khuyến nghị đầu tư.</div>
+      </div>
+      <div className="login-r">
         <form className="login-form" onSubmit={handleSubmit}>
-          <div>
-            <span className="eyebrow">CHÀO MỪNG BẠN</span>
-            <h2>Đăng nhập</h2>
-            <p className="muted">{isMockMode ? 'Dùng tài khoản demo để xem giao diện.' : 'Dùng tài khoản đã được cấp để đăng nhập.'}</p>
+          <h1>Đăng nhập</h1>
+          <div className="field">
+            <label htmlFor="lg-e">Email</label>
+            <input id="lg-e" type="email" placeholder="ban@example.com" autoComplete="username" required
+              value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
           </div>
-          {isMockMode && <div className="note info" role="note">
-            Đây là đăng nhập mock cho giai đoạn dựng giao diện. Chưa xác thực với backend.
-            <br />Mật khẩu demo: <strong className="num">{form.role}12345678</strong> (ví dụ: <strong className="num">admin12345678</strong>)
-          </div>}
-          <label className="field">
-            <span>Email</span>
-            <input
-              type="email"
-              autoComplete="username"
-              required
-              value={form.email}
-              onChange={(event) => setForm({ ...form, email: event.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Mật khẩu</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              required
-              value={form.password}
-              onChange={(event) => setForm({ ...form, password: event.target.value })}
-            />
-          </label>
-          {isMockMode && <label className="field">
-            <span>Vai trò demo</span>
-            <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value, email: `${event.target.value}@stocksense.vn`, password: `${event.target.value}12345678` })}>
-              {Object.values(ROLES).map((role) => <option value={role} key={role}>{ROLE_LABELS[role]}</option>)}
-            </select>
-          </label>}
+          <div className="field">
+            <label htmlFor="lg-p">Mật khẩu</label>
+            <input id="lg-p" type="password" autoComplete="current-password" required
+              value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+          </div>
           {error && <div className="note bad" role="alert">{error}</div>}
-          <button className="btn pri login-submit" type="submit" disabled={submitting}>
-            {submitting ? 'Đang đăng nhập…' : isMockMode ? 'Đăng nhập demo' : 'Đăng nhập'}
+          <button className="btn pri" type="submit" style={{ justifyContent: 'center', padding: 10 }} disabled={submitting}>
+            {submitting ? 'Đang đăng nhập…' : 'Đăng nhập'}
           </button>
-          {!isMockMode && import.meta.env.VITE_PASSWORD_RESET_ENABLED === 'true' && <button className="text-button" type="button" onClick={() => navigate('/forgot-password')}>Quên mật khẩu?</button>}
-          {!isMockMode && <button className="text-button" type="button" onClick={() => navigate('/register')}>Chưa có tài khoản? Đăng ký</button>}
-          {isMockMode && <p className="small muted">Vai trò được chọn chỉ phục vụ xem thử các menu theo quyền.</p>}
+          {!isMockMode && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            {import.meta.env.VITE_PASSWORD_RESET_ENABLED === 'true' && <button className="text-button" type="button" onClick={() => navigate('/forgot-password')}>Quên mật khẩu?</button>}
+            <button className="text-button" type="button" onClick={() => navigate('/register')}>Chưa có tài khoản? Đăng ký</button>
+          </div>}
         </form>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }

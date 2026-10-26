@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/index.js';
 import { navigate } from '../../app/navigation.js';
+import { AuthLayout } from './AuthLayout.jsx';
 
 export function VerifyEmailPage() {
   const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '');
@@ -35,7 +36,7 @@ export function VerifyEmailPage() {
     }
   }
 
-  return <main className="public-auth-page"><section className="card public-auth-card">
+  return <AuthLayout><section className="card public-auth-card">
     <span className="eyebrow">STOCKSENSE VN</span><h1>Xác thực email</h1>
 
     {status === 'verifying' && <p className="muted">Đang xác thực email…</p>}
@@ -59,5 +60,5 @@ export function VerifyEmailPage() {
       </form>
       <button className="text-button" type="button" onClick={() => navigate('/login')}>Quay lại đăng nhập</button>
     </>}
-  </section></main>;
+  </section></AuthLayout>;
 }
