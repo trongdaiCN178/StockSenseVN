@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../../api/index.js';
 import { navigate } from '../../app/navigation.js';
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_POLICY_TEXT } from '@stocksense/core/password';
+import { isStrongPassword, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_POLICY_TEXT } from '@stocksense/core/password';
 import { AuthLayout } from './AuthLayout.jsx';
 
 export function RegisterPage() {
@@ -15,6 +15,10 @@ export function RegisterPage() {
     event.preventDefault();
     setError('');
     setMessage('');
+    if (!isStrongPassword(form.password)) {
+      setError(PASSWORD_POLICY_TEXT);
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError('Mật khẩu xác nhận không khớp.');
       return;
