@@ -5,7 +5,7 @@ import { ApiError } from '../errors.js';
 const tokenHash = (token) => createHash('sha256').update(token).digest('hex');
 function rateKey(value) {
   const secret = process.env.AUTH_RATE_LIMIT_SECRET;
-  if (!secret || secret.length < 32) throw new ApiError(503, 'PASSWORD_RESET_NOT_CONFIGURED', 'Password reset security configuration is unavailable.');
+  if (!secret || secret.length < 32) throw new ApiError(503, 'PASSWORD_RESET_NOT_CONFIGURED', 'Cấu hình bảo mật cho đặt lại mật khẩu chưa sẵn sàng.');
   return createHmac('sha256', secret).update(value).digest('hex');
 }
 
@@ -64,7 +64,7 @@ export function createPasswordResetRepository(pool) {
           WHERE t.token_hash=$1 AND t.consumed_at IS NULL AND t.expires_at>now() AND u.is_active=true
           FOR UPDATE OF t,u`, [tokenHash(token)]);
         const record = rows[0];
-        if (!record) throw new ApiError(422, 'RESET_TOKEN_INVALID', 'This password reset link is invalid or expired.');
+        if (!record) throw new ApiError(422, 'RESET_TOKEN_INVALID', 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
         const passwordHash = await hashPassword(password);
         await client.query(`UPDATE users SET password_hash=$2,must_change_password=false,
           failed_login_count=0,locked_until=NULL,updated_at=now() WHERE id=$1`, [record.user_id,passwordHash]);

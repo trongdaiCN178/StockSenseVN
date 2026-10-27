@@ -164,14 +164,16 @@ function validateLevels({ side, entry_price, entry_price_max, stop_price, target
 export function validatePlan(input, canCalculateQuantity) {
   if (!input || typeof input !== 'object' || !/^[A-Z0-9.-]{1,12}$/.test(input.symbol ?? '') || !['long', 'short'].includes(input.side)) throw new ApiError(422, 'VALIDATION_ERROR', 'Kế hoạch cần mã cổ phiếu hợp lệ và hướng mua/bán.');
   if (!canCalculateQuantity && (Object.hasOwn(input, 'capital_vnd') || Object.hasOwn(input, 'risk_pct'))) throw new ApiError(403, 'FIELD_FORBIDDEN', 'Vai trò hiện tại không dùng được vốn và mức rủi ro.');
-  let calculation;
-  try {
-    calculation = calculateRiskReward({ side: input.side, entry_price: input.entry_price, stop_price: input.stop_price, target_price: input.target_price,
-      ...(canCalculateQuantity && input.capital_vnd != null ? { capital_vnd: input.capital_vnd, risk_pct: input.risk_pct } : {}) });
-  } catch (error) { throw new ApiError(422, 'VALIDATION_ERROR', error instanceof RangeError ? 'Giá cắt lỗ và giá mục tiêu phải nằm đúng phía so với giá vào.' : 'Giá vào, cắt lỗ, mục tiêu hoặc vốn không hợp lệ.'); }
   const entry = parsePrice(input.entry_price, 'Giá vào'); const stop = parsePrice(input.stop_price, 'Giá cắt lỗ'); const target = parsePrice(input.target_price, 'Giá mục tiêu');
   const entryMax = input.entry_price_max == null || input.entry_price_max === '' ? null : parsePrice(input.entry_price_max, 'Giá vào tối đa');
   validateLevels({ side: input.side, entry_price: entry, entry_price_max: entryMax, stop_price: stop, target_price: target });
+  // Size the position on the unfavourable edge of the entry zone, exactly as the plan form shows it.
+  const sizingEntry = input.side === 'long' ? entryMax ?? entry : entry;
+  let calculation;
+  try {
+    calculation = calculateRiskReward({ side: input.side, entry_price: sizingEntry, stop_price: stop, target_price: target,
+      ...(canCalculateQuantity && input.capital_vnd != null ? { capital_vnd: input.capital_vnd, risk_pct: input.risk_pct } : {}) });
+  } catch (error) { throw new ApiError(422, 'VALIDATION_ERROR', error instanceof RangeError ? 'Giá cắt lỗ và giá mục tiêu phải nằm đúng phía so với giá vào.' : 'Giá vào, cắt lỗ, mục tiêu hoặc vốn không hợp lệ.'); }
   const suggestedQuantity = calculation.max_quantity > 0 ? calculation.max_quantity : null;
   const quantity = input.quantity == null || input.quantity === '' ? suggestedQuantity : Number(input.quantity);
   if (quantity != null && (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1_000_000_000)) throw new ApiError(422, 'VALIDATION_ERROR', 'Khối lượng phải lớn hơn 0.');

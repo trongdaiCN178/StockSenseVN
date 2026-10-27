@@ -234,13 +234,13 @@ app.post('/api/v1/auth/forgot-password', {
 }, async (request, reply) => {
   const email = request.body?.email;
   if (typeof email !== 'string' || email.length > 254 || !/^\S+@\S+\.\S+$/.test(email.trim())) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'A valid email address is required.');
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Vui lòng nhập địa chỉ email hợp lệ.');
   }
   const appUrl = getPasswordResetAppUrl();
-  if (!appUrl || !emailProviderConfigured()) return fail(reply, request, 503, 'PASSWORD_RESET_UNAVAILABLE', 'Password reset is not configured.');
+  if (!appUrl || !emailProviderConfigured()) return fail(reply, request, 503, 'PASSWORD_RESET_UNAVAILABLE', 'Chức năng đặt lại mật khẩu chưa được cấu hình.');
   const issued = await passwordResets.issue(email, request.ip);
   reply.code(202).header('Cache-Control', 'no-store');
-  const response = reply.send(envelope({ message: 'If an active account exists, reset instructions may arrive by email.' }));
+  const response = reply.send(envelope({ message: 'Nếu email thuộc một tài khoản đang hoạt động, hướng dẫn đặt lại mật khẩu sẽ được gửi tới hộp thư. Liên kết có hiệu lực trong 30 phút.' }));
   if (issued) {
     const resetUrl = new URL('/reset-password', appUrl);
     resetUrl.hash = new URLSearchParams({ token: issued.token }).toString();
@@ -258,7 +258,7 @@ app.post('/api/v1/auth/forgot-password', {
 app.post('/api/v1/auth/reset-password', {
   config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
 }, async (request, reply) => {
-  if (!getPasswordResetAppUrl()) return fail(reply, request, 503, 'PASSWORD_RESET_UNAVAILABLE', 'Password reset is not configured.');
+  if (!getPasswordResetAppUrl()) return fail(reply, request, 503, 'PASSWORD_RESET_UNAVAILABLE', 'Chức năng đặt lại mật khẩu chưa được cấu hình.');
   const { token, new_password: newPassword } = request.body ?? {};
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{40,64}$/.test(token) || !isStrongPassword(newPassword)) {
     return fail(reply, request, 422, 'VALIDATION_ERROR', `Cần mã token hợp lệ. ${PASSWORD_POLICY_TEXT}`);
@@ -325,7 +325,7 @@ app.post('/api/v1/auth/resend-verification', {
 }, async (request, reply) => {
   const email = request.body?.email;
   if (typeof email !== 'string' || email.length > 254 || !/^\S+@\S+\.\S+$/.test(email.trim())) {
-    return fail(reply, request, 422, 'VALIDATION_ERROR', 'A valid email address is required.');
+    return fail(reply, request, 422, 'VALIDATION_ERROR', 'Vui lòng nhập địa chỉ email hợp lệ.');
   }
   const appUrl = getPublicAppUrl();
   if (!appUrl) return fail(reply, request, 503, 'REGISTRATION_UNAVAILABLE', 'Thiếu cấu hình PUBLIC_APP_URL.');
@@ -453,10 +453,10 @@ app.get('/api/v1/me/notification-preferences', { preHandler: [requireCapability(
 app.put('/api/v1/me/notification-preferences', { preHandler: [requireCapability('notifications.channels.manage.self'), requireNotificationPreferencesStore] }, async (request) => {
   const preferences = validateNotificationPreferences(request.body);
   const delivery = notificationDeliveryStatus();
-  if (preferences.email_enabled && !await notificationChannels.verifiedDestination(request.user.id, 'email')) throw new ApiError(409, 'EMAIL_NOT_VERIFIED', 'Verify your email channel before enabling it.');
-  if (preferences.telegram_enabled && !await notificationChannels.verifiedDestination(request.user.id, 'telegram')) throw new ApiError(409, 'TELEGRAM_NOT_VERIFIED', 'Link and verify Telegram before enabling it.');
-  if (preferences.email_enabled && !delivery.email.provider_configured) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'SMTP must be configured before enabling email delivery.');
-  if (preferences.telegram_enabled && !delivery.telegram.provider_configured) throw new ApiError(503, 'TELEGRAM_PROVIDER_NOT_CONFIGURED', 'Telegram bot must be configured before enabling delivery.');
+  if (preferences.email_enabled && !await notificationChannels.verifiedDestination(request.user.id, 'email')) throw new ApiError(409, 'EMAIL_NOT_VERIFIED', 'Hãy xác minh kênh email trước khi bật.');
+  if (preferences.telegram_enabled && !await notificationChannels.verifiedDestination(request.user.id, 'telegram')) throw new ApiError(409, 'TELEGRAM_NOT_VERIFIED', 'Hãy liên kết và xác minh Telegram trước khi bật.');
+  if (preferences.email_enabled && !delivery.email.provider_configured) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Máy chủ email (SMTP) chưa được cấu hình nên chưa bật được kênh email.');
+  if (preferences.telegram_enabled && !delivery.telegram.provider_configured) throw new ApiError(503, 'TELEGRAM_PROVIDER_NOT_CONFIGURED', 'Bot Telegram chưa được cấu hình nên chưa bật được kênh Telegram.');
   return envelope(await notificationPreferences.save(request.user.id, preferences, delivery));
 });
 app.get('/api/v1/notify/channels', { preHandler: [requireCapability('notifications.channels.manage.self'), requireNotificationPreferencesStore] }, async (request, reply) => {
@@ -473,11 +473,11 @@ app.post('/api/v1/notify/email/link', { preHandler: [requireCapability('notifica
 });
 app.post('/api/v1/notify/email/verify', { preHandler: [requireCapability('notifications.channels.manage.self'), requireNotificationPreferencesStore] }, async (request) => {
   const code = request.body?.code;
-  if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new ApiError(422, 'VALIDATION_ERROR', 'A six-digit email verification code is required.');
+  if (typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new ApiError(422, 'VALIDATION_ERROR', 'Vui lòng nhập mã xác minh gồm 6 chữ số.');
   return envelope({ channel: await notificationChannels.verifyEmail(request.user.id, hashVerificationCode(code)) });
 });
 app.post('/api/v1/notify/telegram/link', { preHandler: [requireCapability('notifications.channels.manage.self'), requireNotificationPreferencesStore] }, async (request) => {
-  if (!telegramProviderConfigured()) throw new ApiError(503, 'TELEGRAM_PROVIDER_NOT_CONFIGURED', 'Telegram bot username, token, and webhook secret must be configured.');
+  if (!telegramProviderConfigured()) throw new ApiError(503, 'TELEGRAM_PROVIDER_NOT_CONFIGURED', 'Bot Telegram chưa được cấu hình (username, token, webhook secret).');
   const code = randomBytes(24).toString('base64url'); const hash = hashVerificationCode(code);
   await notificationChannels.issue(request.user.id, 'telegram', null, hash, new Date(Date.now() + 10 * 60_000));
   await pool.query('UPDATE notification_preferences SET telegram_enabled=false,updated_at=now() WHERE user_id=$1', [request.user.id]);
@@ -495,7 +495,7 @@ app.post('/api/v1/notify/telegram/webhook', async (request, reply) => {
 });
 app.post('/api/v1/notify/channels/:channel/test', { preHandler: [requireCapability('notifications.channels.manage.self'), requireNotificationPreferencesStore] }, async (request) => {
   const { channel } = request.params;
-  if (!['email', 'telegram'].includes(channel)) throw new ApiError(422, 'VALIDATION_ERROR', 'Unsupported notification channel.');
+  if (!['email', 'telegram'].includes(channel)) throw new ApiError(422, 'VALIDATION_ERROR', 'Kênh thông báo không được hỗ trợ.');
   const destination = await notificationChannels.claimTest(request.user.id, channel);
   if (channel === 'email') await sendTestEmail(destination);
   else await sendTelegramMessage(destination, 'StockSense VN: kênh Telegram đã kết nối thành công.');
@@ -503,7 +503,7 @@ app.post('/api/v1/notify/channels/:channel/test', { preHandler: [requireCapabili
 });
 app.delete('/api/v1/notify/channels/:channel', { preHandler: [requireCapability('notifications.channels.manage.self'), requireNotificationPreferencesStore] }, async (request) => {
   const { channel } = request.params;
-  if (!['email', 'telegram'].includes(channel)) throw new ApiError(422, 'VALIDATION_ERROR', 'Unsupported notification channel.');
+  if (!['email', 'telegram'].includes(channel)) throw new ApiError(422, 'VALIDATION_ERROR', 'Kênh thông báo không được hỗ trợ.');
   return envelope(await notificationChannels.unlink(request.user.id, channel));
 });
 app.get('/api/v1/chat/sessions', { preHandler: [requireCapability('chat.use.self'), requireChatStore] }, async (request) =>

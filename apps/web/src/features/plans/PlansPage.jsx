@@ -146,7 +146,7 @@ export function PlansPage() {
             <div className="field"><label htmlFor="pl-exp">Hết hạn</label><input id="pl-exp" type="date" value={form.expires_on} onChange={(e) => update('expires_on', e.target.value)} /><span className="hint">tùy chọn</span></div>
             {canQuantity && selected === 'new' && (!form.use_profile || !profile) && <>
               <div className="field"><label htmlFor="pl-cap">Vốn (đồng)</label><input id="pl-cap" className="num" type="number" min="1" value={form.capital_vnd} onChange={(e) => update('capital_vnd', e.target.value)} /></div>
-              <div className="field"><label htmlFor="pl-risk">Rủi ro tối đa</label><input id="pl-risk" className="num" type="number" step="0.1" min="0.01" max="100" value={form.risk_pct} onChange={(e) => update('risk_pct', e.target.value)} /><span className="hint">% vốn</span></div>
+              <div className="field"><label htmlFor="pl-risk">Rủi ro tối đa</label><input id="pl-risk" className="num" type="number" step="0.01" min="0.01" max="100" value={form.risk_pct} onChange={(e) => update('risk_pct', e.target.value)} /><span className="hint">% vốn</span></div>
             </>}
           </div>
           {canQuantity && selected === 'new' && profile && <label className="toggle" style={{ marginTop: 12 }}><input type="checkbox" checked={form.use_profile} onChange={(e) => update('use_profile', e.target.checked)} /> Dùng hồ sơ đầu tư ({money.format(profile.capital_vnd)} đ · {profile.risk_pct}% rủi ro)</label>}

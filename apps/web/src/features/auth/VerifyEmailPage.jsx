@@ -3,6 +3,14 @@ import { api } from '../../api/index.js';
 import { navigate } from '../../app/navigation.js';
 import { AuthLayout } from './AuthLayout.jsx';
 
+// A token is single-use: React may run the effect twice (StrictMode), so share one request per token
+// instead of letting a second call report "already used" over a successful verification.
+const verifications = new Map();
+function verifyOnce(token) {
+  if (!verifications.has(token)) verifications.set(token, api.auth.verifyEmail(token));
+  return verifications.get(token);
+}
+
 export function VerifyEmailPage() {
   const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '');
   const [status, setStatus] = useState(token ? 'verifying' : 'missing-token');
@@ -17,7 +25,7 @@ export function VerifyEmailPage() {
 
   useEffect(() => {
     if (!token) return;
-    api.auth.verifyEmail(token)
+    verifyOnce(token)
       .then(() => setStatus('verified'))
       .catch((requestError) => { setError(requestError.message || 'Liên kết không hợp lệ hoặc đã hết hạn.'); setStatus('failed'); });
   }, [token]);

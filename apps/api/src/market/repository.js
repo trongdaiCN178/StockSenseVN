@@ -70,8 +70,11 @@ export function createPostgresMarketRepository(pool) {
     async status() {
       const batch = await latestBatch();
       if (!batch) return null;
+      // Daily prices are synced from SSI independently of the forecast batch, so report both dates.
+      const { rows } = await pool.query(`SELECT max(trade_date)::text AS latest_price_date FROM daily_prices WHERE source='ssi'`);
       return {
         dataDate: batch.data_date,
+        latestPriceDate: rows[0]?.latest_price_date ?? null,
         batchCompletedAt: batch.batch_completed_at?.toISOString() ?? null,
         modelVersion: batch.model_version,
         state: batch.state,

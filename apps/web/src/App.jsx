@@ -57,12 +57,17 @@ export function App() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (user && !user.must_change_password && ['/login', '/forgot-password', '/reset-password', '/register', '/verify-email'].includes(pathname)) navigate(user.role === 'admin' ? '/admin' : '/overview');
+    if (user && !user.must_change_password && ['/login', '/forgot-password', '/register'].includes(pathname)) navigate(user.role === 'admin' ? '/admin' : '/overview');
   }, [user, pathname]);
 
   if (loading) {
     return <main className="startup-state" aria-live="polite">Đang tải StockSense VN…</main>;
   }
+
+  // Links from emails must work even when this browser is already signed in to another account;
+  // otherwise the token would be dropped by the redirect above.
+  if (pathname === '/verify-email') return <VerifyEmailPage />;
+  if (pathname === '/reset-password') return <ResetPasswordPage />;
 
   if (!user) {
     if (pathname === '/forgot-password') return <ForgotPasswordPage />;

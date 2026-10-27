@@ -49,8 +49,8 @@ export function createNotificationChannelsRepository(pool) {
         RETURNING channel`, [userId, channel, destination, hash, expiresAt]);
       if (rows[0]) return;
       const { rows: existing } = await pool.query('SELECT verified_at FROM notification_channels WHERE user_id=$1 AND channel=$2', [userId, channel]);
-      if (existing[0]?.verified_at) throw new ApiError(409, 'CHANNEL_ALREADY_VERIFIED', 'Unlink this channel before changing its destination.');
-      throw new ApiError(429, 'VERIFICATION_RATE_LIMITED', 'Wait at least 60 seconds before requesting another verification.');
+      if (existing[0]?.verified_at) throw new ApiError(409, 'CHANNEL_ALREADY_VERIFIED', 'Hãy hủy liên kết kênh này trước khi đổi địa chỉ nhận.');
+      throw new ApiError(429, 'VERIFICATION_RATE_LIMITED', 'Vui lòng chờ ít nhất 60 giây trước khi yêu cầu mã xác minh mới.');
     },
     async cancelChallenge(userId, channel, hash) {
       await pool.query(`DELETE FROM notification_channels WHERE user_id=$1 AND channel=$2 AND challenge_hash=$3 AND verified_at IS NULL`, [userId, channel, hash]);
@@ -62,7 +62,7 @@ export function createNotificationChannelsRepository(pool) {
       if (!rows[0]) {
         await pool.query(`UPDATE notification_channels SET challenge_attempts=challenge_attempts+1 WHERE user_id=$1 AND channel='email'
           AND challenge_hash IS NOT NULL AND challenge_attempts<5`, [userId]);
-        throw new ApiError(422, 'INVALID_VERIFICATION_CODE', 'Verification code is invalid or expired.');
+        throw new ApiError(422, 'INVALID_VERIFICATION_CODE', 'Mã xác minh không đúng hoặc đã hết hạn.');
       }
       return { channel: 'email', destination: rows[0].destination, verified: true, verified_at: rows[0].verified_at };
     },
@@ -73,7 +73,7 @@ export function createNotificationChannelsRepository(pool) {
           AND challenge_attempts<5 RETURNING user_id`, [hash, String(chatId)]);
         return rows[0] ?? null;
       } catch (error) {
-        if (error.code === '23505') throw new ApiError(409, 'TELEGRAM_ALREADY_LINKED', 'This Telegram chat is already linked to another account.');
+        if (error.code === '23505') throw new ApiError(409, 'TELEGRAM_ALREADY_LINKED', 'Cuộc trò chuyện Telegram này đã liên kết với tài khoản khác.');
         throw error;
       }
     },
@@ -87,8 +87,8 @@ export function createNotificationChannelsRepository(pool) {
           AND (last_test_at IS NULL OR last_test_at < now()-interval '60 seconds') RETURNING destination`, [userId, channel]);
       if (rows[0]) return rows[0].destination;
       const { rows: existing } = await pool.query('SELECT verified_at FROM notification_channels WHERE user_id=$1 AND channel=$2', [userId, channel]);
-      if (!existing[0]?.verified_at) throw new ApiError(409, 'CHANNEL_NOT_VERIFIED', 'Verify the channel before sending a test message.');
-      throw new ApiError(429, 'CHANNEL_TEST_RATE_LIMITED', 'Wait at least 60 seconds before sending another test message.');
+      if (!existing[0]?.verified_at) throw new ApiError(409, 'CHANNEL_NOT_VERIFIED', 'Hãy xác minh kênh trước khi gửi thử.');
+      throw new ApiError(429, 'CHANNEL_TEST_RATE_LIMITED', 'Vui lòng chờ ít nhất 60 giây trước khi gửi thử lần nữa.');
     },
     async unlink(userId, channel) {
       await pool.query('DELETE FROM notification_channels WHERE user_id=$1 AND channel=$2', [userId, channel]);

@@ -35,7 +35,7 @@ export function InvestmentProfilePage() {
     <section className="card investment-profile-card"><div className="card-h"><div><h2>Vốn và mức rủi ro</h2><p className="small muted">Đây là tham số do bạn tự chọn, không phải khuyến nghị đầu tư.</p></div></div>
       <form className="investment-profile-form" onSubmit={save}>
         <label className="field"><span>Vốn dự kiến (VND)</span><input required type="number" min="1" max="1000000000000000" step="1" value={form.capital_vnd} onChange={(e) => setForm({ ...form, capital_vnd: e.target.value })} /></label>
-        <label className="field"><span>Rủi ro tối đa mỗi kế hoạch (%)</span><input required type="number" min="0.0001" max="100" step="0.01" value={form.risk_pct} onChange={(e) => setForm({ ...form, risk_pct: e.target.value })} /></label>
+        <label className="field"><span>Rủi ro tối đa mỗi kế hoạch (%)</span><input required type="number" min="0.01" max="100" step="0.01" value={form.risk_pct} onChange={(e) => setForm({ ...form, risk_pct: e.target.value })} /></label>
         <button className="btn pri" type="submit" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu hồ sơ'}</button>
       </form>
       <div className="note warn investment-profile-note">Khi tạo kế hoạch giao dịch, các giá trị này chỉ được dùng nếu bạn chủ động chọn “Dùng hồ sơ đầu tư”. Kết quả khối lượng là phép tính rủi ro, không đảm bảo khả năng khớp lệnh hay lợi nhuận.</div>

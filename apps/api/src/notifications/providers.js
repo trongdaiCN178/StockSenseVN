@@ -6,7 +6,7 @@ export function emailProviderConfigured() {
 }
 
 export async function sendVerificationEmail(to, code) {
-  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Email verification is unavailable because SMTP is not configured.');
+  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Chưa gửi được mã xác minh vì máy chủ email (SMTP) chưa được cấu hình.');
   const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_SECURE === 'true', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, requireTLS: process.env.SMTP_SECURE !== 'true' });
   await transport.sendMail({ from: process.env.SMTP_FROM, to, subject: 'Mã xác minh StockSense VN',
@@ -14,7 +14,7 @@ export async function sendVerificationEmail(to, code) {
 }
 
 export async function sendPasswordResetEmail(to, resetUrl) {
-  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Password reset email is unavailable because SMTP is not configured.');
+  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Chưa gửi được email đặt lại mật khẩu vì máy chủ email (SMTP) chưa được cấu hình.');
   const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_SECURE === 'true', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, requireTLS: process.env.SMTP_SECURE !== 'true' });
   await transport.sendMail({ from: process.env.SMTP_FROM, to, subject: 'Đặt lại mật khẩu StockSense VN',
@@ -22,7 +22,7 @@ export async function sendPasswordResetEmail(to, resetUrl) {
 }
 
 export async function sendRegistrationVerificationEmail(to, verifyUrl) {
-  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Registration verification email is unavailable because SMTP is not configured.');
+  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Chưa gửi được email xác thực vì máy chủ email (SMTP) chưa được cấu hình.');
   const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_SECURE === 'true', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, requireTLS: process.env.SMTP_SECURE !== 'true' });
   await transport.sendMail({ from: process.env.SMTP_FROM, to, subject: 'Xác thực tài khoản StockSense VN',
@@ -30,7 +30,7 @@ export async function sendRegistrationVerificationEmail(to, verifyUrl) {
 }
 
 export async function sendAccountAlreadyExistsEmail(to, loginUrl) {
-  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Email delivery is not configured.');
+  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Chức năng gửi email chưa được cấu hình.');
   const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_SECURE === 'true', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, requireTLS: process.env.SMTP_SECURE !== 'true' });
   await transport.sendMail({ from: process.env.SMTP_FROM, to, subject: 'Bạn đã có tài khoản StockSense VN',
@@ -42,16 +42,16 @@ export function telegramProviderConfigured() {
 }
 
 export async function sendTelegramMessage(chatId, text) {
-  if (!process.env.TELEGRAM_BOT_TOKEN) throw new ApiError(503, 'TELEGRAM_PROVIDER_NOT_CONFIGURED', 'Telegram delivery is not configured.');
+  if (!process.env.TELEGRAM_BOT_TOKEN) throw new ApiError(503, 'TELEGRAM_PROVIDER_NOT_CONFIGURED', 'Chức năng gửi Telegram chưa được cấu hình.');
   const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text }), signal: AbortSignal.timeout(8000),
   });
   const result = await response.json().catch(() => null);
-  if (!response.ok || result?.ok !== true) throw new ApiError(502, 'TELEGRAM_DELIVERY_FAILED', 'Telegram could not deliver the message.');
+  if (!response.ok || result?.ok !== true) throw new ApiError(502, 'TELEGRAM_DELIVERY_FAILED', 'Telegram không gửi được tin nhắn.');
 }
 
 export async function sendTestEmail(to) {
-  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Email delivery is not configured.');
+  if (!emailProviderConfigured()) throw new ApiError(503, 'EMAIL_PROVIDER_NOT_CONFIGURED', 'Chức năng gửi email chưa được cấu hình.');
   const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_SECURE === 'true', auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, requireTLS: process.env.SMTP_SECURE !== 'true' });
   await transport.sendMail({ from: process.env.SMTP_FROM, to, subject: 'StockSense VN · gửi thử', text: 'Kênh email StockSense VN đã kết nối thành công.' });
