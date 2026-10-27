@@ -351,3 +351,89 @@ Chuẩn bị 2 slide: **sơ đồ kiến trúc** (Phần 1) và **bảng kết q
 - Quay từng phần thành clip riêng rồi ghép. Phần nào lỗi chỉ cần quay lại phần đó; Phần 2 nhớ đổi sang `+demo2`.
 - Nếu quá 10 phút, cắt theo thứ tự: Bước 4 Phần 5 (Tuần/Tháng) → bước mobile ở Phần 8 → Bước 4 Phần 7 (chạy job).
 - Sau các lần quay thử, nhờ dọn tài khoản `+demo…` trước khi quay chính thức.
+
+---
+
+## PHỤ LỤC — BẢNG COPY NHANH KHI QUAY
+
+Mở file này ở chế độ xem trước (Ctrl+Shift+V trong VS Code), bôi đen giá trị trong ô `xám` rồi Ctrl+C. Bảng xếp đúng thứ tự thời gian trong video.
+
+### A. Tài khoản
+
+| Tài khoản | Email | Mật khẩu |
+|---|---|---|
+| Tài khoản demo mới (lần quay 1) | `trongdaim10nhanmy+demo1@gmail.com` | `Demo@2026` |
+| Nếu quay lại lần 2 | `trongdaim10nhanmy+demo2@gmail.com` | `Demo@2026` |
+| Nếu quay lại lần 3 | `trongdaim10nhanmy+demo3@gmail.com` | `Demo@2026` |
+| Quản trị viên | `admin@stocksense.vn` | `admin12345678` |
+
+### B. Theo thứ tự thời gian
+
+| ⏱ | Phần | Ô nhập / thao tác | Giá trị copy |
+|---|---|---|---|
+| 0:00 | 1 | Địa chỉ web | `http://localhost:5173` |
+| 1:00 | 2 · Đăng ký | Email | `trongdaim10nhanmy+demo1@gmail.com` |
+| | | Tên hiển thị | `Nguyễn Văn Demo` |
+| | | Mật khẩu (lần 1, cố ý sai) | `12345678` |
+| | | Nhập lại mật khẩu (lần 1) | `12345678` |
+| | | Mật khẩu (lần 2, đúng) | `Demo@2026` |
+| | | Nhập lại mật khẩu (lần 2) | `Demo@2026` |
+| | 2 · Đăng nhập (thử khi chưa xác thực, rồi sau khi xác thực) | Email / Mật khẩu | `trongdaim10nhanmy+demo1@gmail.com` / `Demo@2026` |
+| | 2 · Gmail | Tìm thư | `Xác thực tài khoản StockSense VN` |
+| | 2 · Nâng cấp Trader | Kinh nghiệm / Mục đích | chọn bất kỳ, tích ô xác nhận |
+| | 2 · Đăng nhập lại | Email / Mật khẩu | `trongdaim10nhanmy+demo1@gmail.com` / `Demo@2026` |
+| 3:00 | 3 · Tổng quan | Sàn / Ngành | bấm `HOSE`, chọn `Ngân hàng` |
+| | 3 · Tìm mã | Ô tìm kiếm | `fpt` |
+| 3:45 | 4 · Portfolio | Tệp import | `giao_dich_demo.csv` (ở Desktop) |
+| 4:45 | 5 · Tìm mã | Ô tìm kiếm | `fpt` |
+| | 5 · Trade Plan | Vùng vào từ | `56000` |
+| | | đến | `57000` |
+| | | Cắt lỗ | `53000` |
+| | | Mục tiêu (lúc tạo) | `65000` |
+| | | Vốn (đồng) | `100000000` |
+| | | Rủi ro tối đa | `1` |
+| | | Lý do | `Breakout khỏi nền giá` |
+| | 5 · Sửa sau Lưu nháp | Mục tiêu (sửa thành) | `66000` |
+| | 5 · Đóng kế hoạch | Lý do đóng | chọn `Chạm mục tiêu` (giá thoát tự điền 66000) |
+| | | Ghi chú | `Chạm mục tiêu, chốt toàn bộ` |
+| | 5 · Journal | Bài học | `Giữ đúng mục tiêu khi kế hoạch đã rõ ràng` |
+| 6:30 | 6 · Yêu cầu Analyst | Tổ chức | `Trường Đại học ABC` |
+| | | Chức danh | `Sinh viên nghiên cứu` |
+| | | Email cơ quan | `nghiencuu@abc.edu.vn` |
+| | | Mục đích sử dụng | `Phân tích dữ liệu cho đồ án` |
+| 7:00 | 7 · Đăng nhập Admin | Email / Mật khẩu | `admin@stocksense.vn` / `admin12345678` |
+| | 7 · Audit | Từ ngày | chọn ngày hôm nay |
+| | 7 · Thử trang cá nhân | Thanh địa chỉ | `localhost:5173/portfolio` |
+| 8:45 | 8 · Đăng nhập lại | Email / Mật khẩu | `trongdaim10nhanmy+demo1@gmail.com` / `Demo@2026` |
+| | 8 · Tìm mã | Ô tìm kiếm | `hpg` |
+| | 8 · Mobile | Phím tắt | `F12` rồi `Ctrl+Shift+M` |
+
+### C. Nội dung file `giao_dich_demo.csv`
+
+File đã có sẵn ở Desktop. Nếu cần tạo lại: copy khối dưới đây vào Notepad, lưu tên `giao_dich_demo.csv` với Encoding **UTF-8**.
+
+```
+symbol,side,quantity,unit_price,executed_at,fee,note
+FPT,buy,500,55000,2026-10-01,41250,Mua đợt 1
+HPG,buy,3000,20500,2026-10-02,92250,
+VCB,buy,200,55500,2026-10-05,16650,
+HPG,buy,3000,20500,2026-10-02,92250,
+ABC,buy,100,12000,2026-10-06,0,
+```
+
+### D. Kết quả mong đợi để đối chiếu nhanh
+
+| Phần | Màn hình phải hiện |
+|---|---|
+| 2 | Mật khẩu yếu → *"Mật khẩu dài 8-64 ký tự, gồm chữ, số và ít nhất 1 ký tự đặc biệt."* |
+| 2 | Chưa xác thực → *"Vui lòng xác thực email trước khi đăng nhập…"* |
+| 2 | Sau nâng cấp → sidebar *Nhà giao dịch* |
+| 3 | Lọc HOSE + Ngân hàng → còn 3 mã |
+| 4 | *"Đã ghi 3 dòng, bỏ qua 2 dòng."* (dòng 5 trùng, dòng 6 mã ABC) |
+| 5 | R:R **2** · khoảng cách **−7,02% / +14,04%** · khối lượng **200 cp** |
+| 5 | Sau sửa mục tiêu 66000 → R:R **2,25** |
+| 5 | Đã đóng → chip *Chạm mục tiêu* **+17,9%** · Journal **+2.000.000 đ · 3,33R** |
+| 6 | *"Đã gửi yêu cầu quyền Analyst…"* · Đồng ý đã lưu: 3 bản ghi |
+| 7 | *"Đã duyệt yêu cầu."* · audit: Xác thực email → Tự nâng cấp Trader → Duyệt quyền Analyst |
+| 7 | Job: Đang chờ → (10–20 giây) → Thành công |
+| 8 | Sidebar *Chuyên viên phân tích* · có nút **CSV giá** |
