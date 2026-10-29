@@ -2,7 +2,7 @@
 
 Ngày lập: 25/10/2026 · **Cập nhật lần cuối: 29/10/2026 (PRD v0.0.4 bổ sung 8 FR luồng đăng ký FR-M0-08..15, tổng FR tăng từ 107 lên 115).**
 
-Phạm vi: đối chiếu toàn bộ **115 yêu cầu chức năng (FR-M0 → FR-M14)** trong `PRODUCT_REQUIREMENTS_DOCUMENT_v0.0.3.md` (nội dung phiên bản 0.0.4) với code trong `apps/` và `packages/`. Yêu cầu phi chức năng (NFR), kiến trúc trong SDD và các tài liệu đề xuất bổ sung không được tính vào tỷ lệ phần trăm.
+Phạm vi: đối chiếu toàn bộ **115 yêu cầu chức năng (FR-M0 → FR-M14)** trong `PRODUCT_REQUIREMENTS_DOCUMENT_v0.0.4.md` với code trong `apps/` và `packages/`. Yêu cầu phi chức năng (NFR), kiến trúc trong SDD và các tài liệu đề xuất bổ sung không được tính vào tỷ lệ phần trăm.
 
 ## 1. Kết quả tổng hợp
 
