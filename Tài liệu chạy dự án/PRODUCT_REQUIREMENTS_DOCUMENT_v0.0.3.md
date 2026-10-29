@@ -2,18 +2,19 @@
 
 | CODE | CAPSTONE_PRD |
 | --- | --- |
-| VERSION | 0.0.3 |
+| VERSION | 0.0.4 |
 | STATUS | TEST |
 | AUTHOR | HOANG MINH TUAN |
 | VERIFY | HOANG MINH TUAN |
-| UPDATE | 09/10/2026 |
-| RELATED DOCUMENT | Project Brief CAPSTONE_PB v0.0.2; SDD CAPSTONE_SDD |
+| UPDATE | 29/10/2026 |
+| RELATED DOCUMENT | Project Brief CAPSTONE_PB v0.0.4; SDD CAPSTONE_SDD v0.0.5 |
 
 | Phiên bản | Ngày | Người sửa | Nội dung thay đổi |
 | --- | --- | --- | --- |
 | 0.0.1 | 7/10/2026 | Hoang Minh Tuan | Khởi tạo tài liệu. |
 | 0.0.2 | 7–8/10/2026 | Hoang Minh Tuan | Tách rõ MVP Sản Phẩm với MVP nghiên cứu bổ sung để tránh chồng lấn chức năng. Mở rộng phạm vi theo Project Brief 0.0.2: thêm Screener, Portfolio, Trade Plan, Journal, Chat, PDF, thông báo email/Telegram và ứng dụng mobile theo 3 giai đoạn; sửa các lỗi và mâu thuẫn nội bộ. |
 | 0.0.3 | 9/10/2026 | Tran Trong Đai | Bổ sung thêm US-23: đăng nhập, đăng xuất, US-24; tự động cập nhật dự báo sau mỗi phiên giao dịch và US-25 xem lịch sử quản trị. Cập nhật các yêu cầu liên quan: FR (M0, M7); thêm AC-27 đến AC-30. Giảm số mã tối đa từ 30 xuống 10. Thêm FR-M7-09 hiển thị dữ liệu đầu vào FR-M7-10 chạy lại để tái lập theo US10. Thêm đặc tả use case cho US. |
+| 0.0.4 | 29/10/2026 | Tran Trong Đai | Bổ sung luồng đăng ký và vòng đời tài khoản: quy tắc nghiệp vụ BR-R01..BR-R20, căn cứ pháp lý (§7.2), US-26..US-29, UC-26..UC-29, FR-M0-08..FR-M0-15, AC-31..AC-39, NFR-18; ràng buộc pháp lý C6 (Luật Bảo vệ dữ liệu cá nhân 2025, Nghị định 356/2025); sửa điều kiện trước của UC-12, UC-23; cập nhật §4.2, §6.1, §8, §16. NFR-07: băm mật khẩu bằng hàm băm chậm có salt (triển khai scrypt), phiên lưu dạng token băm. |
 
 ## 1. Tổng quan sản phẩm
 
@@ -103,7 +104,16 @@ Ba nhóm chính cần cùng một dự báo nhưng khác nhau về độ sâu gi
 
 **Quản trị viên (admin):** không phải người dùng nghiệp vụ; quản lý tài khoản, phân quyền, nguồn dữ liệu, phiên bản mô hình và nhật ký.
 
-**Hội đồng chấm đồ án:** đọc trang đánh giá mô hình và xem demo; không đăng ký tài khoản riêng mà dùng tài khoản demo dùng chung, vai trò analyst, do admin tạo trước buổi demo và cung cấp cho hội đồng (dữ liệu mẫu, không chứa dữ liệu cá nhân thật).
+**Hội đồng chấm đồ án:** đọc trang đánh giá mô hình và xem demo; dùng tài khoản demo tạo sẵn trước buổi bảo vệ (dữ liệu mẫu, không chứa dữ liệu cá nhân thật), hoặc tự đăng ký một tài khoản mới để xem luồng đăng ký.
+
+**Cách có tài khoản theo vai trò** (quy tắc chi tiết ở §9.2.6, UC-26..UC-29):
+
+| Vai trò | Cách có tài khoản | Ai quyết định |
+| --- | --- | --- |
+| retail | Tự đăng ký công khai bằng email và mật khẩu, xác thực email, tự khai đủ 18 tuổi | Không cần duyệt |
+| trader | Tài khoản retail tự nâng cấp trong Cài đặt (khai kinh nghiệm, mục đích, xác nhận trách nhiệm); tự hạ cấp được | Tự động, có xác nhận |
+| analyst | Tài khoản retail hoặc trader gửi yêu cầu (tổ chức, chức danh, email cơ quan, mục đích) | Admin duyệt |
+| admin | Không đăng ký công khai: Admin đầu tiên tạo bằng lệnh bootstrap khi triển khai; Admin tiếp theo do Admin hiện có tạo | Người triển khai / Admin |
 
 ## 5. Giá trị cốt lõi
 
@@ -138,6 +148,9 @@ Sản phẩm triển khai theo 3 giai đoạn. GĐ1 (MVP, 12 tuần) gói gọn 
 | Must-have (MVP) | Trang đánh giá mô hình (metrics, confusion matrix, ablation) | M6, M7 | GĐ1 |
 | Must-have (MVP) | Hiển thị thời điểm cập nhật | M1, M2 | GĐ1 |
 | Must-have (MVP) | Đăng nhập, phân quyền retail/trader/analyst/admin | M0 | GĐ1 |
+| Must-have (MVP) | Tự đăng ký tài khoản retail, xác thực email, ghi nhận đồng ý điều khoản và xử lý dữ liệu | M0 | GĐ1 |
+| Must-have (MVP) | Vòng đời vai trò: tự nâng/hạ cấp Trader, yêu cầu Analyst do Admin duyệt, bootstrap Admin, tự xóa tài khoản | M0 | GĐ1 |
+| Should-have | Tăng cường bảo vệ tài khoản: TOTP và nhập lại mật khẩu cho Admin, xác nhận email cơ quan, captcha, đồng ý lại khi đổi phiên bản văn bản | M0 | GĐ2 |
 | Must-have (MVP) | So sánh T+2 với T+5 cạnh nhau | M2 | GĐ1 |
 | Must-have (MVP) | Đóng góp đặc trưng chi tiết cho analyst (top 15 đặc trưng) | M3 | GĐ1 |
 | Must-have (MVP) | Audit log cơ bản cho dự báo và lần chạy mô hình | M7 | GĐ1 |
@@ -213,11 +226,33 @@ C4. Kỹ thuật: tái sử dụng mã sẵn có trong DATN_2026 (Go web service
 
 C5. Không phải sản phẩm thương mại; mọi màn hình dự báo, Trade Plan, cửa sổ Chat và báo cáo PDF phải có tuyên bố “chỉ mang tính tham khảo”.
 
+C6. Dữ liệu cá nhân: tuân thủ Luật Bảo vệ dữ liệu cá nhân 2025 (91/2025/QH15) và Nghị định 356/2025/NĐ-CP (thay thế Nghị định 13/2023), cùng hiệu lực từ 01/01/2026. Thu thập tối thiểu (chỉ email, mật khẩu, tên hiển thị tùy chọn); đồng ý điều khoản và xử lý dữ liệu tách riêng, có lưu bằng chứng (loại văn bản, phiên bản, thời điểm, kênh); người dùng tự xóa được tài khoản; chỉ nhận người tự khai đủ 18 tuổi (Bộ luật Dân sự 2015). Bắt buộc pháp chế xác nhận các điểm dưới đây trước khi mở cho người dùng thật.
+
+**Căn cứ pháp lý của luồng đăng ký** (tổng hợp tham khảo, không phải tư vấn pháp lý):
+
+| Văn bản | Nội dung liên quan | Áp dụng vào hệ thống |
+| --- | --- | --- |
+| Luật Bảo vệ dữ liệu cá nhân 2025 (91/2025/QH15), hiệu lực 01/01/2026 | Cơ sở xử lý dữ liệu, sự đồng ý hợp lệ, quyền của chủ thể (truy cập, chỉnh sửa, xóa, rút lại đồng ý), nghĩa vụ của bên xử lý | Màn đồng ý khi đăng ký; xem lịch sử đồng ý; tự xóa tài khoản |
+| Nghị định 356/2025/NĐ-CP, hiệu lực 01/01/2026, thay thế Nghị định 13/2023 | Phải lưu bằng chứng đồng ý; quy định riêng cho dữ liệu tài chính (mục đích, thời gian lưu, nguồn thu thập, bên chia sẻ); thông báo vi phạm trong 72 giờ với dữ liệu nhạy cảm; đầu mối bảo vệ dữ liệu; đánh giá tác động | Bản ghi đồng ý có phiên bản; thông báo xử lý dữ liệu; quy trình sự cố; chỉ định đầu mối |
+| Luật Chứng khoán 2019 | Tư vấn chứng khoán gồm phân tích và khuyến nghị mua, bán, nắm giữ (Điều 4); cấm cung cấp dịch vụ chứng khoán khi chưa được cấp phép | Giữ tuyên bố "không phải tư vấn đầu tư" (C5); môi giới không dùng dự báo như khuyến nghị gửi khách hàng; Chat không đưa lệnh |
+| Bộ luật Dân sự 2015 | Năng lực hành vi dân sự đầy đủ từ đủ 18 tuổi | Tự khai đủ 18 tuổi khi đăng ký |
+| Luật Giao dịch điện tử 2023 | Giao dịch và đồng ý bằng thông điệp dữ liệu | Đồng ý bằng ô tick và lưu bằng chứng điện tử |
+
+Điểm cần pháp chế xác nhận:
+
+- Ngưỡng tuổi và đồng ý của người đại diện với trẻ em theo luật mới. Hiện hành: chỉ nhận người tự khai đủ 18 tuổi.
+- Thời hạn xử lý yêu cầu của chủ thể dữ liệu (một số nguồn ghi khoảng 30 ngày, cần đối chiếu văn bản gốc).
+- Dữ liệu Portfolio, Trade Plan, Journal do người dùng tự nhập có thuộc nhóm dữ liệu tài chính theo Nghị định 356 hay không. Hiện hành: xử lý theo mức nghiêm ngặt nhất (chỉ chủ sở hữu xem, Admin không xem, xóa theo yêu cầu).
+- Chuyển dữ liệu ra nước ngoài khi dùng API mô hình ngôn ngữ, SMTP, Telegram có phải lập hồ sơ đánh giá hay không (mặc định không gửi dữ liệu cá nhân qua API ngoài; SMTP chỉ nhận địa chỉ email và nội dung thư hệ thống).
+- Bản demo học thuật dùng dữ liệu mẫu (A10) có thể nhẹ nghĩa vụ hơn; mở cho người dùng thật thì phải tuân thủ đầy đủ.
+
 ## 8. User flows chính
 
 Năm luồng chính: ba luồng đầu tương ứng ba persona (luồng 1 kết thúc ở watchlist, cũng là điểm bắt đầu của luồng 2); luồng 4 (GĐ2) là vòng quyết định dự báo → Trade Plan → giao dịch → Journal; luồng 5 (GĐ2) là nhận thông báo ngoài app.
 
 5 user flow chính (3 luồng theo persona, vòng quyết định và thông báo ngoài app)
+
+**Luồng 6 (GĐ1) — Đăng ký và vòng đời tài khoản:** Đăng ký (email, mật khẩu, 3 ô đồng ý) → nhận thư và bấm liên kết xác thực → đăng nhập với vai trò retail → (tùy chọn) tự nâng cấp Trader trong Cài đặt, phiên bị thu hồi và đăng nhập lại → (tùy chọn) gửi yêu cầu quyền Analyst → Admin duyệt hoặc từ chối → đăng nhập lại với vai trò mới. Nhánh: email đã tồn tại → vẫn thông điệp chung, chủ email nhận thư "Bạn đã có tài khoản"; chưa xác thực → không đăng nhập được, gửi lại thư; bị từ chối → nộp lại sau 7 ngày; người dùng có thể tự xóa tài khoản.
 
 Nhánh ngoại lệ chung cho cả năm luồng: khi thiếu dữ liệu, forecast card hiển thị trạng thái dữ liệu thay cho phần giải thích của nhóm bị thiếu (FR-M3-04). Luồng admin (kiểm tra nguồn dữ liệu → xem lần chạy pipeline → đổi phiên bản mô hình) là luồng phụ, mô tả ở M7. Ở luồng 4, bước giao dịch do người dùng tự thực hiện tại công ty chứng khoán, ngoài hệ thống; người dùng ghi kết quả vào Portfolio và đóng Trade Plan để tạo Journal.
 
@@ -254,6 +289,10 @@ Mỗi story có mã để truy vết sang functional requirement (mục 10) và 
 | US-23 | Mọi người dùng | Là người dùng, tôi muốn đăng nhập bằng email và mật khẩu, và đăng xuất khi dùng xong, để xem dự báo và dữ liệu cá nhân của riêng tôi | Must | FR-M0-01 đến FR-M0-04 |
 | US-24 | Admin | Là admin, tôi muốn hệ thống tự động cập nhật dự báo sau mỗi phiên giao dịch, để người dùng luôn thấy tín hiệu mới trước 20:00 mà tôi không phải chạy tay |  | FR-M7-07, FR-M7-08 FR-M4-01, 06, FR-M6-02, FR-M7-04 |
 | US-25 | Admin | Là admin, tôi muốn xem nhật ký hành động quản trị để biết ai đã thay đổi gì và khi nào. | Must | FR-M7-05, FR-M7-11 |
+| US-26 | Nhà đầu tư cá nhân | Là nhà đầu tư cá nhân, tôi muốn tự đăng ký bằng email và mật khẩu để dùng hệ thống mà không phải chờ Admin tạo tài khoản. | Must | FR-M0-08, FR-M0-09, FR-M0-10 |
+| US-27 | Swing trader, môi giới, analyst | Là người dùng, tôi muốn tự nâng cấp lên Trader và gửi yêu cầu quyền Analyst để dùng đầy đủ công cụ phù hợp với nhu cầu. | Must | FR-M0-11 |
+| US-28 | Admin | Là admin, tôi muốn duyệt hoặc từ chối yêu cầu nâng quyền và tạo Admin khác một cách có kiểm soát. | Must | FR-M0-12, FR-M0-14, FR-M0-15 |
+| US-29 | Mọi người dùng | Là người dùng, tôi muốn xem lại các lần đồng ý điều khoản và tự xóa tài khoản cùng dữ liệu cá nhân của mình. | Must | FR-M0-10, FR-M0-13 |
 
 Use case mở rộng: môi giới dùng watchlist + forecast card để chuẩn bị danh sách mã trao đổi với khách (US-04, US-07); quản lý danh mục dùng cảnh báo xác suất giảm cao cho các mã đang nắm giữ (US-05) và Portfolio để đối chiếu (US-16). Các story vòng quyết định (US-15..US-22) áp dụng cho cả nhà đầu tư cá nhân (bản rút gọn) và trader/analyst (bản đầy đủ).
 
@@ -269,19 +308,19 @@ Một use case mô tả một việc cụ thể mà một người dùng (hoặc
 
 **Chú thích**
 
-**Vai trò:** Retail = nhà đầu tư cá nhân; Trader = swing trader; Analyst = chuyên viên phân tích; Admin = quản trị viên; Hệ thống = tác vụ tự động.
+**Vai trò:** Retail = nhà đầu tư cá nhân; Trader = swing trader; Analyst = chuyên viên phân tích; Admin = quản trị viên; Khách = người chưa có tài khoản; Hệ thống = tác vụ tự động.
 
 **Mã truy vết:** US = user story (mục 9 của PRD); FR = yêu cầu chức năng (mục 10); NFR = yêu cầu phi chức năng (mục 11); AC = tiêu chí nghiệm thu (mục 13).
 
 **Giai đoạn:** GĐ1 là phần cốt lõi sẽ bảo vệ; GĐ2 và GĐ3 là phần mở rộng, nên coi là hướng phát triển (xem phần 3).
 
-Use case UC-01 đến UC-25 khớp theo thứ tự với user story US-01 đến US-25.
+Use case UC-01 đến UC-29 khớp theo thứ tự với user story US-01 đến US-29.
 
 Tên nhãn và kỳ hạn giữ nguyên như PRD: Tăng / Đi ngang / Giảm; T+2 và T+5.
 
 **Quy tắc áp dụng cho mọi use case** (không nhắc lại ở từng use case)
 
-Người dùng phải đăng nhập (UC-23); quyền và quyền sở hữu dữ liệu được kiểm tra ở phía máy chủ, không chỉ ẩn nút trên giao diện.
+Người dùng phải đăng nhập (UC-23), trừ UC-26 (đăng ký, xác thực email); quyền và quyền sở hữu dữ liệu được kiểm tra ở phía máy chủ, không chỉ ẩn nút trên giao diện.
 
 Mọi màn hình có dự báo hiển thị tuyên bố “Dự báo chỉ mang tính tham khảo, không phải khuyến nghị đầu tư”; không dùng chữ “MUA”, “BÁN” ở nhãn tín hiệu, gợi ý và câu trả lời Chat.
 
@@ -316,6 +355,10 @@ Hành động quan trọng được ghi nhật ký (log) nhưng không ghi mật
 | UC-21 | Nhận thông báo qua email và Telegram | Retail, Trader, Analyst | US-21 | GĐ2 |
 | UC-22 | Dùng ứng dụng trên điện thoại | Retail, Trader, Analyst | US-22 | GĐ3 |
 | UC-25 | Xem nhật ký hành động quản trị | Admin | US-25 | GD1 |
+| UC-26 | Tự đăng ký và xác thực email | Khách (chưa có tài khoản) | US-26 | GĐ1 |
+| UC-27 | Nâng cấp Trader, yêu cầu quyền Analyst | Retail, Trader | US-27 | GĐ1 |
+| UC-28 | Duyệt hoặc từ chối yêu cầu nâng quyền | Admin | US-28 | GĐ1 |
+| UC-29 | Tạo Admin, xem đồng ý và xóa tài khoản | Admin, Retail, Trader, Analyst | US-28, US-29 | GĐ1 |
 
 #### 9.2.1. Xem và hiểu dự báo (UC-01 đến UC-06)
 
@@ -689,7 +732,7 @@ Chưa có kết quả đánh giá → hiển thị thông báo.
 | Người dùng | Admin |
 | Điều kiện trước | Admin đã đăng nhập (UC-23) |
 | Kết quả | Tài khoản và vai trò được cập nhật, có ghi nhật ký; Admin không xem được nội dung Portfolio, Trade Plan, Journal của người dùng |
-| Truy vết | US-12 · FR-M7-01, 05, 11 · NFR-07, 08, 09, AC-15 · UC-25 |
+| Truy vết | US-12 · FR-M7-01, 05, 11 · FR-M0-14 · NFR-07, 08, 09, AC-15, AC-29 · UC-25, UC-28, UC-29 |
 
 **Các bước**
 
@@ -697,9 +740,9 @@ Chưa có kết quả đánh giá → hiển thị thông báo.
 
 **Hệ thống** hiển thị biểu mẫu tạo tài khoản (FR-M7-01).
 
-**Người dùng** nhập email, mật khẩu khởi tạo và chọn vai trò (Retail, Trader, Analyst, Admin); có thể đánh dấu tài khoản demo.
+**Người dùng** nhập email và chọn vai trò (Retail, Trader, Analyst, Admin). Đây là kênh tạo tài khoản bổ sung cho kênh tự đăng ký (UC-26), và là kênh duy nhất để tạo thêm Admin (UC-29).
 
-**Hệ thống** kiểm tra email hợp lệ và chưa tồn tại, băm mật khẩu bằng bcrypt rồi lưu tài khoản, ghi log mà không ghi mật khẩu (FR-M7-01, NFR-07, NFR-09).
+**Hệ thống** kiểm tra email hợp lệ và chưa tồn tại, sinh mật khẩu tạm hiển thị một lần, băm mật khẩu (NFR-07) rồi lưu tài khoản ở trạng thái buộc đổi mật khẩu lần đầu, ghi log mà không ghi mật khẩu (FR-M7-01, FR-M0-07, NFR-09).
 
 **Người dùng** chọn một tài khoản rồi chọn “Khóa” hoặc vai trò mới.
 
@@ -789,9 +832,9 @@ Bản chưa qua cổng đánh giá hoặc thiếu file trọng số → từ ch�
 | --- | --- |
 | Mục tiêu | Vào hệ thống và chỉ được dùng đúng chức năng của vai trò mình |
 | Người dùng | Mọi người dùng |
-| Điều kiện trước | Tài khoản đã được Admin tạo và đang hoạt động (UC-12) |
+| Điều kiện trước | Tài khoản đã có (tự đăng ký và đã xác thực email — UC-26, hoặc do Admin tạo — UC-12) và đang hoạt động |
 | Kết quả | Người dùng có phiên hợp lệ với đúng vai trò; hành động đăng nhập được ghi log |
-| Truy vết | PRD §6.1 · FR-M7-01, FR-M14-04 · NFR-07, 08, 09, 10 · AC-15 · FR-M0-01, 02, 03, 04 |
+| Truy vết | PRD §6.1 · FR-M7-01, FR-M14-04 · NFR-07, 08, 09, 10 · AC-15, AC-27, AC-33 · FR-M0-01, 02, 03, 04, 09 |
 
 **Các bước****:**
 
@@ -801,7 +844,7 @@ Bản chưa qua cổng đánh giá hoặc thiếu file trọng số → từ ch�
 
 **Người dùng** nhập email và mật khẩu, chọn “Đăng nhập”.
 
-**Hệ thống** kiểm tra định dạng, so khớp mật khẩu với bản băm bcrypt (NFR-07) và kiểm tra tài khoản không bị khóa (FR-M7-01).
+**Hệ thống** kiểm tra định dạng, so khớp mật khẩu với bản băm (NFR-07), kiểm tra tài khoản không bị khóa (FR-M7-01) và email đã được xác thực (FR-M0-09).
 
 **Hệ thống** cấp phiên đăng nhập hiệu lực 24 giờ, chứa vai trò (web dùng cookie an toàn; mobile lưu token ở Keychain hoặc Keystore) (NFR-07, FR-M14-04), và ghi log đăng nhập mà không ghi mật khẩu hay token (NFR-09).
 
@@ -815,7 +858,9 @@ Bản chưa qua cổng đánh giá hoặc thiếu file trọng số → từ ch�
 
 Sai email hoặc mật khẩu → thông báo chung, không nêu trường nào sai.
 
-Tài khoản bị khóa → từ chối và thông báo (FR-M7-010.
+Tài khoản bị khóa → từ chối và thông báo (FR-M7-01).
+
+Tài khoản tự đăng ký chưa xác thực email → từ chối với thông báo "Vui lòng xác thực email trước khi đăng nhập", kèm cách gửi lại thư (FR-M0-09, AC-33).
 
 Phiên hết hạn sau 24 giờ → quay về trang đăng nhập (NFR-07).
 
@@ -1211,9 +1256,190 @@ Token hết hạn sau 24 giờ → yêu cầu đăng nhập lại.
 
 Build iOS chậm → dùng web responsive từ 375 px hoặc PWA làm phương án dự phòng.
 
+#### 9.2.6. Đăng ký và vòng đời tài khoản (UC-26 đến UC-29)
+
+Nguyên tắc: tách tài khoản khỏi quyền (đăng ký công khai chỉ tạo retail); quyền càng nhạy cảm kiểm soát càng chặt; không để lộ email đã tồn tại; thu thập tối thiểu; mọi sự đồng ý có bằng chứng và rút lại được; máy chủ quyết định vai trò. Căn cứ pháp lý ở §7.2 (C6).
+
+**Quy tắc nghiệp vụ**
+
+| Mã | Quy tắc | Hiện trạng |
+| --- | --- | --- |
+| BR-R01 | Chỉ vai trò retail được tự đăng ký công khai. Trường role trong yêu cầu đăng ký bị máy chủ bỏ qua. | Đã làm |
+| BR-R02 | Email duy nhất sau khi chuẩn hóa (cắt khoảng trắng, chữ thường), tối đa 254 ký tự. | Đã làm |
+| BR-R03 | Mật khẩu theo FR-M0-06 (8–64 ký tự, có chữ, số, ký tự đặc biệt), băm bằng hàm băm chậm có salt (triển khai: scrypt). | Đã làm |
+| BR-R04 | Bắt buộc tự khai đủ 18 tuổi; không thu thập ngày sinh. | Đã làm |
+| BR-R05 | Bắt buộc tick riêng Điều khoản sử dụng và Thông báo xử lý dữ liệu; không chọn sẵn; không gộp với đồng ý tùy chọn. | Đã làm |
+| BR-R06 | Nhận thông báo email/Telegram là tùy chọn, mặc định tắt, bật/tắt trong Cài đặt → Kênh thông báo. | Đã làm |
+| BR-R07 | Tài khoản chưa xác thực email không đăng nhập được. Token xác thực một lần, hết hạn 24 giờ, chỉ lưu SHA-256; gửi lại tối đa 5 lần mỗi ngày, cách nhau ≥ 60 giây. | Đã làm |
+| BR-R08 | Phản hồi đăng ký luôn cùng thông điệp, không phân biệt email đã tồn tại hay chưa; email đã tồn tại nhận thư "Bạn đã có tài khoản". | Đã làm |
+| BR-R09 | Tối đa 5 lần đăng ký mỗi giờ theo IP và theo email (khóa đếm lưu dạng băm HMAC); captcha khi vượt ngưỡng. | Một phần (chưa có captcha) |
+| BR-R10 | Không thu thập CCCD, số tài khoản chứng khoán hoặc ngân hàng, số điện thoại. | Đã làm |
+| BR-R11 | Tài khoản chưa xác thực quá 7 ngày bị xóa (dọn ở đầu mỗi lượt đăng ký mới). | Đã làm |
+| BR-R12 | Nâng lên trader: tự phục vụ, bắt buộc khai kinh nghiệm, mục đích và tick xác nhận trách nhiệm; ghi đồng ý Điều khoản Trader, nhật ký; thu hồi phiên. Tự hạ cấp được. | Đã làm |
+| BR-R13 | Nâng lên analyst: Admin duyệt; bắt buộc tổ chức, chức danh, email cơ quan, mục đích, đồng ý Điều khoản Analyst (không phát tán dữ liệu truy vết, không dùng dữ liệu tin tức ngoài mục đích nghiên cứu theo C3); tối đa 1 yêu cầu đang chờ; từ chối phải có lý do; nộp lại sau 7 ngày; mục tiêu xử lý trong 3 ngày làm việc. | Một phần (chưa xác nhận email cơ quan bằng thư, chưa lưu bản ghi đồng ý Điều khoản Analyst) |
+| BR-R14 | Người duyệt không được trùng người yêu cầu. | Đã làm |
+| BR-R15 | Tạo hoặc nâng quyền admin: chỉ Admin hiện có thực hiện; tài khoản mới nhận mật khẩu tạm, buộc đổi lần đầu; luôn còn ít nhất một Admin hoạt động. Nhập lại mật khẩu, chỉ email tổ chức, TOTP, hai người xác nhận là Should (FR-M0-15). | Một phần |
+| BR-R16 | Bootstrap Admin đầu tiên chỉ chạy được khi chưa có Admin; không có endpoint công khai nào tạo admin. | Đã làm |
+| BR-R17 | Mọi thay đổi vai trò thu hồi toàn bộ phiên và ghi nhật ký quản trị (ai, trước, sau). | Đã làm |
+| BR-R18 | Mỗi lần đồng ý ghi loại văn bản, phiên bản, thời điểm, kênh. Phiên bản văn bản đổi thì yêu cầu đồng ý lại ở lần đăng nhập sau (Should). | Một phần (chưa đồng ý lại) |
+| BR-R19 | Người dùng tự xóa tài khoản, xác nhận bằng mật khẩu; xóa watchlist, Portfolio, Trade Plan, Journal, Chat, kênh thông báo; nhật ký giữ dạng ẩn danh (NFR-09). Admin không tự xóa được. | Đã làm |
+| BR-R20 | Có quy trình thông báo sự cố lộ lọt dữ liệu trong 72 giờ cho cơ quan chuyên trách và người dùng. | Chưa làm (quy trình vận hành) |
+
+**Dữ liệu thu thập**
+
+| Trường | Bắt buộc | Mục đích | Lưu trữ |
+| --- | --- | --- | --- |
+| Email | Có | Đăng nhập, xác thực, gửi thông báo | Duy nhất, chuẩn hóa |
+| Mật khẩu | Có | Đăng nhập | Chỉ lưu bản băm |
+| Tên hiển thị | Không | Hiển thị trong ứng dụng | Có thể để trống |
+| Tự khai đủ 18 tuổi | Có | Điều kiện sử dụng | Lưu thời điểm khai, không lưu ngày sinh |
+| Đồng ý điều khoản và xử lý dữ liệu | Có | Cơ sở xử lý dữ liệu | Bản ghi đồng ý có phiên bản |
+| Tổ chức, chức danh, email cơ quan | Chỉ khi xin analyst | Duyệt quyền | Xóa khi tài khoản bị xóa |
+| Bộ đếm đăng ký theo IP/email | Hệ thống tự ghi | Chống lạm dụng | Chỉ lưu dạng băm, tự xóa sau 24 giờ |
+
+**Trạng thái tài khoản:** chưa xác thực (đã đăng ký, chưa bấm liên kết) → hoạt động (bấm liên kết) hoặc bị xóa (quá 7 ngày); hoạt động ↔ bị khóa (Admin khóa/mở, FR-M7-01); hoạt động → đã xóa (người dùng tự xóa, chỉ còn nhật ký ẩn danh). Yêu cầu nâng quyền: chờ duyệt → đã duyệt hoặc bị từ chối.
+
+**Lưu ý với môi giới:** người làm tại công ty chứng khoán được nhắc rằng IDSS không thay thế nghĩa vụ tuân thủ của công ty; dự báo và Trade Plan không được dùng như khuyến nghị cá nhân hóa gửi khách hàng (Luật Chứng khoán 2019).
+
+**Tài khoản demo:** tạo bằng lệnh seed trước buổi bảo vệ, chỉ chứa dữ liệu mẫu; chạy lại seed đặt lại mật khẩu và mở khóa.
+
+**UC-26. Tự đăng ký và xác thực email**
+
+| Mục | Nội dung |
+| --- | --- |
+| Mục tiêu | Người chưa có tài khoản tự tạo tài khoản retail mà không cần Admin |
+| Người dùng | Khách (chưa có tài khoản) |
+| Điều kiện trước | Chưa có tài khoản với email này; hệ thống đã cấu hình gửi email (SMTP) |
+| Kết quả | Tài khoản retail đã xác thực email, có bản ghi đồng ý điều khoản và xử lý dữ liệu; đăng nhập được |
+| Truy vết | US-26 · FR-M0-06, 08, 09, 10 · NFR-07, 09, 18 · AC-31, AC-32, AC-33, AC-34 · C6 |
+
+**Các bước**
+
+**Người dùng** mở trang Đăng nhập, chọn "Chưa có tài khoản? Đăng ký".
+
+**Người dùng** nhập email, tên hiển thị (không bắt buộc), mật khẩu và nhập lại mật khẩu.
+
+**Người dùng** tick riêng 3 ô bắt buộc, không chọn sẵn: đủ 18 tuổi; đồng ý Điều khoản sử dụng và hiểu hệ thống không phải tư vấn đầu tư; đã đọc Thông báo xử lý dữ liệu cá nhân và đồng ý (FR-M0-10, C6).
+
+**Hệ thống** kiểm tra định dạng email, chuẩn hóa email, chính sách mật khẩu ở cả giao diện và máy chủ (FR-M0-06) và giới hạn tần suất (FR-M0-08).
+
+**Hệ thống** luôn trả cùng một thông điệp "Nếu email hợp lệ, chúng tôi đã gửi email xác thực tài khoản" (FR-M0-08). Email chưa tồn tại: tạo tài khoản retail chưa xác thực, lưu bản ghi đồng ý, gửi thư chứa liên kết xác thực một lần, hết hạn 24 giờ (FR-M0-09). Email đã tồn tại: gửi thư "Bạn đã có tài khoản", không tạo tài khoản mới.
+
+**Người dùng** mở thư và bấm liên kết.
+
+**Hệ thống** kiểm tra liên kết còn hạn và chưa dùng, đánh dấu email đã xác thực, ghi nhật ký và mời người dùng đăng nhập (UC-23).
+
+**Trường hợp đặc biệt**
+
+Mật khẩu không đạt chính sách hoặc thiếu ô đồng ý bắt buộc → không gửi được biểu mẫu, báo rõ lý do.
+
+Đăng nhập khi chưa xác thực → bị từ chối (AC-33); trang xác thực cho gửi lại thư, tối đa 5 lần mỗi ngày, cách nhau ít nhất 60 giây.
+
+Liên kết hết hạn hoặc đã dùng → báo "Liên kết xác thực không hợp lệ hoặc đã hết hạn" và cho gửi lại.
+
+Vượt 5 lần đăng ký mỗi giờ theo IP hoặc email → vẫn trả thông điệp chung nhưng không tạo tài khoản, không gửi thư.
+
+Yêu cầu đăng ký có kèm trường vai trò (ví dụ admin) → bị bỏ qua, tài khoản vẫn là retail (AC-34).
+
+Tài khoản chưa xác thực quá 7 ngày → bị xóa cùng bản ghi đồng ý (dọn ở lượt đăng ký kế tiếp).
+
+**UC-27. Nâng cấp Trader, yêu cầu quyền Analyst**
+
+| Mục | Nội dung |
+| --- | --- |
+| Mục tiêu | Người dùng mở thêm công cụ phù hợp nhu cầu mà vẫn giữ kiểm soát quyền nhạy cảm |
+| Người dùng | Retail (nâng Trader, xin Analyst), Trader (hạ về Retail, xin Analyst) |
+| Điều kiện trước | Đã đăng nhập (UC-23); khi xin Analyst: không có yêu cầu nào đang chờ và không bị từ chối trong 7 ngày gần nhất |
+| Kết quả | Vai trò Trader có hiệu lực ngay sau khi đăng nhập lại; yêu cầu Analyst ở trạng thái chờ Admin duyệt |
+| Truy vết | US-27 · FR-M0-03, 10, 11 · NFR-08 · AC-35, AC-36 · UC-28 |
+
+**Các bước**
+
+**Người dùng** mở Cài đặt → Tài khoản & vai trò.
+
+**Hệ thống** hiển thị vai trò hiện tại, quyền được mở thêm khi nâng cấp và các yêu cầu đã gửi.
+
+**Người dùng** (Retail) chọn kinh nghiệm giao dịch, mục đích sử dụng, tick xác nhận trách nhiệm và chọn "Nâng cấp lên Trader".
+
+**Hệ thống** đổi vai trò thành trader, lưu bản ghi đồng ý điều khoản Trader, ghi nhật ký, thu hồi mọi phiên; người dùng đăng nhập lại (FR-M0-11, FR-M0-03).
+
+**Người dùng** (Retail hoặc Trader) nhập tổ chức, chức danh, email cơ quan, mục đích, tick đồng ý Điều khoản dành cho Analyst và chọn "Gửi yêu cầu".
+
+**Hệ thống** lưu yêu cầu ở trạng thái chờ duyệt; vai trò chưa đổi cho đến khi Admin duyệt (UC-28).
+
+**Trường hợp đặc biệt**
+
+Chưa tick xác nhận trách nhiệm → không nâng cấp được.
+
+Đã có yêu cầu đang chờ → từ chối gửi thêm.
+
+Bị từ chối trong 7 ngày gần nhất → báo thời điểm được nộp lại.
+
+Trader muốn quay về Retail → chọn "Hạ cấp về Nhà đầu tư cá nhân"; dữ liệu đã nhập được giữ, công cụ Trader bị ẩn, phiên bị thu hồi.
+
+**UC-28. Duyệt hoặc từ chối yêu cầu nâng quyền**
+
+| Mục | Nội dung |
+| --- | --- |
+| Mục tiêu | Chỉ người có thẩm quyền mới mở dữ liệu truy vết nội bộ cho Analyst |
+| Người dùng | Admin |
+| Điều kiện trước | Admin đã đăng nhập; có yêu cầu đang chờ (UC-27) |
+| Kết quả | Yêu cầu được duyệt (vai trò đổi thành Analyst) hoặc từ chối có lý do; có nhật ký |
+| Truy vết | US-28 · FR-M0-12, FR-M7-05, 11 · NFR-08 · AC-36 · UC-25 |
+
+**Các bước**
+
+**Người dùng** (Admin) mở Quản trị → tab "Yêu cầu nâng quyền".
+
+**Hệ thống** liệt kê yêu cầu theo trạng thái, kèm người yêu cầu, tổ chức, chức danh, email cơ quan, mục đích, ngày gửi.
+
+**Người dùng** đối chiếu thông tin (tên miền email với tổ chức, mục đích hợp lý) rồi chọn "Duyệt" hoặc "Từ chối" và nhập lý do.
+
+**Hệ thống** khi duyệt: đổi vai trò người yêu cầu thành analyst, thu hồi phiên của họ, ghi nhật ký quản trị (người duyệt, trước, sau). Khi từ chối: giữ vai trò, lưu lý do, ghi nhật ký (FR-M0-12).
+
+**Trường hợp đặc biệt**
+
+Từ chối mà không nhập lý do → không cho gửi.
+
+Admin duyệt yêu cầu của chính mình → bị chặn.
+
+Yêu cầu đã được xử lý → báo đã xử lý, không đổi lại.
+
+**UC-29. Tạo Admin, xem đồng ý và xóa tài khoản**
+
+| Mục | Nội dung |
+| --- | --- |
+| Mục tiêu | Tạo Admin có kiểm soát; người dùng thực hiện quyền của chủ thể dữ liệu |
+| Người dùng | Người triển khai, Admin; Retail, Trader, Analyst |
+| Điều kiện trước | Khi bootstrap: chưa có Admin nào. Khi xem đồng ý hoặc xóa tài khoản: đã đăng nhập |
+| Kết quả | Có Admin hợp lệ; người dùng xem được lịch sử đồng ý; tài khoản và dữ liệu cá nhân bị xóa theo yêu cầu |
+| Truy vết | US-28, US-29 · FR-M0-10, 13, 14, 15 · NFR-07, 09, 18 · AC-37, AC-38, AC-39 · C6 |
+
+**Các bước**
+
+**Người triển khai** chạy lệnh bootstrap với email và mật khẩu Admin lấy từ biến môi trường; hệ thống chỉ tạo khi chưa có Admin nào (FR-M0-14).
+
+**Người dùng** (Admin hiện có) tạo thêm Admin trong Quản trị (UC-12); tài khoản mới nhận mật khẩu tạm và buộc đổi lần đầu.
+
+**Người dùng** (mọi vai trò trừ Admin) mở Cài đặt → Tài khoản & vai trò, xem bảng "Đồng ý đã lưu" gồm loại văn bản, phiên bản, thời điểm (FR-M0-10).
+
+**Người dùng** chọn "Xóa tài khoản của tôi" và nhập lại mật khẩu để xác nhận.
+
+**Hệ thống** xóa tài khoản cùng watchlist, Portfolio, Trade Plan, Journal, Chat, kênh thông báo; nhật ký quản trị liên quan được giữ ở dạng ẩn danh; phiên bị hủy (FR-M0-13).
+
+**Trường hợp đặc biệt**
+
+Chạy bootstrap khi đã có Admin → bị từ chối.
+
+Xóa tài khoản sai mật khẩu → bị từ chối, không xóa gì.
+
+Admin tự xóa tài khoản → bị chặn; khóa hoặc hạ quyền Admin cuối cùng → bị chặn (UC-12).
+
+Muốn ngừng nhận thông báo → tắt kênh trong Cài đặt → Kênh thông báo (rút đồng ý tùy chọn); rút đồng ý bắt buộc tương đương xóa tài khoản.
+
 ## 10. Functional requirements theo module
 
-Hệ thống chia thành 15 module: M0–M7 thuộc GĐ1, M8–M13 thuộc GĐ2, M14 thuộc GĐ3; mỗi yêu cầu có mã, vai trò được dùng và mức ưu tiên. Vai trò: R = retail, T = trader, A = analyst, Ad = admin. Ở các module quyết định (M9–M11), retail dùng bản rút gọn; yêu cầu ghi vai trò T, A là bản đầy đủ
+Hệ thống chia thành 15 module: M0–M7 thuộc GĐ1, M8–M13 thuộc GĐ2, M14 thuộc GĐ3; mỗi yêu cầu có mã, vai trò được dùng và mức ưu tiên. Vai trò: R = retail, T = trader, A = analyst, Ad = admin, Khách = người chưa có tài khoản. Ở các module quyết định (M9–M11), retail dùng bản rút gọn; yêu cầu ghi vai trò T, A là bản đầy đủ
 
 ### M0. Xác thực
 
@@ -1226,6 +1452,14 @@ Hệ thống chia thành 15 module: M0–M7 thuộc GĐ1, M8–M13 thuộc GĐ2,
 | FR-M0-05 | Người dùng đã đăng nhập đổi mật khẩu bằng cách nhập mật khẩu hiện tại và mật khẩu mới. Thành công thì mọi phiên khác của tài khoản bị thu hồi và sự kiện được ghi log. | Tất cả | Must |
 | FR-M0-06 | Chính sách mật khẩu: tối thiểu 8-64 ký tự, bao gồm kí tự chữ, số và ít nhất 1 kí tự đặc biệt, mật khẩu là duy nhất cho 1 tài khoản | Tất cả | Must |
 | FR-M0-07 | Đặt lại mật khẩu: Admin đặt mật khẩu tạm cho người dùng, mọi phiên cũ bị thu hồi, người dùng bị buộc đổi ở lần đăng nhập kế tiếp. Tự đặt lại qua email: liên kết dùng một lần, hết hạn 30 phút | Tất cả | Should |
+| FR-M0-08 | Tự đăng ký công khai bằng email, mật khẩu, tên hiển thị (tùy chọn) và 3 ô đồng ý bắt buộc (đủ 18 tuổi, Điều khoản sử dụng, Thông báo xử lý dữ liệu). Chỉ tạo tài khoản retail; trường vai trò trong yêu cầu bị bỏ qua. Luôn trả cùng một thông điệp; email đã tồn tại thì gửi thư "Bạn đã có tài khoản" và không tạo mới. Giới hạn 5 lần đăng ký mỗi giờ theo IP và theo email | Khách | Must |
+| FR-M0-09 | Xác thực email bằng liên kết một lần, hết hạn 24 giờ, chỉ lưu bản băm SHA-256 của mã. Chưa xác thực thì không đăng nhập được. Gửi lại tối đa 5 lần mỗi ngày, cách nhau ≥ 60 giây. Tài khoản chưa xác thực quá 7 ngày tự xóa | Khách, R | Must |
+| FR-M0-10 | Ghi nhận mỗi lần đồng ý (loại văn bản, phiên bản, thời điểm, kênh) khi đăng ký và khi nâng cấp vai trò; người dùng xem lại lịch sử đồng ý trong Cài đặt. Khi phiên bản văn bản đổi thì yêu cầu đồng ý lại ở lần đăng nhập sau (Should) | R, T, A | Must |
+| FR-M0-11 | Retail tự nâng cấp lên Trader sau khi khai kinh nghiệm, mục đích và xác nhận trách nhiệm; Trader tự hạ về Retail, giữ dữ liệu. Retail hoặc Trader gửi yêu cầu quyền Analyst (tổ chức, chức danh, email cơ quan, mục đích, đồng ý Điều khoản Analyst); tối đa 1 yêu cầu đang chờ; bị từ chối thì nộp lại sau 7 ngày. Mọi đổi vai trò thu hồi phiên và ghi nhật ký | R, T | Must |
+| FR-M0-12 | Admin xem danh sách yêu cầu nâng quyền theo trạng thái, duyệt hoặc từ chối (bắt buộc lý do khi từ chối); không tự duyệt yêu cầu của chính mình; duyệt thì đổi vai trò và thu hồi phiên người yêu cầu; mọi quyết định ghi nhật ký quản trị | Ad | Must |
+| FR-M0-13 | Người dùng tự xóa tài khoản sau khi nhập lại mật khẩu: xóa watchlist, Portfolio, Trade Plan, Journal, Chat, kênh thông báo; nhật ký quản trị giữ dạng ẩn danh; Admin không tự xóa được | R, T, A | Must |
+| FR-M0-14 | Admin đầu tiên chỉ tạo bằng lệnh bootstrap khi triển khai (đọc thông tin từ biến môi trường, tự chặn khi đã có Admin); không có endpoint công khai nào tạo admin; Admin tiếp theo do Admin hiện có tạo với mật khẩu tạm và buộc đổi lần đầu; luôn còn ít nhất một Admin hoạt động | Ad | Must |
+| FR-M0-15 | Tăng cường bảo vệ tài khoản: Admin nhập lại mật khẩu trước khi tạo hoặc nâng quyền Admin, chỉ dùng email tổ chức; xác thực hai lớp (TOTP) cho Admin; xác nhận email cơ quan bằng thư trước khi Admin xét yêu cầu Analyst; thư báo kết quả duyệt; captcha khi vượt ngưỡng đăng ký | Ad, Khách | Should |
 
 ### M1. Market overview
 
@@ -1437,7 +1671,7 @@ Với sản phẩm AI tài chính, hai yêu cầu phi chức năng quan trọng 
 | NFR-04 | Độ tin cậy / fallback | Thiếu tin: dự báo bằng nhánh định lượng và gắn cờ “thiếu dữ liệu tin”. Thiếu giá ngày T: không sinh dự báo mới, giữ dự báo cũ kèm nhãn “dữ liệu cũ”. | Kiểm thử với dữ liệu bị xóa có chủ đích |
 | NFR-05 | Tính giải thích | 100% dự báo hiển thị có giải thích ở mức phù hợp vai trò (retail: đơn giản; trader: nhóm yếu tố + hit rate; analyst: chi tiết); không bao giờ hiển thị giải thích cho dữ liệu không tồn tại. | Kiểm thử tự động trên toàn bộ dự báo 1 ngày |
 | NFR-06 | Tính truy vết | Mỗi dự báo gắn timestamp, phiên bản mô hình, mã snapshot dữ liệu (hash tập đặc trưng đầu vào); tái chạy cùng phiên bản + snapshot cho cùng xác suất (sai số < 1e-4). | Kiểm thử tái lập trên 10 dự báo ngẫu nhiên |
-| NFR-07 | Bảo mật | Xác thực bằng email + mật khẩu (bcrypt), phiên JWT hết hạn sau 24 giờ; HTTPS khi triển khai công khai. Dữ liệu danh mục cá nhân (Portfolio, Trade Plan, Journal, lịch sử Chat) chỉ lưu gắn với người sở hữu; không lưu thông tin tài khoản chứng khoán hay ngân hàng. | Review cấu hình và lược đồ dữ liệu |
+| NFR-07 | Bảo mật | Xác thực bằng email + mật khẩu băm bằng hàm băm chậm có salt (scrypt hoặc bcrypt cost ≥ 12; triển khai dùng scrypt); phiên đăng nhập là token ngẫu nhiên chỉ lưu bản băm, cookie HttpOnly, hết hạn sau 24 giờ; HTTPS khi triển khai công khai. Mã xác thực email, mã đặt lại mật khẩu và mã xác minh kênh chỉ lưu bản băm. Dữ liệu danh mục cá nhân (Portfolio, Trade Plan, Journal, lịch sử Chat) chỉ lưu gắn với người sở hữu; không lưu thông tin tài khoản chứng khoán hay ngân hàng. | Review cấu hình và lược đồ dữ liệu |
 | NFR-08 | Phân quyền | RBAC 4 vai trò retail / trader / analyst / admin; API kiểm tra quyền ở phía server, không chỉ ẩn nút trên giao diện. Mọi API đọc/ghi dữ liệu cá nhân kiểm tra quyền sở hữu theo người dùng; admin không xem được nội dung Portfolio, Trade Plan, Journal. | Kiểm thử gọi API với vai trò sai trả 403; gọi dữ liệu của người khác trả 403/404 |
 | NFR-09 | Nhật ký hệ thống | Log có cấu trúc (JSON) cho API, ETL, huấn luyện và suy luận; lưu tối thiểu 90 ngày; không ghi mật khẩu hoặc token. | Kiểm tra mẫu log |
 | NFR-10 | Khả dụng / UI | Web responsive, ưu tiên laptop 1366–1920 px, dùng được trên điện thoại ≥ 375 px; ứng dụng mobile native (GĐ3) hỗ trợ iOS và Android (xem NFR-17); giao diện tiếng Việt; màu tăng/giảm kèm biểu tượng (không chỉ dựa vào màu). | Kiểm thử thủ công trên Chrome/Safari |
@@ -1448,6 +1682,7 @@ Với sản phẩm AI tài chính, hai yêu cầu phi chức năng quan trọng 
 | NFR-15 | Thông báo ngoài app | Mỗi sự kiện cảnh báo gửi tối đa 1 lần cho mỗi kênh (khóa chống trùng theo người dùng–sự kiện–kênh); gửi trong 5 phút sau khi batch dự báo xong; retry tối đa 3 lần khi lỗi kênh và ghi log. | Chạy lại batch 2 lần và đếm tin nhận; kiểm tra log gửi |
 | NFR-16 | Báo cáo PDF | Sinh PDF < 10 giây (p95) với danh mục tối đa 10 mã; số liệu trong PDF khớp màn hình. | Đo thời gian sinh; đối chiếu 10 mẫu |
 | NFR-17 | Mobile | Ứng dụng iOS/Android chạy trên hai phiên bản hệ điều hành chính gần nhất; dùng chung API và phân quyền với web; token lưu trong Keychain/Keystore; màn hình dự báo hiển thị < 3 giây (p95) trên mạng 4G. | Kiểm thử trên thiết bị thật hoặc máy ảo |
+| NFR-18 | Dữ liệu cá nhân | Thu thập tối thiểu khi đăng ký (email, mật khẩu, tên hiển thị tùy chọn; không CCCD, số tài khoản chứng khoán/ngân hàng, số điện thoại); mỗi lần đồng ý có bản ghi phiên bản và thời điểm; người dùng tự xóa được tài khoản; phản hồi đăng ký không tiết lộ email đã tồn tại; quy trình thông báo sự cố lộ lọt trong 72 giờ (C6). | Review lược đồ và biểu mẫu; kiểm thử AC-31..AC-39 |
 
 ## 12. Yêu cầu AI/mô hình & dữ liệu (Model Governance)
 
@@ -1562,6 +1797,15 @@ Mỗi tính năng được nghiệm thu khi tất cả điều kiện Given / Wh
 | AC-28 | Pipeline dự báo hằng ngày | Một ngày giao dịch bình thường; Ad đã chọn phiên bản mô hình đang phục vụ | Đến 15:30 pipeline tự chạy; sau đó chạy lại lần hai; trong một ngày khác, giá phiên T lỗi sau 3 lần thử | Trước 20:00 có dự báo mới cho đủ mã; chạy lại không tạo bản ghi dự báo hoặc cảnh báo trùng; khi giá lỗi thì không sinh dự báo mới, giữ dự báo cũ kèm nhãn "dữ liệu cũ", Ad thấy lỗi ở trang nguồn dữ liệu |
 | AC-29 | Quản lý tài khoản và vai trò | Ad đã đăng nhập; một tài khoản R đang hoạt động | Ad tạo một tài khoản T; Ad khóa tài khoản R; Ad đổi vai trò một tài khoản từ R sang T | Tài khoản mới đăng nhập được; tài khoản R bị khóa không đăng nhập được ngay; vai trò mới có hiệu lực ngay ở lần gọi API kế tiếp; cả ba hành động có trong nhật ký quản trị |
 | AC-30 | Đổi mật khẩu | R đặt lại mật khẩu; R đang có phiên mở | Admin đặt lại mật khẩu cho R; R dùng phiên cũ gọi API; R đăng nhập bằng mật khẩu tạm; R tự đặt lại qua mail; | Phiên cũ nhận 401; đăng nhập được nhưng bị buộc đổi mật khẩu; mật khẩu mới không đạt chính sách thì bị từ chối R nhập mật khẩu mới xác thực qua mail mật khẩu mới khác mật khẩu cũ và đạt chính sách mật khẩu |
+| AC-31 | Tự đăng ký | Khách chưa có tài khoản; SMTP đã cấu hình | Điền email, mật khẩu đạt chính sách, tick 3 ô bắt buộc, bấm Đăng ký; sau đó bấm liên kết trong thư | Tài khoản được tạo ở trạng thái chưa xác thực, nhận thư xác thực; bấm liên kết thì đăng nhập được với vai trò retail; có bản ghi đồng ý cho 2 văn bản |
+| AC-32 | Không lộ email đã tồn tại | Email đã có tài khoản | Đăng ký lại bằng email đó | Thông điệp hiển thị giống hệt AC-31; không tạo tài khoản mới; chủ email nhận thư "Bạn đã có tài khoản" |
+| AC-33 | Xác thực email | Tài khoản vừa đăng ký, chưa bấm liên kết | Đăng nhập đúng mật khẩu; dùng lại liên kết đã dùng; dùng liên kết quá 24 giờ | Đăng nhập bị từ chối với hướng dẫn xác thực; liên kết dùng lần hai hoặc quá hạn bị từ chối và cho gửi lại |
+| AC-34 | Không tự cấp quyền | Khách gửi yêu cầu đăng ký có thêm trường vai trò = admin | Xác thực email rồi đăng nhập | Tài khoản vẫn là retail; không có endpoint công khai nào tạo được admin |
+| AC-35 | Nâng cấp Trader | Retail đã đăng nhập ở hai trình duyệt | Nâng cấp lên Trader ở một trình duyệt | Vai trò đổi thành trader; phiên ở cả hai trình duyệt nhận 401; đăng nhập lại thấy chức năng Trader (vốn và % rủi ro, import CSV); nhật ký quản trị có sự kiện tự nâng cấp |
+| AC-36 | Yêu cầu Analyst | Retail hoặc Trader gửi yêu cầu Analyst | Trước khi duyệt; Admin duyệt; trường hợp khác Admin từ chối | Trước duyệt vai trò chưa đổi; sau duyệt người dùng có quyền Analyst sau khi đăng nhập lại; từ chối bắt buộc có lý do, người dùng thấy lý do và không nộp lại được trong 7 ngày; Admin không tự duyệt được yêu cầu của chính mình |
+| AC-37 | Tạo Admin có kiểm soát | Hệ thống đã có Admin | Chạy lệnh bootstrap; Admin hiện có tạo Admin mới; Admin cố khóa chính mình khi là Admin cuối | Bootstrap bị từ chối; Admin mới nhận mật khẩu tạm và buộc đổi lần đầu; khóa Admin cuối bị chặn; mọi hành động có trong nhật ký |
+| AC-38 | Ghi nhận đồng ý | Người dùng đã đăng ký và nâng cấp Trader | Mở Cài đặt → Tài khoản & vai trò; tắt kênh email trong Kênh thông báo | Thấy 3 bản ghi đồng ý (Điều khoản sử dụng, Thông báo xử lý dữ liệu, Điều khoản Trader) kèm phiên bản và thời điểm; sau khi tắt kênh email thì không còn thư cảnh báo |
+| AC-39 | Xóa tài khoản | Người dùng có watchlist, Portfolio, Trade Plan, Journal, Chat | Chọn xóa tài khoản và nhập đúng mật khẩu | Toàn bộ dữ liệu đó bị xóa; đăng nhập lại bị từ chối; nhật ký quản trị liên quan còn nhưng không còn gắn với tài khoản; nhập sai mật khẩu thì không xóa gì |
 
 ## 14. Rủi ro & giảm thiểu
 
@@ -1628,7 +1872,17 @@ Nếu cổng 2 trễ, phần Should-have của GĐ1 (tuần 9–10) được c�
 
 ☐ Nhân sự và thời gian GĐ2–GĐ3: vẫn một sinh viên hay thêm người; giảng viên hướng dẫn/hội đồng có chấp nhận lộ trình đến tuần 28 không.
 
-☐ Telegram bot và email: nguồn SMTP miễn phí, hạn mức gửi mỗi ngày, có cần xác thực email người dùng không.
+☐ Telegram bot và email: nguồn SMTP miễn phí và hạn mức gửi mỗi ngày (bản demo dùng Gmail SMTP với App Password, giới hạn khoảng 500 người nhận mỗi ngày).
+
+☑ Xác thực email người dùng: có, bắt buộc với tài khoản tự đăng ký (FR-M0-09).
+
+☑ Mở đăng ký công khai cho retail; Trader tự nâng cấp; Analyst cần Admin duyệt và bắt buộc khai email cơ quan (§9.2.6).
+
+☐ Xác nhận email cơ quan bằng thư, TOTP và nguyên tắc hai người khi tạo Admin: để giai đoạn sau (FR-M0-15).
+
+☐ Thời hạn lưu dữ liệu sau khi xóa tài khoản và đầu mối bảo vệ dữ liệu cá nhân của dự án.
+
+☐ Pháp chế xác nhận các điểm ở §7.2 (C6) trước khi mở cho người dùng thật.
 
 ☐ Mobile: chốt React Native và hình thức phát hành (TestFlight/bản cài trực tiếp hay đưa lên App Store/Google Play).
 
@@ -1652,14 +1906,19 @@ Nếu cổng 2 trễ, phần Should-have của GĐ1 (tuần 9–10) được c�
 | Trade Plan | Kế hoạch giao dịch do người dùng tự lập (vùng vào, cắt lỗ, mục tiêu, lý do), gắn snapshot dự báo lúc lập |
 | Journal | Nhật ký quyết định, tự tạo khi đóng Trade Plan và so sánh quyết định với dự báo |
 | R:R | Tỷ lệ lợi nhuận kỳ vọng trên rủi ro của một kế hoạch: (mục tiêu − giá vào) / (giá vào − cắt lỗ) |
+| Xác thực email | Bước người dùng bấm liên kết một lần trong thư để chứng minh sở hữu địa chỉ email trước khi được đăng nhập |
+| Bản ghi đồng ý | Bằng chứng người dùng đã đồng ý một văn bản (loại, phiên bản, thời điểm, kênh) |
+| Bootstrap Admin | Lệnh tạo tài khoản Admin đầu tiên khi triển khai, chỉ chạy được khi hệ thống chưa có Admin |
 
 ### 16.3 Tài liệu tham chiếu
 
-Project Brief CAPSTONE_PB v0.0.2 (08/10/2026).
+Project Brief CAPSTONE_PB v0.0.4 (29/10/2026); các ghi chú "Project Brief 0.0.2" trong tài liệu là nguồn gốc của quyết định tại thời điểm đó.
 
-CAPSTONE_SDD (bản nháp 07/10/2026; ghi số phiên bản khi SDD phát hành).
+Software Design Document CAPSTONE_SDD v0.0.5 (29/10/2026).
 
 Số liệu tài khoản VSDC đến 31/01/2025 trích từ Project Brief.
+
+Luật Bảo vệ dữ liệu cá nhân 2025 (91/2025/QH15); Nghị định 356/2025/NĐ-CP; Luật Chứng khoán 2019; Bộ luật Dân sự 2015; Luật Giao dịch điện tử 2023.
 
 
 > Ghi chú: Tài liệu Word gốc có 2 ảnh/đối tượng hình ảnh nhúng; nội dung văn bản và bảng đã được chuyển đổi, hình ảnh không được nhúng trực tiếp vào Markdown.

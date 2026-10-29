@@ -1,29 +1,31 @@
-# Báo cáo tiến độ: StockSense VN so với PRD v0.0.3 / SDD v0.0.4
+# Báo cáo tiến độ: StockSense VN so với PRD v0.0.4 / SDD v0.0.5
 
-Ngày lập: 25/10/2026 · **Cập nhật lần cuối: 26/10/2026 (sau đợt hoàn thiện các chức năng không phụ thuộc mô hình AI).**
+Ngày lập: 25/10/2026 · **Cập nhật lần cuối: 29/10/2026 (PRD v0.0.4 bổ sung 8 FR luồng đăng ký FR-M0-08..15, tổng FR tăng từ 107 lên 115).**
 
-Phạm vi: đối chiếu toàn bộ **107 yêu cầu chức năng (FR-M0 → FR-M14)** trong `PRODUCT_REQUIREMENTS_DOCUMENT_v0.0.3.md` với code trong `apps/` và `packages/`. Yêu cầu phi chức năng (NFR), kiến trúc trong SDD và các tài liệu đề xuất bổ sung không được tính vào tỷ lệ phần trăm.
+Phạm vi: đối chiếu toàn bộ **115 yêu cầu chức năng (FR-M0 → FR-M14)** trong `PRODUCT_REQUIREMENTS_DOCUMENT_v0.0.3.md` (nội dung phiên bản 0.0.4) với code trong `apps/` và `packages/`. Yêu cầu phi chức năng (NFR), kiến trúc trong SDD và các tài liệu đề xuất bổ sung không được tính vào tỷ lệ phần trăm.
 
 ## 1. Kết quả tổng hợp
 
 Cách chấm từng FR: **Đạt = 1 điểm**, **Một phần = 0,5 điểm**, **Chưa làm = 0 điểm**. Chức năng có giao diện nhưng chạy trên dữ liệu dự báo mẫu (seed) được chấm là **Một phần**, vì PRD yêu cầu dự báo thật.
 
-| Chỉ số | Trước (25/10) | **Hiện tại (26/10)** |
-| --- | --- | --- |
-| **Mức hoàn thành toàn bộ PRD (M0–M14)** | 41 / 107 ≈ 38% | **54 / 107 ≈ 50%** |
-| Không tính app mobile M14 (giai đoạn 3) | 41 / 102 ≈ 40% | **54 / 102 ≈ 53%** |
-| Số FR đạt đầy đủ | 21 | **43** |
-| Số FR làm một phần | 40 | 22 |
-| Số FR chưa làm | 46 | 42 |
+| Chỉ số | Trước (25/10, PRD 0.0.3) | 26/10 (PRD 0.0.3) | **Hiện tại (29/10, PRD 0.0.4)** |
+| --- | --- | --- | --- |
+| **Mức hoàn thành toàn bộ PRD (M0–M14)** | 41 / 107 ≈ 38% | 54 / 107 ≈ 50% | **60,5 / 115 ≈ 53%** |
+| Không tính app mobile M14 (giai đoạn 3) | 41 / 102 ≈ 40% | 54 / 102 ≈ 53% | **60,5 / 110 ≈ 55%** |
+| Số FR đạt đầy đủ | 21 | 43 | **49** |
+| Số FR làm một phần | 40 | 22 | **23** |
+| Số FR chưa làm | 46 | 42 | **43** |
 
-**Kết luận chính:** mọi FR **không phụ thuộc mô hình AI** (trừ app mobile) đã đạt. Toàn bộ 22 FR "một phần" và 42 FR "chưa làm" còn lại đều thuộc một trong ba nhóm:
+Luồng đăng ký đã được code từ trước nhưng chưa có trong PRD 0.0.3; khi đưa vào PRD 0.0.4 thành FR-M0-08..15 thì 6 FR đạt, FR-M0-10 một phần (chưa có đồng ý lại khi đổi phiên bản văn bản), FR-M0-15 (Should: TOTP, xác nhận email cơ quan, captcha…) chưa làm.
+
+**Kết luận chính:** mọi FR **không phụ thuộc mô hình AI** (trừ app mobile và phần tăng cường bảo mật đăng ký FR-M0-10/15) đã đạt. Ngoài FR-M0-10 và FR-M0-15, toàn bộ FR "một phần" và "chưa làm" còn lại đều thuộc một trong ba nhóm:
 - cần mô hình dự báo, sentiment, giải thích hoặc chat;
 - là app mobile M14;
 - là phần dự báo nằm bên trong một FR mà phần còn lại đã làm xong.
 
 | Module | Số FR | Điểm trước | **Điểm hiện tại** | Phần còn thiếu (đều cần AI hoặc mobile) |
 | --- | ---: | ---: | ---: | --- |
-| M0. Xác thực & tài khoản | 7 | 6,5 | **7 (100%)** | — |
+| M0. Xác thực, đăng ký & tài khoản | 15 | 6,5 / 7 | **13,5 (90%)** | Đồng ý lại khi đổi phiên bản (FR-M0-10); TOTP, xác nhận email cơ quan, captcha, thư kết quả duyệt (FR-M0-15) |
 | M1. Market overview | 7 | 3,5 | **4 (57%)** | Lọc/sắp xếp theo dự báo, tỷ lệ nhãn, "tín hiệu đổi hôm nay" |
 | M2. Forecast card & chi tiết mã | 9 | 3 | **3 (33%)** | Toàn bộ phần dự báo |
 | M3. Explainability | 4 | 0 | **0** | Toàn bộ |
@@ -38,7 +40,7 @@ Cách chấm từng FR: **Đạt = 1 điểm**, **Một phần = 0,5 điểm**, 
 | M12. Chat | 8 | 1 | **1 (13%)** | Mô hình ngôn ngữ và pipeline an toàn |
 | M13. Báo cáo PDF | 6 | 3,5 | **4,5 (75%)** | Dự báo, giải thích, hit rate trong PDF |
 | M14. App mobile | 5 | 0 | **0** | Toàn bộ (giai đoạn 3) |
-| **Tổng** | **107** | **41** | **54 (≈ 50%)** | |
+| **Tổng** | **115** | **41 / 107** | **60,5 (≈ 53%)** | |
 
 ## 2. Những gì đã làm trong đợt 26/10/2026
 
@@ -110,11 +112,19 @@ Chạy thật trên PostgreSQL, API và web qua proxy Vite, không dùng mock:
 
 Ký hiệu: ✅ Đạt · 🟡 Một phần · ❌ Chưa làm. Cột "Ghi chú" ghi rõ phần còn thiếu.
 
-### M0. Xác thực và tài khoản — 7/7
+### M0. Xác thực, đăng ký và tài khoản — 13,5/15
 | FR | Mức | Ghi chú |
 | --- | --- | --- |
 | M0-01 → M0-05, M0-07 | ✅ | Đăng nhập, phiên 24h, khóa 15 phút sau 5 lần sai, đổi mật khẩu, mật khẩu tạm do Admin cấp |
 | M0-06 Chính sách mật khẩu 8–64 ký tự | ✅ | Sửa từ 12–128 về đúng PRD |
+| M0-08 Tự đăng ký retail | ✅ | 3 ô đồng ý, thông điệp chung, thư "Bạn đã có tài khoản", bỏ qua trường role, 5 lần/giờ theo IP và email (migration 018) |
+| M0-09 Xác thực email | ✅ | Liên kết 24h dùng một lần, gửi lại 5/ngày cách 60 giây, xóa tài khoản chưa xác thực sau 7 ngày; gửi bằng Gmail SMTP thật |
+| M0-10 Ghi nhận đồng ý | 🟡 | Lưu và xem lịch sử đồng ý; chưa yêu cầu đồng ý lại khi đổi phiên bản, chưa ghi đồng ý Điều khoản Analyst |
+| M0-11 Nâng/hạ cấp Trader, yêu cầu Analyst | ✅ | Thu hồi phiên, audit, 1 yêu cầu chờ, chặn 7 ngày sau từ chối (migration 019) |
+| M0-12 Admin duyệt yêu cầu | ✅ | Bắt buộc lý do khi từ chối, chặn tự duyệt |
+| M0-13 Tự xóa tài khoản | ✅ | Nhập lại mật khẩu, Admin bị chặn |
+| M0-14 Bootstrap Admin | ✅ | `npm run db:bootstrap-admin`, chặn khi đã có Admin, giữ ít nhất 1 Admin |
+| M0-15 Tăng cường bảo vệ (Should) | ❌ | TOTP, nhập lại mật khẩu khi tạo Admin, xác nhận email cơ quan, captcha, thư kết quả duyệt |
 
 ### M1. Market overview — 4/7
 | FR | Mức | Ghi chú |

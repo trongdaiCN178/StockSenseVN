@@ -2,12 +2,12 @@
 
 | CODE | CAPSTONE_SDD |
 | --- | --- |
-| VERSION | 0.0.4 |
+| VERSION | 0.0.5 |
 | STATUS | DRAFT UPDATED |
 | AUTHOR | HOANG MINH TUAN |
 | VERIFY | HOANG MINH TUAN |
-| UPDATE | 13/10/2026 |
-| RELATED DOCUMENT |  |
+| UPDATE | 29/10/2026 |
+| RELATED DOCUMENT | PRD CAPSTONE_PRD v0.0.4; Project Brief CAPSTONE_PB v0.0.4 |
 
 | Mã tài liệu | Phiên bản | Trạng thái | Tác giả | Ngày cập nhật |
 | --- | --- | --- | --- | --- |
@@ -15,16 +15,19 @@
 | CAPSTONE_SDD | 0.0.2 | Test | Hoàng Minh Tuấn | 08/10/2026 |
 | CAPSTONE_SDD | 0.0.3 | Test | Trần Trọng Đại | 09/10/2026 |
 | CAPSTONE_SDD | 0.0.4 | Test | Trần Trọng Đại | 13/10/2026 |
+| CAPSTONE_SDD | 0.0.5 | Test | Trần Trọng Đại | 29/10/2026 |
+
+Thay đổi 0.0.5: bổ sung thiết kế luồng đăng ký và vòng đời tài khoản (FR-M0-08..15, UC-26..29, AC-31..39) theo PRD v0.0.4 (§7.2 C6, §9.2.6): mục 2.1, 5.2 (M0), 6.1, 6.2, 8.1, 8.2, 10, 11, 12.4. Ghi nhận băm mật khẩu triển khai bằng scrypt.
 
 **MỤC LỤC**
 
 ## 1. Giới thiệu
 
-Tài liệu này mô tả cách xây dựng hệ thống IDSS (tên thương mại tạm: StockSense VN) để đáp ứng toàn bộ yêu cầu Must-have và Should-have trong PRD v0.0.3 của ba giai đoạn (GĐ1 lõi dự báo, GĐ2 vòng quyết định, GĐ3 mobile), trên nền mã nguồn sẵn có trong DATN_2026.
+Tài liệu này mô tả cách xây dựng hệ thống IDSS (tên thương mại tạm: StockSense VN) để đáp ứng toàn bộ yêu cầu Must-have và Should-have trong PRD v0.0.4 của ba giai đoạn (GĐ1 lõi dự báo, GĐ2 vòng quyết định, GĐ3 mobile), trên nền mã nguồn sẵn có trong DATN_2026.
 
 ### 1.1 Mục đích
 
-Chuyển các yêu cầu chức năng FR-M0 đến FR-M14 và NFR-01 đến NFR-17 thành kiến trúc, thành phần, lược đồ dữ liệu, API và thiết kế mô hình cụ thể.
+Chuyển các yêu cầu chức năng FR-M0 đến FR-M14 và NFR-01 đến NFR-18 thành kiến trúc, thành phần, lược đồ dữ liệu, API và thiết kế mô hình cụ thể.
 
 Làm căn cứ để lập trình, kiểm thử và viết chương thiết kế trong báo cáo đồ án.
 
@@ -49,9 +52,9 @@ Hệ thống dự báo xác suất Tăng / Đi ngang / Giảm sau 2 và 5 phiên
 
 ### 1.4 Tài liệu tham chiếu
 
-Project Brief CAPSTONE_PB v0.0.3 (09/10/2026).
+Project Brief CAPSTONE_PB v0.0.4 (29/10/2026).
 
-Product Requirements Document CAPSTONE_PRD v0.0.3 (09/10/2026).
+Product Requirements Document CAPSTONE_PRD v0.0.4 (29/10/2026).
 
 Mã nguồn DATN_2026: db/schema.sql, etl/prices.py, etl/news.py, Go web service (cmd/server, internal/*).
 
@@ -69,7 +72,9 @@ Hệ thống gồm một phần chạy theo lịch (nạp dữ liệu, chấm c�
 | trader | P2, swing trader; môi giới; quản lý danh mục | Như retail, thêm đóng góp theo nhóm yếu tố và trọng số tin. GĐ2: lưu bộ lọc Screener, Portfolio import CSV, Trade Plan đầy đủ (R:R, khối lượng theo mức rủi ro), Journal có thống kê nhìn lại, PDF Journal |
 | analyst | P3, analyst/quant; môi giới | Như trader, thêm top 15 đặc trưng, tab Audit, trang Đánh giá mô hình đầy đủ (retail và trader chỉ thấy bản tóm tắt), xuất CSV, xem nhật ký Chat đã che nội dung cá nhân |
 | admin | Quản trị viên | Quản lý người dùng, nguồn dữ liệu, lần chạy job, phiên bản mô hình, audit log, nhật ký gửi thông báo và nhật ký Chat đã che nội dung cá nhân; không đọc được nội dung Portfolio, Trade Plan, Journal của người dùng |
-| (tài khoản demo dùng chung) | Hội đồng chấm | Xem demo bằng tài khoản analyst dùng chung (app_user.is_demo) do admin tạo trước buổi bảo vệ, chứa dữ liệu mẫu, không có dữ liệu cá nhân thật |
+| (tài khoản demo dùng chung) | Hội đồng chấm | Xem demo bằng tài khoản demo tạo sẵn trước buổi bảo vệ (app_user.is_demo), chứa dữ liệu mẫu, không có dữ liệu cá nhân thật; hoặc tự đăng ký tài khoản mới |
+
+Cách có tài khoản (FR-M0-08..14, PRD §4.2, §9.2.6): retail tự đăng ký công khai và xác thực email; trader do retail tự nâng cấp (tự hạ cấp được); analyst do retail/trader gửi yêu cầu và Admin duyệt; admin không đăng ký công khai — Admin đầu tiên tạo bằng lệnh bootstrap (npm run db:bootstrap-admin) khi chưa có Admin nào, Admin tiếp theo do Admin hiện có tạo. Mọi đổi vai trò thu hồi phiên của tài khoản đó.
 
 ### 2.2 Bối cảnh và hệ thống bên ngoài
 
@@ -131,6 +136,7 @@ Thiết kế ưu tiên dùng lại mã sẵn có và hạ tầng miễn phí; r�
 | D14 | JWT HS256 có uid và sid; sid trỏ tới auth_session. Mỗi request kiểm tra phiên còn hiệu lực tối đa 24 giờ, trạng thái khóa và vai trò hiện tại trong app_user. Khóa hoặc đổi vai trò thu hồi mọi phiên ngay trong transaction. | FR-M0-01–07; AC-27, AC-29, AC-30. Cùng cơ chế thu hồi cho web và mobile; vai trò trong JWT nếu có chỉ là thông tin tham khảo. | JWT không tra phiên: không thu hồi ngay. Redis: thêm dịch vụ vận hành. |
 | D15 | Tái lập dự báo chạy qua hàng đợi CSDL: API ghi một dòng forecast_replay trạng thái queued, worker Python lấy dòng, chạy ml/replay.py và ghi kết quả. Replay không ghi đè dự báo gốc. | FR-M7-10 và AC-14; giữ nguyên D3 (Go và Python chỉ giao tiếp qua PostgreSQL). Replay là thao tác hiếm, độ trễ poll chấp nhận được. | Go gọi trực tiếp Python qua HTTP: thêm ngoại lệ cho D3. Chạy replay đồng bộ trong api: kéo PyTorch vào tiến trình Go. |
 | D16 | audit_log chỉ thêm, không sửa/xóa. Thành công được ghi cùng transaction với thay đổi quản trị; kết quả từ chối hoặc lỗi được ghi bằng transaction riêng sau rollback, không kèm bí mật. | FR-M7-05, FR-M7-11, NFR-09, US-25/UC-25 và AC-29; ghi được trước/sau và kết quả. | Chỉ ghi log ra tệp hoặc ghi sau commit: khó truy vấn và có thể thiếu sự kiện. |
+| D17 | Đăng ký công khai chỉ tạo retail và xác thực email bằng liên kết một lần 24 giờ; phản hồi đăng ký luôn cùng thông điệp; trader tự nâng cấp có xác nhận; analyst do Admin duyệt; Admin do bootstrap hoặc Admin hiện có tạo, chặn mất Admin cuối; băm mật khẩu bằng scrypt | FR-M0-08..14, PRD §9.2.6: mở rộng được cho retail mà không lộ dữ liệu nhạy cảm; trader chỉ mở công cụ cho dữ liệu của chính mình nên tự phục vụ được; analyst xem dữ liệu truy vết nội bộ nên cần duyệt; scrypt có sẵn trong Node.js, không cần thư viện native, không giới hạn 72 byte | Chỉ Admin tạo tài khoản: an toàn nhưng không mở rộng được. Admin duyệt mọi nâng cấp trader: tăng việc cho Admin. Mã OTP 6 số: dễ dùng trên mobile nhưng dễ bị đoán nếu không giới hạn thử. Báo thẳng "email đã tồn tại": cho phép dò tài khoản. Hai người xác nhận + TOTP khi tạo Admin: an toàn hơn nhưng phức tạp, để FR-M0-15 |
 
 ## 4. Kiến trúc tổng thể
 
@@ -163,11 +169,15 @@ Hệ thống có 12 thành phần kỹ thuật (C1–C12); mười bốn mô-đu
 
 ### 5.2 Thiết kế theo mô-đun nghiệp vụ
 
-**M0. Xác thực và phiên**. Đăng nhập bằng email chuẩn hóa và mật khẩu bcrypt cost 12. Chính sách FR-M0-06: 8–64 ký tự, có chữ, số và ký tự đặc biệt; kiểm tra không quá 72 byte UTF-8 trước bcrypt, không cắt ngầm. Mật khẩu mới phải khác mật khẩu hiện tại (AC-30). Đăng nhập thành công tạo auth_session và JWT uid/sid với hạn tối đa 24 giờ. Middleware kiểm tra phiên, locked, locked_until và vai trò trong CSDL ở mỗi request. Token sai, hết hạn hoặc bị thu hồi trả 401; thiếu quyền trả 403. Email không tồn tại, sai mật khẩu, bị khóa đều trả thông báo chung (FR-M0-01, 03).
+**M0. Xác thực và phiên**. Đăng nhập bằng email chuẩn hóa và mật khẩu băm bằng hàm băm chậm có salt (thiết kế ban đầu bcrypt cost 12; bản triển khai dùng scrypt của Node, định dạng scrypt$salt$key, không có giới hạn 72 byte). Chính sách FR-M0-06: 8–64 ký tự, có chữ, số và ký tự đặc biệt, kiểm ở cả giao diện và máy chủ. Tài khoản tự đăng ký phải có email_verified_at mới được đăng nhập (FR-M0-09). Mật khẩu mới phải khác mật khẩu hiện tại (AC-30). Đăng nhập thành công tạo auth_session và JWT uid/sid với hạn tối đa 24 giờ. Middleware kiểm tra phiên, locked, locked_until và vai trò trong CSDL ở mỗi request. Token sai, hết hạn hoặc bị thu hồi trả 401; thiếu quyền trả 403. Email không tồn tại, sai mật khẩu, bị khóa đều trả thông báo chung (FR-M0-01, 03).
 
 Kiểm soát đăng nhập sai (FR-M0-04): khóa hàng app_user khi cập nhật fail_count và fail_window_started_at để các request đồng thời không vượt qua bộ đếm. Lần sai đầu mở cửa sổ 15 phút; lần sai thứ 5 trong cửa sổ đặt locked_until = thời điểm hiện tại + 15 phút. Trong thời gian khóa tạm, kể cả đúng mật khẩu cũng bị từ chối; sau cửa sổ hết hạn mở bộ đếm mới. Đăng nhập thành công đặt bộ đếm về 0. Ghi security_event cho từng lần sai, khóa tạm và đăng nhập thành công, không ghi mật khẩu/token; email không tồn tại chỉ ghi thông tin an toàn và áp dụng giới hạn request.
 
 Đăng xuất thu hồi phiên hiện tại trước khi xóa cookie hoặc token mobile. Người dùng đổi mật khẩu bằng mật khẩu hiện tại và mật khẩu mới: cập nhật hash và thu hồi mọi phiên khác trong cùng transaction, giữ phiên hiện tại nếu không phải đặt lại bắt buộc (FR-M0-02, 05). Admin đặt mật khẩu tạm đạt chính sách, đặt must_change_password, thu hồi tất cả phiên; phiên đăng nhập tiếp theo chỉ gọi /auth/change-password, /auth/logout hoặc /me để hiển thị trạng thái bắt buộc đổi. Đổi xong phát hành phiên mới, không kéo dài phiên cũ (FR-M0-07, AC-30).
+
+**Đăng ký và vòng đời vai trò (FR-M0-08..15).** POST /auth/register nhận email, mật khẩu, tên hiển thị và 3 cờ đồng ý (age_confirmed, accept_terms, accept_privacy); bỏ qua mọi trường vai trò. Giới hạn tần suất 5 lần/giờ theo IP và theo email, khóa đếm lưu dạng HMAC-SHA256 (AUTH_RATE_LIMIT_SECRET) trong registration_requests, không lưu IP thô. Luôn trả 202 với cùng thông điệp. Email mới: trong một transaction tạo app_user (role retail, created_via self_register, email_verified_at NULL, age_confirmed_at), 2 bản ghi user_consent (terms_of_service, privacy_notice, phiên bản CONSENT_VERSION, kênh web), token xác thực (lưu SHA-256, hết hạn 24 giờ) và thư trong auth_mail_outbox. Email đã tồn tại: chỉ xếp thư "Bạn đã có tài khoản". POST /auth/verify-email khóa token, kiểm hạn và used_at, đặt email_verified_at, ghi security_event. POST /auth/resend-verification giới hạn 5 lần/ngày theo email, 10 lần/ngày theo IP, cách nhau 60 giây, vô hiệu token cũ. Tài khoản tự đăng ký chưa xác thực quá 7 ngày, token đã dùng hoặc hết hạn quá 24 giờ và bản ghi đếm tần suất quá 24 giờ được dọn ngay đầu mỗi lượt POST /auth/register.
+
+Nâng cấp Trader (POST /me/upgrade/trader) yêu cầu kinh nghiệm, mục đích và cờ xác nhận trách nhiệm; trong một transaction đổi role, lưu user_consent trader_terms, ghi audit_log (user.self_upgrade) và thu hồi mọi phiên. Hạ cấp (POST /me/downgrade/retail) tương tự (user.self_downgrade), giữ dữ liệu. Yêu cầu Analyst (POST /me/role-requests) lưu role_requests trạng thái pending_review; chỉ một yêu cầu đang chờ mỗi người (unique index một phần), bị từ chối thì chặn 7 ngày. Admin duyệt/từ chối qua /admin/role-requests/{id}/approve|reject: khóa hàng yêu cầu, chặn tự duyệt (SELF_APPROVAL_BLOCKED), từ chối bắt buộc lý do, duyệt thì đổi role và thu hồi phiên; mọi quyết định ghi audit_log. GET /me/consents trả lịch sử đồng ý. DELETE /me nhập lại mật khẩu, xóa tài khoản và dữ liệu cá nhân theo ON DELETE CASCADE, audit_log giữ với actor NULL; Admin không tự xóa. Bootstrap Admin là lệnh CLI đọc BOOTSTRAP_ADMIN_EMAIL/PASSWORD, chỉ chạy khi chưa có Admin, ghi audit created_via bootstrap; không có endpoint công khai tạo admin. Chưa triển khai (FR-M0-15, Should): xác nhận email cơ quan bằng thư, TOTP và nhập lại mật khẩu cho Admin, captcha, đồng ý lại khi đổi phiên bản văn bản, thư báo kết quả duyệt.
 
 Tự đặt lại qua email (Should, FR-M0-07): /auth/forgot-password luôn trả cùng thông điệp, không tiết lộ tài khoản tồn tại. Tạo token ngẫu nhiên, chỉ lưu SHA-256 trong password_reset_token, hết hạn 30 phút; email được xếp hàng trong auth_mail_outbox GĐ1, worker gửi SMTP độc lập với giao dịch API. /auth/reset-password khóa bản ghi token, kiểm tra hạn và used_at, mật khẩu mới đạt chính sách và khác mật khẩu cũ; cập nhật hash, đánh dấu token đã dùng, vô hiệu các token còn lại và thu hồi mọi phiên trong cùng transaction. Hai request dùng cùng token chỉ một request được chấp nhận. Sau đó người dùng đăng nhập lại. Không lưu token hoặc liên kết đặt lại trong log.
 
@@ -250,6 +260,7 @@ CSDL là PostgreSQL 14+, môi trường triển khai mẫu dùng PostgreSQL 16. 
 | Bộ lọc và thông báo (GĐ2) | saved_screen, notify_channel, notification (mới) | Mới | notification vừa là hàng đợi gửi vừa là nhật ký gửi |
 | Chat (GĐ2) | chat_session, chat_message (mới) | Mới | Giữ 90 ngày; nội dung lượt hỏi cá nhân bị che khi analyst, admin xem log |
 | Xác thực GĐ1 | auth_session, password_reset_token, security_event, auth_mail_outbox | Mới | Thu hồi phiên, khóa tạm, đặt lại email, log bảo mật; mail outbox cho FR-M0-07 |
+| Đăng ký và vai trò GĐ1 | email_verification_tokens, registration_requests, user_consent, role_requests; cột mới của app_user (full_name, email_verified_at, age_confirmed_at, created_via) | Mới (migration 018, 019) | Xác thực email, giới hạn tần suất đăng ký, bằng chứng đồng ý, yêu cầu nâng quyền Analyst (FR-M0-08..14) |
 | Tái lập và vận hành GĐ1 | forecast_replay, ops_event | Mới | Kết quả replay tách forecast gốc; thông báo lỗi job cho Admin |
 
 ### 6.2 Lược đồ bổ sung
@@ -358,7 +369,7 @@ id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 
 email         text NOT NULL UNIQUE,
 
-password_hash text NOT NULL,     -- bcrypt
+password_hash text NOT NULL,     -- scrypt$salt$key (thiết kế ban đầu: bcrypt)
 
 role          text NOT NULL CHECK (role IN ('retail', 'trader', 'analyst', 'admin')),
 
@@ -483,6 +494,60 @@ CREATE INDEX ON audit_log (at DESC, id DESC);
 CREATE INDEX ON audit_log (actor, at DESC);
 
 CREATE INDEX ON audit_log (action, at DESC);
+
+Đăng ký và vòng đời vai trò (FR-M0-08..14). Lược đồ dưới đây chép theo bản triển khai db/migrations/018_self_registration.sql và 019_role_management.sql; trong mã, bảng app_user tên là users, khóa chính kiểu uuid, nhật ký quản trị là admin_audit_log.
+
+ALTER TABLE users
+  ADD COLUMN full_name text,
+  ADD COLUMN email_verified_at timestamptz,          -- NULL = chưa xác thực; tài khoản cũ, do Admin, seed hoặc bootstrap tạo được đặt sẵn
+  ADD COLUMN age_confirmed_at timestamptz,
+  ADD COLUMN created_via text NOT NULL DEFAULT 'admin';  -- giá trị dùng: self_register, admin, bootstrap
+
+CREATE TABLE email_verification_tokens (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash char(64) NOT NULL UNIQUE,                -- SHA-256, không lưu token thô
+  expires_at timestamptz NOT NULL,                    -- tạo + 24 giờ
+  consumed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE registration_requests (                  -- đếm tần suất đăng ký và gửi lại, giữ 24 giờ
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  email_key char(64) NOT NULL,                        -- HMAC-SHA256 của email chuẩn hóa
+  ip_key char(64) NOT NULL,                           -- HMAC-SHA256 của IP
+  kind text NOT NULL CHECK (kind IN ('register', 'resend')),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE user_consent (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  doc_type text NOT NULL,                             -- terms_of_service, privacy_notice, trader_terms
+  version text NOT NULL,                              -- CONSENT_VERSION, hiện '2026-10-23'
+  channel text NOT NULL,                              -- 'web'
+  accepted_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE role_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  requested_role text NOT NULL CHECK (requested_role = 'analyst'),
+  organization text NOT NULL,
+  position text NOT NULL,
+  work_email text NOT NULL,
+  purpose text NOT NULL,
+  status text NOT NULL DEFAULT 'pending_review' CHECK (status IN ('pending_review', 'approved', 'rejected')),
+  decided_by uuid REFERENCES users(id) ON DELETE SET NULL,
+  decided_at timestamptz,
+  note text,                                          -- lý do từ chối hoặc ghi chú duyệt
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX role_requests_one_pending_idx ON role_requests(user_id) WHERE status = 'pending_review';
+
+Mọi bảng dữ liệu cá nhân tham chiếu users(id) ON DELETE CASCADE, còn admin_audit_log và admin job tham chiếu ON DELETE SET NULL; vì vậy DELETE /me xóa dữ liệu cá nhân và giữ nhật ký ở dạng ẩn danh (FR-M0-13).
+
+Chưa triển khai so với PRD (FR-M0-15, BR-R13): không có trạng thái awaiting_email (chưa xác nhận email cơ quan bằng thư) và chưa ghi đồng ý Điều khoản Analyst thành bản ghi riêng (FR-M0-15).
 
 GĐ1 bổ sung các bảng phục vụ FR-M0-01–07 và FR-M7-07–11. auth_mail_outbox hỗ trợ đặt lại email khi FR-M0-07 được triển khai, độc lập với notifier cảnh báo GĐ2. Schema dưới đây lưu hash token; token thô chỉ tồn tại trong thư chờ gửi được bảo vệ và bị xóa ngay sau khi gửi. Các role không được truy vấn bảng phiên, token hoặc outbox từ API nghiệp vụ.
 
@@ -1079,6 +1144,12 @@ API là REST JSON tại /api/v1. Web xác thực bằng JWT trong cookie HttpOnl
 | Phương thức và đường dẫn | Mô-đun | Vai trò | Mô tả |
 | --- | --- | --- | --- |
 | POST /auth/login; POST /auth/logout; GET /me | M0 | Tất cả | Phiên JWT uid/sid tối đa 24 giờ; mỗi request đối chiếu phiên và tài khoản; logout thu hồi phiên, web xóa cookie/mobile xóa token. GET /me trả vai trò hiện tại và must_change_password. |
+| POST /auth/register | M0 | Khách | Tự đăng ký retail (FR-M0-08): email, mật khẩu, full_name, age_confirmed, accept_terms, accept_privacy; luôn 202 cùng thông điệp; bỏ qua trường role; giới hạn 5/giờ theo IP và email. |
+| POST /auth/verify-email; POST /auth/resend-verification | M0 | Khách | Xác thực token một lần hạn 24 giờ; gửi lại tối đa 5/ngày, cách 60 giây, luôn trả thông điệp chung (FR-M0-09). Đăng nhập khi chưa xác thực trả 403 EMAIL_NOT_VERIFIED. |
+| POST /me/upgrade/trader; POST /me/downgrade/retail | M0 | R; T | Tự nâng cấp (kinh nghiệm, mục đích, xác nhận trách nhiệm, lưu consent trader_terms) hoặc hạ cấp; thu hồi mọi phiên, ghi audit (FR-M0-11). |
+| GET /me/role-requests; POST /me/role-requests | M0 | R, T | Xem và gửi yêu cầu Analyst; 409 ROLE_REQUEST_PENDING khi đã có yêu cầu chờ, 409 ROLE_REQUEST_COOLDOWN khi bị từ chối trong 7 ngày (FR-M0-11). |
+| GET /me/consents; DELETE /me | M0 | R, T, A | Lịch sử đồng ý (FR-M0-10); tự xóa tài khoản sau khi nhập lại mật khẩu, Admin bị chặn (FR-M0-13). |
+| GET /admin/role-requests; POST /admin/role-requests/{id}/approve; POST /admin/role-requests/{id}/reject | M0, M7 | Ad | Lọc theo trạng thái; duyệt đổi role và thu hồi phiên; từ chối bắt buộc lý do; chặn tự duyệt; audit (FR-M0-12). |
 | GET /market/status | M1 | Tất cả | Ngày dữ liệu, giờ hoàn tất batch, phiên bản mô hình đang phục vụ |
 | GET /market/summary | M1 | Tất cả | Dải thị trường: VN-Index, HNX-Index, độ rộng, tỷ lệ mã theo nhãn (từ v_market_summary) |
 | GET /symbols | M1 | R, T, A | Danh sách mã kèm giá, GTGD 20 phiên, dự báo T+2/T+5 mới nhất, mức tin cậy và cờ đổi nhãn; changed=1 chỉ lấy mã đổi nhãn so với phiên trước (khối "Tín hiệu đổi hôm nay") |
@@ -1151,7 +1222,9 @@ Ví dụ phản hồi GET /symbols/FPT/forecast?horizon=2 cho vai trò trader, v
 
 | Màn hình | Mô-đun | Nội dung chính |
 | --- | --- | --- |
-| Đăng nhập | M0 | Email, mật khẩu |
+| Đăng nhập | M0 | Email, mật khẩu; liên kết Đăng ký và Quên mật khẩu; khi chưa xác thực email hiện hướng dẫn gửi lại thư |
+| Đăng ký | M0 | Email, tên hiển thị (tùy chọn), mật khẩu và nhập lại (kiểm chính sách tại chỗ), 3 ô đồng ý tách riêng không chọn sẵn (đủ 18 tuổi, Điều khoản sử dụng, Thông báo xử lý dữ liệu); sau khi gửi hiện thông điệp chung |
+| Xác thực email | M0 | Trang mở từ liên kết trong thư; báo thành công hoặc liên kết hết hạn, ô gửi lại thư |
 | Tổng quan thị trường (trang chủ) | M1 | Dải thị trường (VN-Index, HNX-Index, độ rộng, tỷ lệ nhãn), khối "Tín hiệu đổi hôm nay", bảng mã với nhãn Tăng / Đi ngang / Giảm kèm biểu tượng ▲ ● ▼ cho T+2 và T+5, bộ lọc sàn/ngành/thanh khoản/xu hướng, tìm kiếm, ngày dữ liệu |
 | Chi tiết mã, tab Dự báo | M2, M3, M10, M13 | Forecast card T+2 và T+5 cạnh nhau, thanh xác suất, mức tin cậy, khối "Vì sao?" và "Điều gì có thể làm dự báo sai", biểu đồ nến 6 tháng, trạng thái dữ liệu, tuyên bố tham khảo; nút thêm watchlist, lập Trade Plan, xuất PDF |
 | Chi tiết mã, tab Tin tức | M4 | Danh sách tin có nhãn sắc thái, bộ lọc, biểu đồ cảm xúc 30 phiên cạnh giá |
@@ -1163,9 +1236,9 @@ Ví dụ phản hồi GET /symbols/FPT/forecast?horizon=2 cho vai trò trader, v
 | Trade Plan | M10 | Danh sách kế hoạch theo trạng thái; biểu mẫu mã, vùng vào, cắt lỗ, mục tiêu, lý do (vốn và % rủi ro cho trader, analyst); R:R, khoảng cách %, khối lượng tối đa; snapshot dự báo lúc lập (chỉ đọc), lịch sử chỉnh sửa; xác nhận chuyển trạng thái; đóng kế hoạch với giá thoát và ghi chú; tuyên bố "Trade Plan do bạn tự lập" |
 | Journal | M11 | Danh sách bản ghi lọc theo mã, thời gian, thẻ, kết quả; chi tiết gồm dự báo lúc quyết định, kế hoạch gốc, kết quả, nhãn thực tế, làm theo hay ngược tín hiệu; sửa ghi chú, thẻ, bài học; ghi thủ công và thống kê nhìn lại (trader, analyst); xuất PDF |
 | Chat hỏi đáp | M12 | Khung hội thoại, câu hỏi gợi ý, trích dẫn bấm được tới màn hình hoặc bài tin, tuyên bố "không phải tư vấn đầu tư" luôn hiển thị, nút bắt đầu phiên mới |
-| Cài đặt | M5, M10 | Kênh thông báo (liên kết Telegram, xác thực email, bật/tắt từng kênh, gửi thử, hủy liên kết); hồ sơ đầu tư (vốn, rủi ro tối đa; trader, analyst) |
+| Cài đặt | M0, M5, M10 | Tài khoản & vai trò (vai trò hiện tại, nâng cấp Trader, hạ cấp, gửi yêu cầu Analyst và xem trạng thái, bảng đồng ý đã lưu, đổi mật khẩu, xóa tài khoản); kênh thông báo (liên kết Telegram, xác thực email, bật/tắt từng kênh, gửi thử, hủy liên kết); hồ sơ đầu tư (vốn, rủi ro tối đa; trader, analyst) |
 | Đánh giá mô hình | M6 | Analyst, admin: metrics T+2/T+5, confusion matrix, bảng baseline và ablation, reliability diagram, Brier, ECE. Retail, trader: bản tóm tắt hit rate tổng kèm n và baseline |
-| Quản trị | M7 | Người dùng và tài khoản demo, nguồn dữ liệu và job, phiên bản mô hình, audit log, nhật ký gửi thông báo, nhật ký Chat đã che; khóa/mở khóa, đổi vai trò, reset mật khẩu, thu hồi phiên; chặn làm mất Admin cuối; audit lọc và phân trang, before/after/outcome; sự kiện vận hành. |
+| Quản trị | M0, M7 | Yêu cầu nâng quyền (lọc trạng thái, duyệt, từ chối kèm lý do); người dùng và tài khoản demo, nguồn dữ liệu và job, phiên bản mô hình, audit log, nhật ký gửi thông báo, nhật ký Chat đã che; khóa/mở khóa, đổi vai trò, reset mật khẩu, thu hồi phiên; chặn làm mất Admin cuối; audit lọc và phân trang, before/after/outcome; sự kiện vận hành. |
 | Đổi và đặt lại mật khẩu | M0 | Đổi bằng mật khẩu hiện tại; màn hình bắt buộc đổi sau reset Admin; quên mật khẩu và token email 30 phút; trạng thái hết hạn/đã dùng. |
 
 Giao diện web gồm các trang nghiệp vụ, bốn tab chi tiết mã và màn hình xác thực ở bảng trên; màn hình Should chỉ bật theo giai đoạn. Giao diện tiếng Việt, tối ưu 1366–1920 px và một cột từ 375 px (NFR-10). Menu theo vai trò; bắt buộc đổi mật khẩu chặn điều hướng nghiệp vụ. “MUA”/“BÁN” chỉ dùng trong biểu mẫu giao dịch do người dùng tự nhập, không ở nhãn tín hiệu, dự báo, gợi ý hoặc Chat (NFR-13).
@@ -1198,7 +1271,7 @@ Các NFR về tốc độ được đáp ứng chủ yếu nhờ tính dự báo
 | NFR-04 Fallback | Thiếu tin 5 phiên: che nhánh tin, gắn missing_newsstale |
 | NFR-05 Giải thích | Batch không commit dự báo thiếu bản ghi giải thích (cùng một transaction); test tự động quét toàn bộ dự báo một ngày |
 | NFR-06 Truy vết | snapshot_hash = SHA-256 của tensor đầu vào; tensor lưu trong forecast_input; lệnh ml/replay.py <forecast_id> chạy lại trên CPU ở chế độ xác định và so sai số < 1e-4 API /inputs đọc manifest snapshot; /replays chạy bất đồng bộ qua forecast_replay và lưu kết quả riêng. Snapshot/model thiếu thì ghi not_reproducible. |
-| NFR-07 Bảo mật | bcrypt cost 12; JWT HS256 hết hạn 24 giờ, cookie HttpOnly, Secure, SameSite=Lax cho web và Bearer cho mobile; HTTPS qua Caddy; khóa bí mật, token Telegram và thông tin SMTP qua biến môi trường. Dữ liệu cá nhân gắn user_id và bật RLS (D13); không lưu thông tin tài khoản chứng khoán hay ngân hàng; DELETE /portfolio xóa toàn bộ giao dịch theo yêu cầu; bản sao lưu pg_dump có dữ liệu cá nhân nên lưu trên volume riêng, không đưa lên kho mã nguồn JWT thống nhất uid/sid (D14); tra auth_session và app_user ở mỗi request. Thu hồi phiên, khóa tạm, chính sách mật khẩu và token reset theo M0. Với request cookie thay đổi dữ liệu, kiểm Origin và token CSRF; Bearer không dùng cookie không cần CSRF. |
+| NFR-07 Bảo mật | Băm mật khẩu bằng scrypt có salt (thiết kế ban đầu bcrypt cost 12); token xác thực email, đặt lại mật khẩu chỉ lưu SHA-256; khóa đếm tần suất đăng ký dùng HMAC, không lưu IP thô; JWT HS256 hết hạn 24 giờ, cookie HttpOnly, Secure, SameSite=Lax cho web và Bearer cho mobile; HTTPS qua Caddy; khóa bí mật, token Telegram và thông tin SMTP qua biến môi trường. Dữ liệu cá nhân gắn user_id và bật RLS (D13); không lưu thông tin tài khoản chứng khoán hay ngân hàng; DELETE /portfolio xóa toàn bộ giao dịch theo yêu cầu; bản sao lưu pg_dump có dữ liệu cá nhân nên lưu trên volume riêng, không đưa lên kho mã nguồn JWT thống nhất uid/sid (D14); tra auth_session và app_user ở mỗi request. Thu hồi phiên, khóa tạm, chính sách mật khẩu và token reset theo M0. Với request cookie thay đổi dữ liệu, kiểm Origin và token CSRF; Bearer không dùng cookie không cần CSRF. |
 | NFR-08 Phân quyền | Middleware requireRole(...) gắn trên từng route; mọi route dữ liệu cá nhân lấy user_id từ JWT và kiểm tra quyền sở hữu; admin không có route đọc nội dung Portfolio, Trade Plan, Journal. Test gọi mọi route với mọi vai trò và so với bảng quyền ở mục 8.1; test hai người dùng A, B cho AC-26 (A gọi id của B nhận 404, admin nhận 403, Chat không lộ dữ liệu của B) |
 | NFR-09 Nhật ký | Go dùng log/slog JSON, Python dùng structlog; ghi ra volume logs/, xoay vòng, giữ tối thiểu 90 ngày; bộ lọc loại trường password, token. Log không chứa nội dung Portfolio, Trade Plan, Journal; nội dung Chat chỉ nằm trong chat_message (giữ tối thiểu 90 ngày, che nội dung lượt hỏi cá nhân khi analyst, admin xem) audit_log có before/after và outcome, append-only bằng trigger; security_event ghi mọi lần sai và khóa tạm. Giữ tối thiểu 90 ngày; không xóa log Chat trước khi đủ 90 ngày. |
 | NFR-10 Giao diện | CSS responsive trên React, một cột từ 375 px; màu tăng/giảm luôn kèm biểu tượng ▲ ● ▼; mobile dùng cùng quy ước (mục 8.3) |
@@ -1209,6 +1282,7 @@ Các NFR về tốc độ được đáp ứng chủ yếu nhờ tính dự báo
 | NFR-15 Thông báo ngoài app | Khóa duy nhất (channel_id, alert_id) trên notification chống gửi trùng khi batch chạy lại; notifier quét mỗi 30 giây nên tin tới trong vài phút sau bước notify; lần đầu gửi ngay, tối đa 3 retry sau 30, 60, 120 giây rồi đánh dấu failed. Hạn mức: Telegram gửi tuần tự cách nhau 50 ms (dưới giới hạn khoảng 30 tin/giây của một bot); SMTP tối đa 100 tin mỗi giờ và 20 tin mỗi người mỗi ngày (đề xuất, chỉnh theo nhà cung cấp email). Vượt hạn mức thì dòng giữ trạng thái pending sang lần quét sau, ghi vào notification.error và hiện ở trang Quản trị. Test AC-24: chạy batch hai lần và đếm tin ở bộ nhận giả |
 | NFR-16 Báo cáo PDF | Sinh đồng bộ trong api, tối đa 2 yêu cầu song song, hết hạn sau 10 giây (mục tiêu p95 dưới 10 giây với 10 mã); dùng chung hàm truy vấn với màn hình nên số liệu khớp (AC-23); không lưu tệp PDF trên máy chủ |
 | NFR-17 Mobile | Dùng chung API và RBAC với web; token trong Keychain/Keystore; màn hình dự báo gọi hai request nhỏ và cache theo ngày dữ liệu để dưới 3 giây (p95) trên 4G; kiểm thử trên hai phiên bản hệ điều hành chính gần nhất bằng thiết bị thật hoặc máy ảo (AC-25) |
+| NFR-18 Dữ liệu cá nhân | Form đăng ký chỉ thu email, mật khẩu, tên hiển thị tùy chọn và cờ đủ 18 tuổi (age_confirmed_at, không lưu ngày sinh); user_consent lưu loại văn bản, phiên bản, thời điểm, kênh; đếm tần suất bằng HMAC, không lưu IP thô; DELETE /me xóa theo CASCADE, nhật ký quản trị SET NULL; phản hồi đăng ký và gửi lại luôn cùng thông điệp. Quy trình báo sự cố 72 giờ là quy trình vận hành, chưa xây dựng (PRD BR-R20). |
 
 ## 10. Triển khai, vận hành và kiểm thử
 
@@ -1338,13 +1412,14 @@ docker-compose.yml
 | Xác thực và phiên | Đúng/sai mật khẩu, thông báo chung; sai 5 lần trong 15 phút, khóa 15 phút kể cả đúng; reset bộ đếm; logout; khóa/đổi vai trò thu hồi phiên ngay; mật khẩu 8/64 ký tự và byte UTF-8; đổi thu hồi các phiên khác. | FR-M0-01–06, AC-27, AC-29 |
 | Đặt lại mật khẩu | Admin cấp mật khẩu tạm, bắt buộc đổi; email token hết hạn 30 phút, dùng một lần, hai request đồng thời; mật khẩu mới khác cũ và đạt chính sách; phiên cũ 401; outbox lỗi không cản pipeline. | FR-M0-07, AC-30 |
 | Watchlist đồng thời | Thêm 10 mã, từ chối mã thứ 11; thêm trùng không đếm tăng; hai request khi có 9 mã chỉ một mã được thêm; xóa rồi thêm lại; còn dữ liệu sau đăng nhập. | FR-M5-01, AC-09 |
+| Đăng ký và vai trò | Đăng ký trả cùng thông điệp cho email mới và đã có; trường role bị bỏ qua; vượt 5 lần/giờ không tạo tài khoản; chưa xác thực không đăng nhập được; token dùng 2 lần hoặc quá hạn bị từ chối; nâng cấp Trader thu hồi phiên; yêu cầu Analyst trùng bị 409; tự duyệt bị chặn; từ chối thiếu lý do bị 422; bootstrap khi đã có Admin bị từ chối; DELETE /me sai mật khẩu không xóa. | FR-M0-08..14; UC-26..29; AC-31..39 |
 | Admin và audit | Tạo/khóa/mở khóa/đổi vai trò/reset/thu hồi phiên/run job/serve/rollback có before/after và outcome; chặn mất Admin cuối; lọc/phân trang; role khác 403; UPDATE/DELETE/TRUNCATE log bị từ chối. | FR-M7-01, 05, 11; UC-12/25; AC-15/29 |
 | Batch idempotent | Theo lịch 15:30, không chạy ngày nghỉ; ghim model; chạy lại hai lần không trùng forecast/cảnh báo; không chạy đồng thời cùng job/ngày; lỗi giá giữ stale; ghi số bản ghi và mã job; ops_event lỗi sau retry. | FR-M7-07/08, US-24/UC-24, AC-28 |
 | Audit và replay API | A/Ad đọc đúng manifest và cut-off; R/T 403; 10 dự báo sai số < 1e-4; thiếu tensor/embedding/model báo không tái lập được; dữ liệu forecast gốc và cảnh báo không đổi. | FR-M7-09/10, AC-14 |
 
 ## 11. Ma trận truy vết yêu cầu
 
-Ma trận dưới đây truy vết yêu cầu chức năng của PRD v0.0.3 từ FR-M0 đến FR-M14 tới US và UC tương ứng, thành phần, dữ liệu, API và AC-01–AC-30. UC có cùng số với US trong PRD mục 9.2. Dấu “–” nghĩa là PRD chưa đặt AC riêng; phần kiểm thử vẫn phải kiểm tra yêu cầu đó.
+Ma trận dưới đây truy vết yêu cầu chức năng của PRD v0.0.4 từ FR-M0 đến FR-M14 tới US và UC tương ứng, thành phần, dữ liệu, API và AC-01–AC-39. UC có cùng số với US trong PRD mục 9.2. Dấu “–” nghĩa là PRD chưa đặt AC riêng; phần kiểm thử vẫn phải kiểm tra yêu cầu đó.
 
 | Yêu cầu | User story | Thành phần | Dữ liệu | API | Nghiệm thu |
 | --- | --- | --- | --- | --- | --- |
@@ -1384,6 +1459,13 @@ Ma trận dưới đây truy vết yêu cầu chức năng của PRD v0.0.3 từ
 | FR-M0-01..04 | US-23 / UC-23 | C6, C7, C12 | app_user, auth_session, security_event | /auth/login, /auth/logout, /me | AC-27, AC-15 |
 | FR-M0-05, 06 | US-23 / UC-23 | C6, C7, C12 | app_user, auth_session, security_event | /auth/change-password | AC-30; kiểm thử chính sách và phiên khác |
 | FR-M0-07 | US-23, US-12 / UC-23, UC-12 | C6, C7, C8 | password_reset_token, auth_mail_outbox, auth_session | /auth/forgot-password, /auth/reset-password, /admin/users/{id}/reset-password | AC-30 |
+| FR-M0-08, 09 | US-26 / UC-26 | C6, C7, C8 | app_user, email_verification_tokens, registration_requests, auth_mail_outbox | /auth/register, /auth/verify-email, /auth/resend-verification | AC-31, AC-32, AC-33, AC-34 |
+| FR-M0-10 | US-26, US-29 / UC-26, UC-29 | C6, C7 | user_consent | /auth/register, /me/upgrade/trader, /me/consents | AC-38 |
+| FR-M0-11 | US-27 / UC-27 | C6, C7 | app_user, role_requests, user_consent, audit_log, auth_session | /me/upgrade/trader, /me/downgrade/retail, /me/role-requests | AC-35, AC-36 |
+| FR-M0-12 | US-28 / UC-28 | C6, C7 | role_requests, app_user, audit_log, auth_session | /admin/role-requests/... | AC-36 |
+| FR-M0-13 | US-29 / UC-29 | C6, C7 | app_user và mọi bảng dữ liệu cá nhân (CASCADE), audit_log | DELETE /me | AC-39 |
+| FR-M0-14 | US-28 / UC-29, UC-12 | C7, CLI | app_user, audit_log | npm run db:bootstrap-admin; /admin/users | AC-37 |
+| FR-M0-15 (Should, chưa làm) | US-28 / UC-28, UC-29 | C6, C7 | – | – | – |
 | FR-M7-07, 08 | US-24 / UC-24 | C1–C5, C8 | job_run, forecast, ops_event | /admin/jobs, /admin/ops-events | AC-28, AC-05/06, AC-24 |
 | FR-M7-09, 10 | US-10 / UC-10 | C4, C6, C8 | forecast_input manifest, model_version, forecast_replay | /forecasts/{id}/inputs, /forecasts/{id}/replays | AC-14 |
 | FR-M7-11 | US-25 / UC-25 | C6, C7 | audit_log | /admin/audit với bộ lọc và phân trang | AC-29, AC-15 |
@@ -1423,7 +1505,7 @@ Project Brief 0.0.2 đã thống nhất với PRD về ứng dụng mobile, 4 va
 
 ### 12.3 Quy tắc đối chiếu với PRD
 
-Nguồn đối chiếu là PRD v0.0.3 đính kèm. Khi bảng ưu tiên tổng quát, user story hoặc ví dụ persona khác bảng FR mục 10, SDD áp dụng vai trò và mức ưu tiên của từng FR; các mâu thuẫn của nguồn được ghi dưới đây để xác nhận, không tự sửa PRD.
+Nguồn đối chiếu là PRD v0.0.4 đính kèm. Khi bảng ưu tiên tổng quát, user story hoặc ví dụ persona khác bảng FR mục 10, SDD áp dụng vai trò và mức ưu tiên của từng FR; các mâu thuẫn của nguồn được ghi dưới đây để xác nhận, không tự sửa PRD.
 
 FR-M5-02–FR-M5-05 trong mục 10 là Must, áp dụng R/T/A; bảng 6.1 và US-05 vẫn ghi Should. SDD thiết kế đầy đủ cảnh báo trong app ở GĐ1, kiểm thử AC-10/AC-11; email và Telegram vẫn ở GĐ2. Giới hạn 10 chỉ là số mã trong watchlist mỗi người, không thay mục tiêu dữ liệu tối thiểu 15 mã của R5 và mục 12.1.
 
@@ -1451,7 +1533,9 @@ Thông báo đẩy FCM/APNs chỉ là hướng mở rộng ngoài PRD; GĐ3 hi�
 
 Build iOS: tài khoản Apple Developer, máy macOS hay dịch vụ build đám mây; phát hành qua TestFlight hay cài trực tiếp (RK-14).
 
-Cảnh báo concentration, screen_match và push không thuộc phạm vi triển khai theo PRD v0.0.3. Chỉ xem xét sau khi có yêu cầu và tiêu chí nghiệm thu mới được chấp thuận.
+Cảnh báo concentration, screen_match và push không thuộc phạm vi triển khai theo PRD v0.0.4. Chỉ xem xét sau khi có yêu cầu và tiêu chí nghiệm thu mới được chấp thuận.
+
+Đăng ký: khi nào bổ sung FR-M0-15 (TOTP và nguyên tắc hai người khi tạo Admin, xác nhận email cơ quan bằng thư, captcha, đồng ý lại khi đổi phiên bản); thời hạn lưu dữ liệu sau khi xóa tài khoản và đầu mối bảo vệ dữ liệu cá nhân; pháp chế xác nhận các điểm ở PRD §7.2 (C6) trước khi mở cho người dùng thật. Gmail SMTP (App Password) chỉ dùng cho demo, giới hạn khoảng 500 người nhận/ngày; triển khai thật cần dịch vụ gửi thư có tên miền riêng.
 
 Đối chiếu số bảng/view có sẵn của db/schema.sql với mục 6.1 (bản 0.0.1 ghi 15, mục 6.1 liệt kê 14).
 

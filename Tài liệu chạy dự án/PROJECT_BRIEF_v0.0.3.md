@@ -2,18 +2,19 @@
 
 | CODE | CAPSTONE_PB |
 | --- | --- |
-| VERSION | 0.0.3 |
+| VERSION | 0.0.4 |
 | STATUS | TEST |
 | AUTHOR | HOANG MINH TUAN |
 | VERIFY | HOANG MINH TUAN |
-| UPDATE | 09/10/2026 |
-| RELATED DOCUMENT | PRD v0.0.3; SDD |
+| UPDATE | 29/10/2026 |
+| RELATED DOCUMENT | PRD v0.0.4; SDD v0.0.5 |
 
 | Phiên bản | Ngày | Người sửa | Nội dung thay đổi |
 | --- | --- | --- | --- |
 | 0.0.1 | 7/10/2026 | Hoang Minh Tuan | Khởi tạo tài liệu. |
 | 0.0.2 | 8/10/2026 | Hoang Minh Tuan | Mở rộng phạm vi: thêm vòng quyết định, Chat, PDF, thông báo, mobile; chia 3 giai đoạn; thống nhất tên IDSS. |
 | 0.0.3 | 09/10/2026 | Tran Trong Dai | Đồng bộ với PRD v0.0.3 |
+| 0.0.4 | 29/10/2026 | Tran Trong Dai | Bổ sung luồng đăng ký và vòng đời tài khoản vào phạm vi; đồng bộ PRD v0.0.4, SDD v0.0.5 |
 
 # Tổng quan dự án
 
@@ -98,6 +99,8 @@ Xuất báo cáo PDF và gửi thông báo qua email/Telegram (GĐ2).
 Phát triển ứng dụng mobile native cho iOS và Android bằng React Native, dùng chung API với web, thực hiện ở GĐ3.
 
 Xác thực người dùng (đăng nhập, đăng xuất, khóa tạm khi nhập sai nhiều lần, đổi mật khẩu) và phân quyền theo 4 vai trò: retail, trader, analyst và admin (khớp PRD NFR-08).
+
+Đăng ký và vòng đời tài khoản (PRD UC-26..UC-29, FR-M0-08..15): người dùng tự đăng ký tài khoản retail bằng email và xác thực email; retail tự nâng cấp lên trader; quyền analyst cần Admin duyệt; Admin đầu tiên tạo bằng lệnh bootstrap khi triển khai, không đăng ký công khai; ghi nhận đồng ý điều khoản và xử lý dữ liệu, người dùng tự xóa được tài khoản, theo Luật Bảo vệ dữ liệu cá nhân 2025 và Nghị định 356/2025. Quy tắc chi tiết ở PRD §9.2.6.
 
 Tự động cập nhật dự báo sau mỗi phiên giao dịch (thử lại khi lỗi, báo cho admin); lưu nhật ký dữ liệu, lần chạy mô hình, dự báo và hành động quản trị (không sửa, không xóa); cho phép xem đầu vào và chạy lại để tái lập dự báo, phục vụ truy vết và kết quả nghiên cứu
 
