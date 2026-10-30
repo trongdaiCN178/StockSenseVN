@@ -222,7 +222,7 @@ C2. Chi phí: GĐ1 gần 0 đồng, chỉ dùng dữ liệu và hạ tầng mi�
 
 C3. Pháp lý: tuân thủ điều khoản sử dụng của nguồn tin; chỉ lưu tiêu đề, tóm tắt, URL và điểm cảm xúc khi hiển thị, không tái xuất bản toàn văn.
 
-C4. Kỹ thuật: ngăn xếp đã triển khai là Node.js (Fastify) cho API và worker dữ liệu, React + Vite cho web, PostgreSQL; mô hình học máy (cảm xúc, dự báo, giải thích) viết bằng Python, chạy như một worker riêng và trao đổi với hệ thống qua CSDL. Nguồn dữ liệu kế thừa từ DATN_2026: giá SSI, tin CafeF (bổ sung VnExpress).
+C4. Kỹ thuật: Node.js (Fastify) cho API và worker dữ liệu, React + Vite cho web, PostgreSQL; mô hình học máy (cảm xúc, dự báo, giải thích) viết bằng Python, chạy như một worker riêng và trao đổi với hệ thống qua CSDL. Nguồn dữ liệu kế thừa từ DATN_2026: giá SSI, tin CafeF (bổ sung VnExpress).
 
 C5. Không phải sản phẩm thương mại; mọi màn hình dự báo, Trade Plan, cửa sổ Chat và báo cáo PDF phải có tuyên bố “chỉ mang tính tham khảo”.
 
@@ -1262,28 +1262,28 @@ Nguyên tắc: tách tài khoản khỏi quyền (đăng ký công khai chỉ t�
 
 **Quy tắc nghiệp vụ**
 
-| Mã | Quy tắc | Hiện trạng |
-| --- | --- | --- |
-| BR-R01 | Chỉ vai trò retail được tự đăng ký công khai. Trường role trong yêu cầu đăng ký bị máy chủ bỏ qua. | Đã làm |
-| BR-R02 | Email duy nhất sau khi chuẩn hóa (cắt khoảng trắng, chữ thường), tối đa 254 ký tự. | Đã làm |
-| BR-R03 | Mật khẩu theo FR-M0-06 (8–64 ký tự, có chữ, số, ký tự đặc biệt), băm bằng hàm băm chậm có salt (triển khai: scrypt). | Đã làm |
-| BR-R04 | Bắt buộc tự khai đủ 18 tuổi; không thu thập ngày sinh. | Đã làm |
-| BR-R05 | Bắt buộc tick riêng Điều khoản sử dụng và Thông báo xử lý dữ liệu; không chọn sẵn; không gộp với đồng ý tùy chọn. | Đã làm |
-| BR-R06 | Nhận thông báo email/Telegram là tùy chọn, mặc định tắt, bật/tắt trong Cài đặt → Kênh thông báo. | Đã làm |
-| BR-R07 | Tài khoản chưa xác thực email không đăng nhập được. Token xác thực một lần, hết hạn 24 giờ, chỉ lưu SHA-256; gửi lại tối đa 5 lần mỗi ngày, cách nhau ≥ 60 giây. | Đã làm |
-| BR-R08 | Phản hồi đăng ký luôn cùng thông điệp, không phân biệt email đã tồn tại hay chưa; email đã tồn tại nhận thư "Bạn đã có tài khoản". | Đã làm |
-| BR-R09 | Tối đa 5 lần đăng ký mỗi giờ theo IP và theo email (khóa đếm lưu dạng băm HMAC); captcha khi vượt ngưỡng. | Một phần (chưa có captcha) |
-| BR-R10 | Không thu thập CCCD, số tài khoản chứng khoán hoặc ngân hàng, số điện thoại. | Đã làm |
-| BR-R11 | Tài khoản chưa xác thực quá 7 ngày bị xóa (dọn ở đầu mỗi lượt đăng ký mới). | Đã làm |
-| BR-R12 | Nâng lên trader: tự phục vụ, bắt buộc khai kinh nghiệm, mục đích và tick xác nhận trách nhiệm; ghi đồng ý Điều khoản Trader, nhật ký; thu hồi phiên. Tự hạ cấp được. | Đã làm |
-| BR-R13 | Nâng lên analyst: Admin duyệt; bắt buộc tổ chức, chức danh, email cơ quan, mục đích, đồng ý Điều khoản Analyst (không phát tán dữ liệu truy vết, không dùng dữ liệu tin tức ngoài mục đích nghiên cứu theo C3); tối đa 1 yêu cầu đang chờ; từ chối phải có lý do; nộp lại sau 7 ngày; mục tiêu xử lý trong 3 ngày làm việc. | Một phần (chưa xác nhận email cơ quan bằng thư, chưa lưu bản ghi đồng ý Điều khoản Analyst) |
-| BR-R14 | Người duyệt không được trùng người yêu cầu. | Đã làm |
-| BR-R15 | Tạo hoặc nâng quyền admin: chỉ Admin hiện có thực hiện; tài khoản mới nhận mật khẩu tạm, buộc đổi lần đầu; luôn còn ít nhất một Admin hoạt động. Nhập lại mật khẩu, chỉ email tổ chức, TOTP, hai người xác nhận là Should (FR-M0-15). | Một phần |
-| BR-R16 | Bootstrap Admin đầu tiên chỉ chạy được khi chưa có Admin; không có endpoint công khai nào tạo admin. | Đã làm |
-| BR-R17 | Mọi thay đổi vai trò thu hồi toàn bộ phiên và ghi nhật ký quản trị (ai, trước, sau). | Đã làm |
-| BR-R18 | Mỗi lần đồng ý ghi loại văn bản, phiên bản, thời điểm, kênh. Phiên bản văn bản đổi thì yêu cầu đồng ý lại ở lần đăng nhập sau (Should). | Một phần (chưa đồng ý lại) |
-| BR-R19 | Người dùng tự xóa tài khoản, xác nhận bằng mật khẩu; xóa watchlist, Portfolio, Trade Plan, Journal, Chat, kênh thông báo; nhật ký giữ dạng ẩn danh (NFR-09). Admin không tự xóa được. | Đã làm |
-| BR-R20 | Có quy trình thông báo sự cố lộ lọt dữ liệu trong 72 giờ cho cơ quan chuyên trách và người dùng. | Chưa làm (quy trình vận hành) |
+| Mã | Quy tắc |
+| --- | --- |
+| BR-R01 | Chỉ vai trò retail được tự đăng ký công khai. Trường role trong yêu cầu đăng ký bị máy chủ bỏ qua. |
+| BR-R02 | Email duy nhất sau khi chuẩn hóa (cắt khoảng trắng, chữ thường), tối đa 254 ký tự. |
+| BR-R03 | Mật khẩu theo FR-M0-06 (8–64 ký tự, có chữ, số, ký tự đặc biệt), băm bằng hàm băm chậm có salt (triển khai: scrypt). |
+| BR-R04 | Bắt buộc tự khai đủ 18 tuổi; không thu thập ngày sinh. |
+| BR-R05 | Bắt buộc tick riêng Điều khoản sử dụng và Thông báo xử lý dữ liệu; không chọn sẵn; không gộp với đồng ý tùy chọn. |
+| BR-R06 | Nhận thông báo email/Telegram là tùy chọn, mặc định tắt, bật/tắt trong Cài đặt → Kênh thông báo. |
+| BR-R07 | Tài khoản chưa xác thực email không đăng nhập được. Token xác thực một lần, hết hạn 24 giờ, chỉ lưu SHA-256; gửi lại tối đa 5 lần mỗi ngày, cách nhau ≥ 60 giây. |
+| BR-R08 | Phản hồi đăng ký luôn cùng thông điệp, không phân biệt email đã tồn tại hay chưa; email đã tồn tại nhận thư "Bạn đã có tài khoản". |
+| BR-R09 | Tối đa 5 lần đăng ký mỗi giờ theo IP và theo email (khóa đếm lưu dạng băm HMAC); captcha khi vượt ngưỡng. |
+| BR-R10 | Không thu thập CCCD, số tài khoản chứng khoán hoặc ngân hàng, số điện thoại. |
+| BR-R11 | Tài khoản chưa xác thực quá 7 ngày bị xóa (dọn ở đầu mỗi lượt đăng ký mới). |
+| BR-R12 | Nâng lên trader: tự phục vụ, bắt buộc khai kinh nghiệm, mục đích và tick xác nhận trách nhiệm; ghi đồng ý Điều khoản Trader, nhật ký; thu hồi phiên. Tự hạ cấp được. |
+| BR-R13 | Nâng lên analyst: Admin duyệt; bắt buộc tổ chức, chức danh, email cơ quan, mục đích, đồng ý Điều khoản Analyst (không phát tán dữ liệu truy vết, không dùng dữ liệu tin tức ngoài mục đích nghiên cứu theo C3); tối đa 1 yêu cầu đang chờ; từ chối phải có lý do; nộp lại sau 7 ngày; mục tiêu xử lý trong 3 ngày làm việc. |
+| BR-R14 | Người duyệt không được trùng người yêu cầu. |
+| BR-R15 | Tạo hoặc nâng quyền admin: chỉ Admin hiện có thực hiện; tài khoản mới nhận mật khẩu tạm, buộc đổi lần đầu; luôn còn ít nhất một Admin hoạt động. Nhập lại mật khẩu, chỉ email tổ chức, TOTP, hai người xác nhận là Should (FR-M0-15). |
+| BR-R16 | Bootstrap Admin đầu tiên chỉ chạy được khi chưa có Admin; không có endpoint công khai nào tạo admin. |
+| BR-R17 | Mọi thay đổi vai trò thu hồi toàn bộ phiên và ghi nhật ký quản trị (ai, trước, sau). |
+| BR-R18 | Mỗi lần đồng ý ghi loại văn bản, phiên bản, thời điểm, kênh. Phiên bản văn bản đổi thì yêu cầu đồng ý lại ở lần đăng nhập sau (Should). |
+| BR-R19 | Người dùng tự xóa tài khoản, xác nhận bằng mật khẩu; xóa watchlist, Portfolio, Trade Plan, Journal, Chat, kênh thông báo; nhật ký giữ dạng ẩn danh (NFR-09). Admin không tự xóa được. |
+| BR-R20 | Có quy trình thông báo sự cố lộ lọt dữ liệu trong 72 giờ cho cơ quan chuyên trách và người dùng. |
 
 **Dữ liệu thu thập**
 

@@ -246,3 +246,21 @@ M12-06 (tuyên bố) ✅. Các FR còn lại ❌, cần mô hình ngôn ngữ v�
 4. **Sentiment thật** cho M4.
 5. **M12 Chat**: cần chọn mô hình ngôn ngữ trước.
 6. **Cấu hình vận hành:** SMTP/Telegram thật trong `.env`, chạy `npm run worker:admin-jobs:watch` thường trực để pipeline 15:30 tự chạy.
+
+## 6. Chênh lệch giữa thiết kế (SDD, PRD) và code hiện tại
+
+Ba tài liệu chính chỉ mô tả hệ thống cần xây; các điểm code chưa khớp thiết kế được theo dõi ở đây.
+
+| Thiết kế | Hiện trạng code |
+| --- | --- |
+| Worker mô hình Python (sentiment, dự báo, giải thích, tái lập), bảng trading_calendar, financial_*, model_version, forecast_explanation, forecast_input, forecast_replay | Chưa có. Bảng `forecasts`, chỉ số thị trường và tỷ lệ nhãn là dữ liệu mẫu do `db:seed:demo` tạo; tin để sentiment trung tính |
+| Pipeline: giá → tin → sentiment → dự báo → cảnh báo → gửi thông báo | Chạy được giá → tin → cảnh báo mốc giá và Trade Plan → gửi thông báo; chưa có bước mô hình, cảnh báo đổi nhãn và ngưỡng xác suất |
+| Pipeline bỏ qua ngày nghỉ lễ theo trading_calendar | Chỉ chạy thứ Hai–thứ Sáu, chưa trừ ngày lễ |
+| Route cần mô hình: /symbols/{sym}/forecast, /sentiment, /history, /forecasts/{id}/audit, /inputs, /replays, /models/*, /model-versions, /admin/models, /admin/chat-log | Chưa có; trang Đánh giá mô hình hiện "Sắp có" |
+| Chat: chặn lệnh, truy xuất, mô hình ngôn ngữ, kiểm tra đầu ra | Có phiên và lịch sử; gửi câu hỏi trả 503 CHAT_MODEL_NOT_READY |
+| API nhận Bearer token cho mobile | API chỉ nhận cookie; app mobile chưa làm (GĐ3) |
+| admin_audit_log có trigger CSDL từ chối UPDATE/DELETE; log tệp giữ 90 ngày | Chưa có trigger; API không có route sửa/xóa. Log chỉ ra console |
+| RLS là phương án tăng cường trước khi mở cho người dùng thật (D13) | Chưa bật RLS; cách ly bằng điều kiện user_id trong repository |
+| Triển khai công khai: Docker Compose đủ dịch vụ, reverse proxy HTTPS | Docker Compose mới có PostgreSQL; api, worker, web chạy bằng npm |
+| Quy tắc đăng ký BR-R09 (captcha), BR-R13 (xác nhận email cơ quan bằng thư, bản ghi đồng ý Điều khoản Analyst), BR-R15 (Admin nhập lại mật khẩu, chỉ email tổ chức, TOTP), BR-R18 (đồng ý lại khi đổi phiên bản) | Chưa làm (FR-M0-10 một phần, FR-M0-15) |
+| BR-R20 quy trình báo sự cố lộ lọt dữ liệu trong 72 giờ | Chưa xây dựng (quy trình vận hành, ngoài code) |

@@ -98,7 +98,7 @@ Xuất báo cáo PDF và gửi thông báo qua email/Telegram (GĐ2).
 
 Phát triển ứng dụng mobile native cho iOS và Android bằng React Native, dùng chung API với web, thực hiện ở GĐ3.
 
-Công nghệ đã chốt khi triển khai: Node.js (Fastify) cho API và worker dữ liệu, React + Vite cho web, PostgreSQL; Python cho phần huấn luyện và suy luận mô hình (chi tiết ở SDD mục 3.2).
+Công nghệ: Node.js (Fastify) cho API và worker dữ liệu, React + Vite cho web, PostgreSQL; Python cho phần huấn luyện và suy luận mô hình (chi tiết ở SDD mục 3.2).
 
 Xác thực người dùng (đăng nhập, đăng xuất, khóa tạm khi nhập sai nhiều lần, đổi mật khẩu) và phân quyền theo 4 vai trò: retail, trader, analyst và admin (khớp PRD NFR-08).
 

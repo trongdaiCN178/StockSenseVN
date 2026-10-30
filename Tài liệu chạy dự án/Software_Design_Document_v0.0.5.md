@@ -19,13 +19,13 @@
 
 Thay đổi 0.0.5: bổ sung thiết kế luồng đăng ký và vòng đời tài khoản (FR-M0-08..15, UC-26..29, AC-31..39) theo PRD v0.0.4 (§7.2 C6, §9.2.6): mục 2.1, 5.2 (M0), 6.1, 6.2, 8.1, 8.2, 10, 11, 12.4. Ghi nhận băm mật khẩu triển khai bằng scrypt.
 
-Rà soát 30/10/2026 (cùng phiên bản 0.0.5): đồng bộ thiết kế với mã nguồn đã triển khai. Ngăn xếp thực tế là Node.js (Fastify) cho API và worker, React + Vite cho web, PostgreSQL 17, không phải Go như bản nháp; phiên đăng nhập là token ngẫu nhiên lưu băm, không dùng JWT; Telegram dùng webhook. Sửa các mục 1, 2, 3.2, 4, 5, 6, 8, 9, 10, 12; phần thiết kế mô hình (mục 7) và các chức năng cần AI giữ là thiết kế cho giai đoạn sau, ghi rõ "chưa triển khai".
+Rà soát 30/10/2026 (cùng phiên bản 0.0.5): thống nhất thiết kế kỹ thuật với ngăn xếp đã chọn: Node.js (Fastify) cho API và worker dữ liệu, React + Vite cho web, PostgreSQL 17, Python cho worker mô hình; phiên đăng nhập là token ngẫu nhiên lưu băm thay cho JWT; Telegram dùng webhook. Sửa các mục 1, 2, 3.2, 4, 5, 6, 8, 9, 10, 12.
 
 **MỤC LỤC**
 
 ## 1. Giới thiệu
 
-Tài liệu này mô tả cách xây dựng hệ thống IDSS (tên thương mại tạm: StockSense VN) để đáp ứng toàn bộ yêu cầu Must-have và Should-have trong PRD v0.0.4 của ba giai đoạn (GĐ1 lõi dự báo, GĐ2 vòng quyết định, GĐ3 mobile). Từ bản 0.0.5, tài liệu mô tả kiến trúc đã triển khai trong mã nguồn StockSenseVN (monorepo Node.js); các phần phụ thuộc mô hình AI (dự báo thật, giải thích, sentiment, Chat, tái lập) là thiết kế cho giai đoạn sau và được ghi rõ "chưa triển khai".
+Tài liệu này mô tả cách xây dựng hệ thống IDSS (tên thương mại tạm: StockSense VN) để đáp ứng toàn bộ yêu cầu Must-have và Should-have trong PRD v0.0.4 của ba giai đoạn (GĐ1 lõi dự báo, GĐ2 vòng quyết định, GĐ3 mobile). Mã nguồn tổ chức thành monorepo StockSenseVN (Node.js); phần mô hình học máy (sentiment, dự báo, giải thích, tái lập) chạy trong worker Python riêng.
 
 ### 1.1 Mục đích
 
@@ -64,7 +64,7 @@ Khi tài liệu này khác bản thiết kế nháp trước đó (kỳ hạn h 
 
 ## 2. Tổng quan hệ thống
 
-Hệ thống gồm ba tiến trình Node.js dùng chung một CSDL PostgreSQL: api (Fastify, REST /api/v1, sinh PDF, nhận webhook Telegram), worker (đồng bộ giá SSI và tin tức, tạo cảnh báo, gửi thông báo, chạy pipeline hằng ngày theo lịch) và web (React, build tĩnh bằng Vite). Các tiến trình chỉ trao đổi qua PostgreSQL: Admin chạy lại job bằng cách ghi một dòng vào hàng đợi admin_job_runs, worker lấy và thực hiện (D3). Phần mô hình AI (sentiment, dự báo, giải thích) sẽ là một worker Python riêng ghi kết quả vào bảng forecasts; API luôn đọc dự báo đã tính sẵn, không chờ mô hình. Hiện bảng forecasts chứa dữ liệu dự báo mẫu do lệnh seed tạo.
+Hệ thống gồm ba tiến trình Node.js dùng chung một CSDL PostgreSQL: api (Fastify, REST /api/v1, sinh PDF, nhận webhook Telegram), worker (đồng bộ giá SSI và tin tức, tạo cảnh báo, gửi thông báo, chạy pipeline hằng ngày theo lịch) và web (React, build tĩnh bằng Vite). Các tiến trình chỉ trao đổi qua PostgreSQL: Admin chạy lại job bằng cách ghi một dòng vào hàng đợi admin_job_runs, worker lấy và thực hiện (D3). Phần mô hình (sentiment, dự báo, giải thích) là worker Python riêng ghi kết quả vào bảng forecasts và các bảng giải thích; API luôn đọc dự báo đã tính sẵn, không chờ mô hình.
 
 ### 2.1 Người dùng và vai trò
 
@@ -82,19 +82,19 @@ Cách có tài khoản (FR-M0-08..14, PRD §4.2, §9.2.6): retail tự đăng k�
 
 | Hệ thống ngoài | Vai trò | Cách kết nối |
 | --- | --- | --- |
-| SSI iBoard | Giá OHLCV ngày theo mã | HTTP JSON; apps/worker/src/providers/ssi.js, lệnh worker:market:sync (đã triển khai). Chỉ số VN-Index, HNX-Index hiện là dữ liệu mẫu |
-| CafeF, VnExpress | Danh sách tin theo chuyên mục, gán vào mã theo tiêu đề và tóm tắt | HTML/RSS; apps/worker/src/providers/news.js, lệnh worker:news:sync (đã triển khai); sentiment để trung tính đến khi có mô hình |
-| vnstock (hoặc nguồn tương đương) | Báo cáo tài chính quý kèm ngày công bố | Thư viện Python trong worker AI (chưa triển khai) |
+| SSI iBoard | Giá OHLCV ngày theo mã, chỉ số VN-Index, HNX-Index | HTTP JSON; apps/worker/src/providers/ssi.js, lệnh worker:market:sync |
+| CafeF, VnExpress | Danh sách tin theo chuyên mục, gán vào mã theo tiêu đề và tóm tắt | HTML/RSS; apps/worker/src/providers/news.js, lệnh worker:news:sync; worker mô hình chấm cảm xúc sau khi nạp |
+| vnstock (hoặc nguồn tương đương) | Báo cáo tài chính quý kèm ngày công bố | Thư viện Python trong worker mô hình |
 | Google Colab / Kaggle | GPU để tinh chỉnh PhoBERT và huấn luyện mô hình | Notebook chạy mã trong ml/, checkpoint tải về và đăng ký phiên bản |
-| Nhà cung cấp mô hình ngôn ngữ (API) hoặc máy chủ LLM cục bộ | Diễn đạt câu trả lời của Chat từ dữ liệu đã truy xuất | HTTPS tới API nhà cung cấp hoặc máy chủ cục bộ tương thích OpenAI (chưa triển khai; API trả 503 CHAT_MODEL_NOT_READY) |
+| Nhà cung cấp mô hình ngôn ngữ (API) hoặc máy chủ LLM cục bộ | Diễn đạt câu trả lời của Chat từ dữ liệu đã truy xuất | HTTPS tới API nhà cung cấp hoặc máy chủ cục bộ tương thích OpenAI (chọn ở mục 12.4) |
 | Telegram Bot API | Kênh thông báo và liên kết tài khoản Telegram | HTTPS; bot nhận mã liên kết qua webhook POST /notify/telegram/webhook có secret, nên cần địa chỉ HTTPS công khai |
 | Máy chủ SMTP | Gửi thư xác thực đăng ký, đặt lại mật khẩu, xác minh kênh email và cảnh báo | nodemailer qua SMTP; bản demo dùng Gmail với App Password (khoảng 500 người nhận/ngày) |
 | TestFlight, bản cài trực tiếp Android | Phân phối thử nghiệm ứng dụng mobile (PRD A9) | Build React Native ngoài Docker Compose |
-| Trình duyệt và ứng dụng mobile của người dùng | Giao diện web, ứng dụng iOS/Android (GĐ3) | Web gọi /api/v1 bằng cookie phiên HttpOnly; khi phát triển, Vite proxy /api sang cổng 3000; mobile dùng Bearer token (GĐ3, chưa triển khai) |
+| Trình duyệt và ứng dụng mobile của người dùng | Giao diện web, ứng dụng iOS/Android (GĐ3) | Web gọi /api/v1 bằng cookie phiên HttpOnly; khi phát triển, Vite proxy /api sang cổng 3000; mobile dùng Bearer token (GĐ3) |
 
 ### 2.3 Luồng nghiệp vụ chính
 
-Sau 15:30 các ngày thứ Hai đến thứ Sáu, worker xếp hàng pipeline hằng ngày: đồng bộ giá SSI → đồng bộ tin → tạo cảnh báo giá và cảnh báo Trade Plan → gửi thông báo (đã triển khai). Khi có mô hình, pipeline thêm các bước chấm cảm xúc, sinh dự báo T+2/T+5 kèm giải thích và ghi vào CSDL trước 20:00.
+Sau 15:30 mỗi ngày giao dịch, worker xếp hàng pipeline hằng ngày: đồng bộ giá SSI → đồng bộ tin → chấm cảm xúc tin mới → sinh dự báo T+2/T+5 kèm giải thích và ghi vào CSDL trước 20:00 → tạo cảnh báo (mốc giá, đổi nhãn, ngưỡng xác suất, Trade Plan) → gửi thông báo.
 
 Người dùng mở trang tổng quan hoặc Screener, lọc và chọn mã, xem forecast card, giải thích, tin tức và lịch sử đúng/sai.
 
@@ -123,21 +123,21 @@ Thiết kế ưu tiên dùng lại mã sẵn có và hạ tầng miễn phí; r�
 | Mã | Quyết định | Lý do | Phương án đã loại |
 | --- | --- | --- | --- |
 | D1 | Backend API viết bằng Node.js 22 + Fastify 5 (apps/api), REST JSON tại /api/v1; truy cập PostgreSQL bằng pg với câu lệnh SQL tham số hóa, không dùng ORM | Một ngôn ngữ JavaScript cho API, worker, web và packages/core, nên một người làm được cả hệ thống và dùng chung hàm tính, bảng quyền; Fastify nhanh, có sẵn plugin cookie, CORS, helmet, rate limit; API chỉ đọc dữ liệu đã tính nên đạt NFR-02 | Go mở rộng từ DATN_2026 (bản nháp 0.0.1–0.0.4): thêm một ngôn ngữ, không dùng chung code với web. FastAPI: cũng thêm ngôn ngữ cho phần web |
-| D2 | Worker dữ liệu viết bằng Node.js (apps/worker): đồng bộ giá, tin, cảnh báo, gửi thông báo, pipeline theo lịch. Phần huấn luyện và suy luận mô hình (sentiment, dự báo, giải thích) sẽ là worker Python riêng (chưa triển khai) | Phần ETL và thông báo không cần thư viện học máy nên viết chung ngôn ngữ với API; mô hình cần PyTorch, Transformers, Captum nên để Python | Viết toàn bộ worker bằng Python: hai ngôn ngữ cho cả phần không cần học máy |
+| D2 | Worker dữ liệu viết bằng Node.js (apps/worker): đồng bộ giá, tin, cảnh báo, gửi thông báo, pipeline theo lịch. Phần huấn luyện và suy luận mô hình (sentiment, dự báo, giải thích) là worker Python riêng | Phần ETL và thông báo không cần thư viện học máy nên viết chung ngôn ngữ với API; mô hình cần PyTorch, Transformers, Captum nên để Python | Viết toàn bộ worker bằng Python: hai ngôn ngữ cho cả phần không cần học máy |
 | D3 | Các tiến trình chỉ giao tiếp qua PostgreSQL: Admin chạy lại job bằng một dòng admin_job_runs trạng thái queued, worker lấy dòng, ghi heartbeat vào admin_worker_instances; API không bao giờ chạy job trong request HTTP | Một nguồn sự thật, không cần message broker, dễ truy vết | Redis/BullMQ: thêm một dịch vụ phải vận hành |
 | D4 | Dự báo tính theo lô mỗi ngày và lưu sẵn, kèm giải thích. Chat không suy luận dự báo, chỉ đọc dự báo đã lưu | Đáp ứng NFR-01/02 và A4; giải thích bằng IG tốn thời gian, không nên tính theo yêu cầu; mô hình ngôn ngữ chỉ diễn đạt dữ liệu đã truy xuất (PRD A6) | Suy luận trực tuyến mỗi lần mở trang |
 | D5 | Lược đồ kế thừa db/schema.sql (3 tầng thô / xử lý / đặc trưng, point-in-time 15:00) và bổ sung bảng ứng dụng ở GĐ1, bảng dữ liệu cá nhân và thông báo ở GĐ2 | Lược đồ hiện có đã khớp PRD về cut-off và BCTC theo ngày công bố | Thiết kế lại từ đầu |
 | D6 | Giao diện web viết bằng React 19 + JavaScript (JSX), đóng gói bằng Vite thành file tĩnh; biểu đồ giá vẽ bằng SVG tự viết; bảng quyền, chính sách mật khẩu, hàm R:R/khối lượng và nhãn dự báo nằm trong packages/core dùng chung giữa web và API | Nhiều trang nghiệp vụ, biểu mẫu và trạng thái; không cần thư viện biểu đồ nặng cho đường giá đóng cửa 6 tháng; một hàm tính dùng chung nên số trên biểu mẫu khớp số lưu | TypeScript: an toàn kiểu hơn nhưng thêm bước build, chưa cần ở quy mô này. TradingView Lightweight Charts: thêm phụ thuộc, để dành khi cần biểu đồ nến |
 | D7 | Mobile là ứng dụng React Native một codebase cho iOS và Android, dùng chung API REST /api/v1 và packages/core với web; web responsive từ 375 px (có thể thêm PWA) là phương án dự phòng. Xác thực: web giữ cookie phiên HttpOnly, mobile (GĐ3) gửi Authorization: Bearer với token lưu trong Keychain/Keystore, middleware chấp nhận cả hai; kênh thông báo đẩy được chừa sẵn (mục 8.3). Đăng xuất trên mobile gọi POST /auth/logout để thu hồi phiên rồi mới xóa token trong Keychain/Keystore; khi nhận 401 thì xóa token và chuyển về màn hình đăng nhập. | Theo PRD 6.1 (M14, Must-have GĐ3), FR-M14-01..05 và NFR-17; Project Brief 0.0.2 nêu "nhận thông báo" trong chức năng cốt lõi của mobile | Chỉ web responsive (quyết định ở bản 0.0.1): không đáp ứng M14. Hai codebase native riêng hoặc Flutter: thêm ngôn ngữ và không dùng chung được với web |
 | D8 | Một mô hình đa phương thức với hai đầu ra T+2 và T+5; embedding PhoBERT tính một lần và lưu lại | Theo PRD 12.4 và RK-10; suy luận trên CPU đủ nhanh | Hai mô hình riêng cho từng kỳ hạn |
-| D9 | Môi trường demo: PostgreSQL 17 chạy bằng Docker Compose; api, worker và web chạy bằng npm trên cùng máy. Triển khai công khai: thêm container cho api, worker và reverse proxy HTTPS (chưa làm) | Đơn giản nhất cho một người phát triển và demo; NFR-11 yêu cầu Docker Compose khi triển khai công khai | Kubernetes: thừa cho quy mô demo |
+| D9 | Môi trường phát triển và demo: PostgreSQL 17 chạy bằng Docker Compose; api, worker và web chạy bằng npm trên cùng máy. Triển khai công khai: Docker Compose gồm db, api, worker, worker mô hình và reverse proxy HTTPS | Đơn giản cho một người phát triển; NFR-11 yêu cầu Docker Compose khi triển khai công khai | Kubernetes: thừa cho quy mô demo |
 | D10 | Báo cáo PDF sinh đồng bộ trong api bằng pdfkit với font Unicode (REPORT_FONT_PATH, mặc định Arial của hệ điều hành); số liệu lấy từ cùng hàm truy vấn với màn hình | NFR-16: số liệu khớp màn hình, dưới 10 giây; không thêm container | Container Chromium từ HTML: dàn trang đẹp hơn nhưng nặng thêm khoảng 500 MB RAM |
 | D11 | Chat chạy trong dịch vụ chat riêng: bộ chặn lệnh, truy xuất bằng truy vấn cố định, mô hình ngôn ngữ diễn đạt, bộ kiểm tra đầu ra (số liệu, trích dẫn, từ cấm); mô hình ngôn ngữ nằm sau giao diện LLMClient có hai bộ nối (API, cục bộ) | FR-M12-02..05 và NFR-14: mọi số liệu phải có nguồn; lỗi hoặc chậm của mô hình ngôn ngữ không ảnh hưởng trang dự báo; đổi bộ nối không đổi mã nghiệp vụ vì PRD A6 chưa chốt | Agent tự gọi công cụ và sinh SQL: khó bảo đảm cách ly dữ liệu cá nhân và kiểm tra bịa. Cơ sở dữ liệu vectơ cho toàn bộ tin: không cần, dữ liệu chủ yếu có cấu trúc |
 | D12 | Thông báo ngoài app qua bảng notification_outbox làm hàng đợi; worker (worker:notifications:deliver) gửi email/Telegram, khóa duy nhất theo (cảnh báo, kênh) chống gửi trùng; Telegram nhận mã liên kết qua webhook có secret | NFR-15: tối đa 1 lần mỗi kênh dù pipeline chạy lại; retry và nhật ký gửi không phụ thuộc request | Gửi trực tiếp trong request: lỗi kênh làm chậm API. Long polling: cần tiến trình chạy liên tục riêng |
-| D13 | Dữ liệu cá nhân (watchlist, Portfolio, Trade Plan, Journal, Chat, kênh thông báo, bộ lọc đã lưu) gắn user_id; mọi hàm repository nhận userId từ phiên và đặt điều kiện user_id trong SQL; trigger CSDL chặn sửa snapshot Trade Plan, snapshot và kết quả Journal, và chặn chat_message gắn sai chủ | NFR-07/08 và AC-26: admin không có route đọc nội dung; id của người khác trả 404 | Row-Level Security (thiết kế bản nháp): an toàn hơn khi quên điều kiện nhưng phức tạp khi dùng một pool kết nối; có thể bổ sung khi triển khai công khai |
+| D13 | Dữ liệu cá nhân (watchlist, Portfolio, Trade Plan, Journal, Chat, kênh thông báo, bộ lọc đã lưu) gắn user_id; mọi hàm repository nhận userId từ phiên và đặt điều kiện user_id trong SQL; trigger CSDL chặn sửa snapshot Trade Plan, snapshot và kết quả Journal, và chặn chat_message gắn sai chủ | NFR-07/08 và AC-26: admin không có route đọc nội dung; id của người khác trả 404 | Row-Level Security (thiết kế bản nháp): an toàn hơn khi quên điều kiện nhưng phức tạp khi dùng một pool kết nối |
 | D14 | Phiên đăng nhập là token ngẫu nhiên trong cookie HttpOnly (SameSite=Lax, path /api/v1), CSDL chỉ lưu SHA-256 trong auth_sessions, hết hạn 24 giờ. Mỗi request tra phiên còn hiệu lực, is_active, locked_until và vai trò hiện tại trong users. Khóa, đổi vai trò, đổi hoặc đặt lại mật khẩu thu hồi phiên trong cùng transaction | FR-M0-01–07; AC-27, AC-29, AC-30. Thu hồi ngay, không cần danh sách đen như JWT | JWT HS256 (bản nháp): vẫn phải tra phiên để thu hồi ngay nên không có lợi thêm. Redis: thêm dịch vụ |
-| D15 | Tái lập dự báo (chưa triển khai, cần mô hình): API ghi một yêu cầu replay trạng thái queued, worker Python chạy đúng phiên bản mô hình và snapshot, ghi kết quả riêng, không ghi đè dự báo gốc | FR-M7-10 và AC-14; giữ nguyên D3 | Gọi Python trực tiếp qua HTTP từ API: thêm ngoại lệ cho D3 |
-| D16 | Nhật ký quản trị admin_audit_log chỉ thêm: API không có route sửa/xóa; sự kiện thành công ghi cùng transaction với thay đổi; details lưu before/after đã lọc bí mật | FR-M7-05, FR-M7-11, NFR-09, UC-25, AC-29 | Ghi log ra tệp: khó lọc và phân trang. Trigger CSDL chặn UPDATE/DELETE và ghi kết quả từ chối/lỗi: chưa làm, nên bổ sung |
+| D15 | Tái lập dự báo: API ghi một yêu cầu replay trạng thái queued, worker Python chạy đúng phiên bản mô hình và snapshot, ghi kết quả riêng, không ghi đè dự báo gốc | FR-M7-10 và AC-14; giữ nguyên D3 | Gọi Python trực tiếp qua HTTP từ API: thêm ngoại lệ cho D3 |
+| D16 | Nhật ký quản trị admin_audit_log chỉ thêm: API không có route sửa/xóa, trigger CSDL từ chối UPDATE/DELETE; sự kiện thành công ghi cùng transaction với thay đổi; details lưu before/after đã lọc bí mật | FR-M7-05, FR-M7-11, NFR-09, UC-25, AC-29 | Ghi log ra tệp: khó lọc và phân trang |
 | D17 | Đăng ký công khai chỉ tạo retail và xác thực email bằng liên kết một lần 24 giờ; phản hồi đăng ký luôn cùng thông điệp; trader tự nâng cấp có xác nhận; analyst do Admin duyệt; Admin do bootstrap hoặc Admin hiện có tạo, chặn mất Admin cuối; băm mật khẩu bằng scrypt | FR-M0-08..14, PRD §9.2.6: mở rộng được cho retail mà không lộ dữ liệu nhạy cảm; trader chỉ mở công cụ cho dữ liệu của chính mình nên tự phục vụ được; analyst xem dữ liệu truy vết nội bộ nên cần duyệt; scrypt có sẵn trong Node.js, không cần thư viện native, không giới hạn 72 byte | Chỉ Admin tạo tài khoản: an toàn nhưng không mở rộng được. Admin duyệt mọi nâng cấp trader: tăng việc cho Admin. Mã OTP 6 số: dễ dùng trên mobile nhưng dễ bị đoán nếu không giới hạn thử. Báo thẳng "email đã tồn tại": cho phép dò tài khoản. Hai người xác nhận + TOTP khi tạo Admin: an toàn hơn nhưng phức tạp, để FR-M0-15 |
 
 ## 4. Kiến trúc tổng thể
@@ -149,7 +149,9 @@ Kiến trúc có ba tiến trình Node.js và một CSDL PostgreSQL; không ti�
 - **worker** (apps/worker): các lệnh chạy một lần (market:sync, news:sync, notifications:deliver, admin-jobs:run) và chế độ chạy liên tục admin-jobs:watch: poll hàng đợi mỗi 10 giây, ghi heartbeat mỗi 15 giây, tự xếp hàng pipeline hằng ngày sau 15:30 các ngày thứ Hai–thứ Sáu, retry tối đa 3 lần, báo cho Admin khi hết retry.
 - **db**: PostgreSQL 17 trong Docker Compose; lược đồ do db/migrations quản lý (npm run db:migrate).
 
-Thành phần cho giai đoạn sau (chưa triển khai): worker Python cho sentiment, dự báo, giải thích và tái lập, ghi vào forecasts và các bảng giải thích; dịch vụ mô hình ngôn ngữ cho Chat; ứng dụng mobile React Native gọi cùng /api/v1.
+- **worker mô hình** (Python): sentiment, dự báo, giải thích và tái lập; ghi vào forecasts và các bảng giải thích.
+- **mô hình ngôn ngữ cho Chat**: API ngoài hoặc máy chủ cục bộ, chỉ api gọi tới (mục 5.3).
+- **mobile** (React Native, GĐ3): gọi cùng /api/v1 bằng Bearer token.
 
 ## 5. Thiết kế chi tiết các mô-đun
 
@@ -157,25 +159,25 @@ Hệ thống có 12 thành phần kỹ thuật (C1–C12); mười bốn mô-đu
 
 ### 5.1 Thành phần kỹ thuật
 
-| Mã | Thành phần | Ngôn ngữ, vị trí | Trách nhiệm | Hiện trạng |
-| --- | --- | --- | --- | --- |
-| C1 | ETL dữ liệu | Node.js, apps/worker/src/jobs, providers | Nạp giá SSI, tin CafeF/VnExpress, gán tin vào mã; ghi data_ingestion_runs | Đã có giá và tin; chưa có chỉ số thật, BCTC |
-| C2 | NLP cảm xúc | Python, worker AI | Chấm cảm xúc 3 lớp kèm độ tin cậy, embedding PhoBERT | Chưa có; tin để sentiment trung tính |
-| C3 | Đặc trưng và nhãn | Python + SQL, worker AI | Chỉ báo kỹ thuật, BCTC point-in-time, nhãn T+2/T+5 | Chưa có |
-| C4 | Suy luận và giải thích | Python, worker AI | Xác suất, IG, attention, câu giải thích, snapshot | Chưa có; forecasts chứa dữ liệu mẫu |
-| C5 | Hậu xử lý | Node.js (cảnh báo) + Python (nhãn thực tế, hit rate, drift) | Cảnh báo giá, cảnh báo Trade Plan, hết hạn kế hoạch, dọn cảnh báo 90 ngày; khi có mô hình: nhãn thực tế, hit rate, cảnh báo đổi nhãn | Đã có phần cảnh báo giá và Trade Plan |
-| C6 | API | Node.js + Fastify, apps/api/src | REST JSON, phiên cookie, phân quyền capability, kiểm quyền sở hữu, giới hạn tần suất, đăng ký và vòng đời tài khoản, dữ liệu người dùng, admin, PDF | Đã có |
-| C7 | Giao diện web | React 19 + Vite, apps/web/src | Các trang ở mục 8.2 | Đã có (trừ trang Đánh giá mô hình) |
-| C8 | Bộ lập lịch | Node.js, apps/worker/src/admin-jobs-cli.js | Pipeline sau 15:30 thứ Hai–thứ Sáu, hàng đợi job Admin, retry 3 lần, heartbeat | Đã có; chưa có lịch nghỉ lễ |
-| C9 | Thông báo | Node.js, apps/worker (notification-delivery) và api (webhook Telegram) | Gửi email (nodemailer) và Telegram từ notification_outbox, retry, nhật ký gửi | Đã có |
-| C10 | Báo cáo PDF | Node.js + pdfkit, trong api | PDF mã, danh mục, Trade Plan, Journal theo kỳ | Đã có (chưa có phần dự báo thật) |
-| C11 | Chat hỏi đáp | Node.js (phiên, lưu tin nhắn) + mô hình ngôn ngữ | Quản lý phiên hội thoại; khi có mô hình: chặn lệnh, truy xuất, kiểm tra đầu ra (mục 5.3) | Có phiên và lịch sử; gửi câu hỏi trả 503 CHAT_MODEL_NOT_READY |
-| C12 | Ứng dụng mobile | React Native, mobile/ | Ứng dụng iOS/Android dùng chung API và packages/core (mục 8.3) | Chưa có (GĐ3) |
-| — | Thư viện dùng chung | JavaScript, packages/core | Bảng vai trò và capability, chính sách mật khẩu, R:R và khối lượng theo lô 100, nhãn dự báo tiếng Việt | Đã có, có kiểm thử vitest |
+| Mã | Thành phần | Ngôn ngữ, vị trí | Trách nhiệm |
+| --- | --- | --- | --- |
+| C1 | ETL dữ liệu | Node.js, apps/worker/src/jobs, providers | Nạp giá và chỉ số SSI, tin CafeF/VnExpress, gán tin vào mã; ghi data_ingestion_runs |
+| C2 | NLP cảm xúc | Python, worker mô hình | Chấm cảm xúc 3 lớp kèm độ tin cậy, embedding PhoBERT |
+| C3 | Đặc trưng và nhãn | Python + SQL, worker mô hình | Chỉ báo kỹ thuật, BCTC point-in-time, nhãn T+2/T+5 |
+| C4 | Suy luận và giải thích | Python, worker mô hình | Xác suất, IG, attention, câu giải thích, snapshot |
+| C5 | Hậu xử lý | Node.js (cảnh báo) + Python (nhãn thực tế, hit rate, drift) | Cảnh báo mốc giá, đổi nhãn, ngưỡng xác suất, Trade Plan; hết hạn kế hoạch; dọn cảnh báo 90 ngày; nhãn thực tế, hit rate, drift |
+| C6 | API | Node.js + Fastify, apps/api/src | REST JSON, phiên cookie (web) và Bearer (mobile), phân quyền capability, kiểm quyền sở hữu, giới hạn tần suất, đăng ký và vòng đời tài khoản, dữ liệu người dùng, admin, PDF |
+| C7 | Giao diện web | React 19 + Vite, apps/web/src | Các trang ở mục 8.2 |
+| C8 | Bộ lập lịch | Node.js, apps/worker/src/admin-jobs-cli.js | Pipeline sau 15:30 mỗi ngày giao dịch, hàng đợi job Admin, retry 3 lần, heartbeat |
+| C9 | Thông báo | Node.js, apps/worker (notification-delivery) và api (webhook Telegram) | Gửi email (nodemailer) và Telegram từ notification_outbox, retry, nhật ký gửi |
+| C10 | Báo cáo PDF | Node.js + pdfkit, trong api | PDF mã, danh mục, Trade Plan, Journal theo kỳ |
+| C11 | Chat hỏi đáp | Node.js (phiên, lưu tin nhắn) + mô hình ngôn ngữ | Quản lý phiên hội thoại, chặn lệnh, truy xuất, kiểm tra đầu ra (mục 5.3) |
+| C12 | Ứng dụng mobile | React Native, mobile/ | Ứng dụng iOS/Android dùng chung API và packages/core (mục 8.3) |
+| — | Thư viện dùng chung | JavaScript, packages/core | Bảng vai trò và capability, chính sách mật khẩu, R:R và khối lượng theo lô 100, nhãn dự báo tiếng Việt |
 
 ### 5.2 Thiết kế theo mô-đun nghiệp vụ
 
-**M0. Xác thực và phiên**. Đăng nhập bằng email chuẩn hóa và mật khẩu băm bằng hàm băm chậm có salt (thiết kế ban đầu bcrypt cost 12; bản triển khai dùng scrypt của Node, định dạng scrypt$salt$key, không có giới hạn 72 byte). Chính sách FR-M0-06: 8–64 ký tự, có chữ, số và ký tự đặc biệt, kiểm ở cả giao diện và máy chủ. Tài khoản tự đăng ký phải có email_verified_at mới được đăng nhập (FR-M0-09). Mật khẩu mới phải khác mật khẩu hiện tại (AC-30). Đăng nhập thành công tạo một dòng auth_sessions (lưu SHA-256 của token) và đặt cookie phiên HttpOnly, hạn 24 giờ (D14). preHandler kiểm tra phiên, is_active, locked_until và vai trò trong CSDL ở mỗi request. Token sai, hết hạn hoặc bị thu hồi trả 401; thiếu quyền trả 403. Email không tồn tại, sai mật khẩu, bị khóa đều trả thông báo chung (FR-M0-01, 03).
+**M0. Xác thực và phiên**. Đăng nhập bằng email chuẩn hóa và mật khẩu băm bằng hàm băm chậm có salt (scrypt của Node.js, định dạng scrypt$salt$key, không có giới hạn 72 byte như bcrypt). Chính sách FR-M0-06: 8–64 ký tự, có chữ, số và ký tự đặc biệt, kiểm ở cả giao diện và máy chủ. Tài khoản tự đăng ký phải có email_verified_at mới được đăng nhập (FR-M0-09). Mật khẩu mới phải khác mật khẩu hiện tại (AC-30). Đăng nhập thành công tạo một dòng auth_sessions (lưu SHA-256 của token) và đặt cookie phiên HttpOnly, hạn 24 giờ (D14). preHandler kiểm tra phiên, is_active, locked_until và vai trò trong CSDL ở mỗi request. Token sai, hết hạn hoặc bị thu hồi trả 401; thiếu quyền trả 403. Email không tồn tại, sai mật khẩu, bị khóa đều trả thông báo chung (FR-M0-01, 03).
 
 Kiểm soát đăng nhập sai (FR-M0-04): khóa hàng users khi cập nhật failed_login_count để các request đồng thời không vượt qua bộ đếm. Lần sai đầu mở cửa sổ 15 phút; lần sai thứ 5 trong cửa sổ đặt locked_until = thời điểm hiện tại + 15 phút. Trong thời gian khóa tạm, kể cả đúng mật khẩu cũng bị từ chối; sau cửa sổ hết hạn mở bộ đếm mới. Đăng nhập thành công đặt bộ đếm về 0. Ghi security_event cho từng lần sai, khóa tạm và đăng nhập thành công, không ghi mật khẩu/token; email không tồn tại chỉ ghi thông tin an toàn và áp dụng giới hạn request.
 
@@ -183,11 +185,11 @@ Kiểm soát đăng nhập sai (FR-M0-04): khóa hàng users khi cập nhật fa
 
 **Đăng ký và vòng đời vai trò (FR-M0-08..15).** POST /auth/register nhận email, mật khẩu, tên hiển thị và 3 cờ đồng ý (age_confirmed, accept_terms, accept_privacy); bỏ qua mọi trường vai trò. Giới hạn tần suất 5 lần/giờ theo IP và theo email, khóa đếm lưu dạng HMAC-SHA256 (AUTH_RATE_LIMIT_SECRET) trong registration_requests, không lưu IP thô. Luôn trả 202 với cùng thông điệp. Email mới: trong một transaction tạo app_user (role retail, created_via self_register, email_verified_at NULL, age_confirmed_at), 2 bản ghi user_consent (terms_of_service, privacy_notice, phiên bản CONSENT_VERSION, kênh web), token xác thực (lưu SHA-256, hết hạn 24 giờ) và thư trong auth_mail_outbox. Email đã tồn tại: chỉ xếp thư "Bạn đã có tài khoản". POST /auth/verify-email khóa token, kiểm hạn và used_at, đặt email_verified_at, ghi security_event. POST /auth/resend-verification giới hạn 5 lần/ngày theo email, 10 lần/ngày theo IP, cách nhau 60 giây, vô hiệu token cũ. Tài khoản tự đăng ký chưa xác thực quá 7 ngày, token đã dùng hoặc hết hạn quá 24 giờ và bản ghi đếm tần suất quá 24 giờ được dọn ngay đầu mỗi lượt POST /auth/register.
 
-Nâng cấp Trader (POST /me/upgrade/trader) yêu cầu kinh nghiệm, mục đích và cờ xác nhận trách nhiệm; trong một transaction đổi role, lưu user_consent trader_terms, ghi audit_log (user.self_upgrade) và thu hồi mọi phiên. Hạ cấp (POST /me/downgrade/retail) tương tự (user.self_downgrade), giữ dữ liệu. Yêu cầu Analyst (POST /me/role-requests) lưu role_requests trạng thái pending_review; chỉ một yêu cầu đang chờ mỗi người (unique index một phần), bị từ chối thì chặn 7 ngày. Admin duyệt/từ chối qua /admin/role-requests/{id}/approve|reject: khóa hàng yêu cầu, chặn tự duyệt (SELF_APPROVAL_BLOCKED), từ chối bắt buộc lý do, duyệt thì đổi role và thu hồi phiên; mọi quyết định ghi audit_log. GET /me/consents trả lịch sử đồng ý. DELETE /me nhập lại mật khẩu, xóa tài khoản và dữ liệu cá nhân theo ON DELETE CASCADE, audit_log giữ với actor NULL; Admin không tự xóa. Bootstrap Admin là lệnh CLI đọc BOOTSTRAP_ADMIN_EMAIL/PASSWORD, chỉ chạy khi chưa có Admin, ghi audit created_via bootstrap; không có endpoint công khai tạo admin. Chưa triển khai (FR-M0-15, Should): xác nhận email cơ quan bằng thư, TOTP và nhập lại mật khẩu cho Admin, captcha, đồng ý lại khi đổi phiên bản văn bản, thư báo kết quả duyệt.
+Nâng cấp Trader (POST /me/upgrade/trader) yêu cầu kinh nghiệm, mục đích và cờ xác nhận trách nhiệm; trong một transaction đổi role, lưu user_consent trader_terms, ghi audit_log (user.self_upgrade) và thu hồi mọi phiên. Hạ cấp (POST /me/downgrade/retail) tương tự (user.self_downgrade), giữ dữ liệu. Yêu cầu Analyst (POST /me/role-requests) lưu role_requests trạng thái pending_review; chỉ một yêu cầu đang chờ mỗi người (unique index một phần), bị từ chối thì chặn 7 ngày. Admin duyệt/từ chối qua /admin/role-requests/{id}/approve|reject: khóa hàng yêu cầu, chặn tự duyệt (SELF_APPROVAL_BLOCKED), từ chối bắt buộc lý do, duyệt thì đổi role và thu hồi phiên; mọi quyết định ghi audit_log. GET /me/consents trả lịch sử đồng ý. DELETE /me nhập lại mật khẩu, xóa tài khoản và dữ liệu cá nhân theo ON DELETE CASCADE, audit_log giữ với actor NULL; Admin không tự xóa. Bootstrap Admin là lệnh CLI đọc BOOTSTRAP_ADMIN_EMAIL/PASSWORD, chỉ chạy khi chưa có Admin, ghi audit created_via bootstrap; không có endpoint công khai tạo admin. Mức Should (FR-M0-15): xác nhận email cơ quan bằng thư trước khi Admin xét (trạng thái awaiting_email), TOTP và nhập lại mật khẩu cho Admin, captcha khi vượt ngưỡng đăng ký, đồng ý lại khi đổi phiên bản văn bản, thư báo kết quả duyệt.
 
 Tự đặt lại qua email (Should, FR-M0-07): /auth/forgot-password luôn trả cùng thông điệp, không tiết lộ tài khoản tồn tại. Tạo token ngẫu nhiên, chỉ lưu SHA-256 trong password_reset_token, hết hạn 30 phút; email được xếp hàng trong auth_mail_outbox GĐ1, worker gửi SMTP độc lập với giao dịch API. /auth/reset-password khóa bản ghi token, kiểm tra hạn và used_at, mật khẩu mới đạt chính sách và khác mật khẩu cũ; cập nhật hash, đánh dấu token đã dùng, vô hiệu các token còn lại và thu hồi mọi phiên trong cùng transaction. Hai request dùng cùng token chỉ một request được chấp nhận. Sau đó người dùng đăng nhập lại. Không lưu token hoặc liên kết đặt lại trong log.
 
-**M1. Tổng quan thị trường.** Bản triển khai: GET /symbols truy vấn trực tiếp symbols, daily_prices (giá SSI) và forecasts, hỗ trợ lọc sàn/ngành/thanh khoản và sắp xếp ở máy chủ; GET /market/status trả ngày giá SSI mới nhất (latestPriceDate) và ngày dự báo. Thiết kế đầy đủ: API GET /symbols trả một dòng mỗi mã từ view v_overview (giá đóng cửa, % thay đổi, GTGD bình quân 20 phiên, dự báo T+2 và T+5 mới nhất của phiên bản đang phục vụ). Lọc, sắp xếp và tìm kiếm làm ở phía client vì chỉ có 15–60 mã; phần đầu trang lấy ngày dữ liệu và giờ hoàn tất batch từ job_run (FR-M1-05). Từ GĐ2, dải thị trường (VN-Index, HNX-Index, độ rộng thị trường, tỷ lệ mã theo nhãn) lấy từ view v_market_summary làm mới cuối batch (FR-M1-06); khối "Tín hiệu đổi hôm nay" lấy các dòng v_overview có changed_t2 hoặc changed_t5 (FR-M1-07).
+**M1. Tổng quan thị trường.** GET /symbols trả một dòng mỗi mã từ symbols, daily_prices và forecasts: giá đóng cửa, % thay đổi, GTGD bình quân 20 phiên, dự báo T+2 và T+5 mới nhất của phiên bản đang phục vụ; lọc theo sàn, ngành, thanh khoản, xu hướng và sắp xếp ở máy chủ. GET /market/status trả ngày giá mới nhất, ngày dữ liệu dự báo, giờ hoàn tất batch và phiên bản mô hình (FR-M1-05). Dải thị trường (VN-Index, HNX-Index, độ rộng thị trường, tỷ lệ mã theo nhãn) lấy từ market_indices và market_summary do batch ghi (FR-M1-06); khối "Tín hiệu đổi hôm nay" lấy các mã có nhãn T+2 hoặc T+5 đổi so với phiên trước (FR-M1-07).
 
 **M2. Forecast card và trang chi tiết.** Mỗi bản ghi forecast chứa ba xác suất (tổng bằng 1 sau softmax, làm tròn hiển thị sao cho tổng 100% ± 0,1), nhãn, ngày T, ngày đáo hạn tính từ bảng trading_calendar, cờ trạng thái dữ liệu và cờ "độ tin cậy thấp" khi xác suất cao nhất dưới 45% (RK-06). T+2 và T+5 được đánh dấu mâu thuẫn khi một bên Tăng và bên kia Giảm (FR-M2-05). Nhãn nội bộ up/hold/down được hiển thị là Tăng/Đi ngang/Giảm: API trả cả label và label_vi, giao diện, PDF và Chat chỉ dùng label_vi. Hai forecast card T+2 và T+5 đặt cạnh nhau là bố cục chính của trang (mục 8.2). Từ GĐ2, mức tin cậy 3 bậc (FR-M2-08) được tính trong batch từ xác suất lớp cao nhất (dưới 45% là thấp, 45–55% trung bình, trên 55% cao; ngưỡng cần xác nhận), hạ một bậc khi T+2 và T+5 mâu thuẫn hoặc data_status không rỗng, và lưu ở forecast.confidence. Khối "Điều gì có thể làm dự báo sai" (FR-M2-09) là 2–3 câu sinh từ quy tắc cấu hình (sắp đến lịch công bố BCTC, thiếu tin, thanh khoản thấp, T+2 và T+5 mâu thuẫn, hit rate gần đây thấp), lưu ở forecast_explanation.risk_notes, không dùng từ MUA/BÁN.
 
@@ -195,7 +197,7 @@ Tự đặt lại qua email (Should, FR-M0-07): /auth/forgot-password luôn tr�
 
 **M4. Tin tức và cảm xúc.** Tin được loại trùng bằng content_hash và khóa (source, url); giao diện chỉ hiển thị tiêu đề, sapo, nguồn, thời gian, link gốc (C3 của PRD), nội dung đầy đủ chỉ dùng nội bộ cho NLP. Biểu đồ cảm xúc 30 phiên lấy từ sentiment_daily. Cut-off 15:00 được thực thi một chỗ duy nhất trong view này (FR-M4-06).
 
-**M5. Watchlist và cảnh báo.** Giới hạn 10 mã/người được kiểm tra trong transaction của API: khóa hàng users (SELECT … FOR UPDATE) trước khi đếm để hai request đồng thời không vượt giới hạn; mã thứ 11 trả 409 WATCHLIST_LIMIT_REACHED. PUT thêm cùng mã là idempotent. Bản triển khai có cảnh báo theo mốc giá đóng cửa và cảnh báo Trade Plan, chuông thông báo (đếm chưa đọc, đánh dấu đã đọc tất cả), lịch sử 90 ngày; cảnh báo đổi nhãn và ngưỡng xác suất chờ mô hình. Ghi chú watchlist.note thuộc phần mở rộng GĐ2. Cảnh báo trong app FR-M5-02–05 là Must GĐ1 theo bảng FR: mọi R/T/A có thể đặt ngưỡng theo mã/kỳ hạn, xem đổi nhãn và lịch sử 90 ngày. C5 lưu last_state; chỉ tạo cảnh báo khi từ dưới lên đạt ngưỡng, không lặp khi còn trên ngưỡng, chỉ tái kích hoạt sau khi đã xuống dưới. event_key duy nhất theo user bảo đảm chạy lại không trùng. Giao diện poll 60 giây để hiển thị trong 5 phút sau forecast. GĐ2 thêm plan_touch và các kênh email/Telegram đã xác thực; notifier poll 30 giây, lần gửi đầu ngay, tối đa 3 lần retry sau 30, 60 và 120 giây để hỗ trợ mục tiêu 5 phút. Hết retry ghi failed; cảnh báo trong app vẫn tồn tại. Liên kết Telegram và xác thực email dùng mã một lần (FR-M5-06–08).
+**M5. Watchlist và cảnh báo.** Giới hạn 10 mã/người được kiểm tra trong transaction của API: khóa hàng users (SELECT … FOR UPDATE) trước khi đếm để hai request đồng thời không vượt giới hạn; mã thứ 11 trả 409 WATCHLIST_LIMIT_REACHED. PUT thêm cùng mã là idempotent. Các loại cảnh báo: mốc giá đóng cửa, đổi nhãn, ngưỡng xác suất và Trade Plan; chuông thông báo đếm số chưa đọc, đánh dấu đã đọc từng cái hoặc tất cả; lịch sử 90 ngày. Ghi chú watchlist.note thuộc phần mở rộng GĐ2. Cảnh báo trong app FR-M5-02–05 là Must GĐ1 theo bảng FR: mọi R/T/A có thể đặt ngưỡng theo mã/kỳ hạn, xem đổi nhãn và lịch sử 90 ngày. C5 lưu last_state; chỉ tạo cảnh báo khi từ dưới lên đạt ngưỡng, không lặp khi còn trên ngưỡng, chỉ tái kích hoạt sau khi đã xuống dưới. event_key duy nhất theo user bảo đảm chạy lại không trùng. Giao diện poll 60 giây để hiển thị trong 5 phút sau forecast. GĐ2 thêm plan_touch và các kênh email/Telegram đã xác thực; notifier poll 30 giây, lần gửi đầu ngay, tối đa 3 lần retry sau 30, 60 và 120 giây để hỗ trợ mục tiêu 5 phút. Hết retry ghi failed; cảnh báo trong app vẫn tồn tại. Liên kết Telegram và xác thực email dùng mã một lần (FR-M5-06–08).
 
 **M6. Lịch sử dự báo và đánh giá.** C5 điền actual_label cho dự báo đã đủ 2 hoặc 5 phiên bằng cùng quy tắc gán nhãn với lúc huấn luyện; dự báo chưa đáo hạn có actual_label rỗng và hiển thị "Đang chờ". Hit rate, precision, recall theo lớp trong cửa sổ 30/90 phiên tính bằng SQL khi gọi API. Trang Đánh giá mô hình đọc model_run.metrics của các lần huấn luyện, gồm baseline và 3 cấu hình ablation. Mỗi hit rate trả kèm n (số dự báo đã đáo hạn trong cửa sổ), cờ small_sample khi n dưới 50 và hit rate của baseline "lớp phổ biến nhất" trong cùng cửa sổ; giao diện ghi chú T+5 chồng lấn nên số mẫu độc lập ít hơn n (FR-M6-06). Retail và trader xem bản tóm tắt qua GET /models/summary (phiên bản đang phục vụ, ngày huấn luyện, hit rate tổng 30/90 phiên kèm n và baseline); confusion matrix, ablation và hiệu chỉnh chỉ dành cho analyst và admin. Từ GĐ2, evaluate.py thêm Brier score, ECE và dữ liệu reliability diagram vào model_run.metrics.calibration (FR-M6-07).
 
@@ -207,7 +209,7 @@ Audit đầu vào và tái lập (US-10/UC-10, FR-M7-09/10): Analyst/Admin đọ
 
 Nhật ký quản trị (US-25/UC-25, FR-M7-05/11): mỗi sự kiện gồm thời điểm, actor, action, target, before/after đã lọc bí mật và outcome success/denied/failed. Ghi nhật ký tạo tài khoản, khóa/mở khóa, đổi vai trò, đặt lại mật khẩu, thu hồi phiên, chạy lại job, chọn/rollback mô hình. API Admin lọc theo thời gian, người thực hiện, action và target, sắp mới nhất trước, có phân trang; vai trò khác trả 403, không có API sửa/xóa. Trigger CSDL từ chối UPDATE/DELETE; giữ tối thiểu 90 ngày. Log gửi và Chat chỉ hiển thị phần được phép; tài khoản demo chứa dữ liệu mẫu do Admin tạo.
 
-**M8. Screener (GĐ2).** Bản triển khai: GET /screener lọc trực tiếp trên symbols và daily_prices theo sàn, ngành, giá, % thay đổi, thanh khoản 20 phiên; điều kiện theo nhãn, xác suất, hit rate chờ mô hình. Thiết kế đầy đủ: GET /screener lọc trên view v_screener (materialized view làm mới cuối batch, gộp v_overview với mức tin cậy, hit rate 90 phiên kèm n, cờ đổi nhãn và data_status) bằng truy vấn tham số hóa, chỉ nhận các cột và toán tử trong danh sách trắng (FR-M8-01, 02, 05). Bộ lọc có sẵn cho retail là hằng số trong mã (FR-M8-03); trader và analyst lưu bộ lọc có tên vào saved_screen, tối đa 20 mỗi người (FR-M8-04). Thứ tự mặc định là thanh khoản giảm dần chứ không phải xác suất, và trang luôn hiển thị tuyên bố, để kết quả là danh sách sàng lọc chứ không phải bảng xếp hạng "nên mua" (FR-M8-07). Mỗi dòng có liên kết thêm watchlist, mở chi tiết mã và lập Trade Plan với mã đã chọn (FR-M8-06). Kiểm thử đối chiếu API với truy vấn SQL viết tay trên 5 bộ lọc mẫu (AC-17).
+**M8. Screener (GĐ2).** GET /screener lọc trên dữ liệu gộp từ symbols, daily_prices và forecasts (có thể đóng gói thành materialized view v_screener làm mới cuối batch, gộp v_overview với mức tin cậy, hit rate 90 phiên kèm n, cờ đổi nhãn và data_status) bằng truy vấn tham số hóa, chỉ nhận các cột và toán tử trong danh sách trắng (FR-M8-01, 02, 05). Bộ lọc có sẵn cho retail là hằng số trong mã (FR-M8-03); trader và analyst lưu bộ lọc có tên vào saved_screen, tối đa 20 mỗi người (FR-M8-04). Thứ tự mặc định là thanh khoản giảm dần chứ không phải xác suất, và trang luôn hiển thị tuyên bố, để kết quả là danh sách sàng lọc chứ không phải bảng xếp hạng "nên mua" (FR-M8-07). Mỗi dòng có liên kết thêm watchlist, mở chi tiết mã và lập Trade Plan với mã đã chọn (FR-M8-06). Kiểm thử đối chiếu API với truy vấn SQL viết tay trên 5 bộ lọc mẫu (AC-17).
 
 **M9. Portfolio (GĐ2).** Giao dịch lưu trong portfolio_transactions (mua/bán, khối lượng, giá, phí, nguồn manual hoặc csv); vị thế không lưu mà được tính khi gọi API theo giá vốn bình quân gia quyền, lãi/lỗ đã thực hiện khi bán và lãi/lỗ tạm tính theo giá đóng cửa gần nhất trong price_daily (FR-M9-03); dùng thống nhất theo FR-M9-03; việc ghi giao dịch điều chỉnh còn cần chốt (mục 12.4). API từ chối giao dịch bán vượt khối lượng đang nắm tại ngày đó. Import CSV (trader, analyst) gồm hai bước: giao diện đọc tệp và hiển thị bản xem trước; khi người dùng xác nhận, POST /portfolio/transactions/import ghi các dòng hợp lệ trong một transaction và trả danh sách dòng bị bỏ qua (lỗi hoặc trùng) kèm số dòng và lý do (FR-M9-02, AC-18). Mỗi vị thế kèm nhãn T+2/T+5 hiện tại và dấu đổi nhãn lấy từ v_overview, không kèm khuyến nghị (FR-M9-04). Tổng quan danh mục và giá trị theo thời gian (FR-M9-05) tính theo yêu cầu từ giao dịch và price_daily. Chia tách và cổ tức bằng cổ phiếu chưa được tự điều chỉnh; người dùng nhập giao dịch điều chỉnh (mục 12.1). DELETE /portfolio xóa toàn bộ giao dịch của người dùng và chỉ ghi audit_log hành động, không ghi nội dung (FR-M9-06). Không có mã nào gọi API công ty chứng khoán.
 
@@ -215,7 +217,7 @@ Nhật ký quản trị (US-25/UC-25, FR-M7-05/11): mỗi sự kiện gồm th�
 
 **M11. Journal (GĐ2).** Bản ghi journal_entry được API tạo trong cùng transaction với việc đóng Trade Plan; ràng buộc UNIQUE (plan_id) cùng INSERT ... ON CONFLICT DO NOTHING bảo đảm đóng lại lần hai không tạo bản ghi trùng (FR-M11-01, AC-20). Bản ghi sao chép snapshot và kế hoạch gốc (không sửa được), kèm giá thoát, lãi/lỗ % và số phiên nắm giữ; nhãn thực tế T+2/T+5 tương ứng được C5 điền ở bước resolve khi đáo hạn. Cột alignment so sánh quyết định với dự báo theo quy tắc đề xuất (cần xác nhận): with khi có ít nhất một kỳ hạn Tăng và không kỳ hạn nào Giảm, against khi có ít nhất một kỳ hạn Giảm và không kỳ hạn nào Tăng, mixed khi một kỳ hạn Tăng và một kỳ hạn Giảm, neutral khi cả hai Đi ngang (FR-M11-03). Người dùng sửa ghi chú, thẻ và bài học nhưng không sửa snapshot và kết quả (FR-M11-02). Ghi thủ công không có kế hoạch (kind = manual, FR-M11-04) được gắn dự báo của ngày đó. Thống kê nhìn lại theo tuần, tháng, quý tính bằng SQL kèm số mẫu và cờ small_sample (FR-M11-06). Chỉ chủ sở hữu đọc được nhật ký; admin không có endpoint đọc nội dung (FR-M11-07).
 
-**M12. Chat hỏi đáp (GĐ2).** Bản triển khai: tạo, liệt kê, xóa phiên và xem tin nhắn đã có; gửi câu hỏi trả 503 CHAT_MODEL_NOT_READY và không lưu nội dung cho đến khi có mô hình. Thiết kế đầy đủ: POST /chat/sessions/{id}/messages được api chuyển tới dịch vụ chat (C11) kèm user_id đã xác thực; quy trình và các lớp bảo vệ nằm ở mục 5.3. Hội thoại lưu ở chat_session và chat_message, giữ 90 ngày (FR-M12-07); lượt hỏi về dữ liệu cá nhân được đánh dấu personal để che nội dung khi analyst hoặc admin xem log.
+**M12. Chat hỏi đáp (GĐ2).** Người dùng tạo, xem, xóa phiên hội thoại. Khi mô hình ngôn ngữ chưa được cấu hình, gửi câu hỏi trả 503 CHAT_MODEL_NOT_READY và không lưu nội dung. POST /chat/sessions/{id}/messages được api chuyển tới dịch vụ chat (C11) kèm user_id đã xác thực; quy trình và các lớp bảo vệ nằm ở mục 5.3. Hội thoại lưu ở chat_session và chat_message, giữ 90 ngày (FR-M12-07); lượt hỏi về dữ liệu cá nhân được đánh dấu personal để che nội dung khi analyst hoặc admin xem log.
 
 **M13. Báo cáo và xuất PDF (GĐ2).** Các endpoint /reports/... (mục 8.1) gọi chính các hàm truy vấn và tính toán của màn hình tương ứng rồi dàn trang bằng pdfkit (C10), nên số liệu trong PDF khớp màn hình (FR-M13-06, AC-23). Mỗi PDF có tuyên bố "không phải tư vấn đầu tư", thời điểm tạo, ngày dữ liệu, phiên bản mô hình và số trang (FR-M13-05); font Unicode được nhúng để hiển thị tiếng Việt, thanh xác suất vẽ bằng nét vẽ của thư viện, không cần trình duyệt. Báo cáo cá nhân (danh mục, Trade Plan, Journal) lấy user_id từ phiên đăng nhập. Việc sinh PDF chạy đồng bộ, tối đa 2 yêu cầu song song, hết hạn sau 10 giây (NFR-16) và không lưu tệp trên máy chủ.
 
@@ -223,7 +225,7 @@ Nhật ký quản trị (US-25/UC-25, FR-M7-05/11): mỗi sự kiện gồm th�
 
 ### 5.3 Thiết kế Chat hỏi đáp (C11)
 
-Mục này là thiết kế cho giai đoạn sau (chưa triển khai). Chat là thành phần duy nhất gọi mô hình ngôn ngữ theo yêu cầu của người dùng, nên thiết kế xoay quanh một nguyên tắc: mô hình chỉ diễn đạt dữ liệu đã truy xuất, và mọi số liệu trong câu trả lời phải đối chiếu được với dữ liệu đó.
+Chat là thành phần duy nhất gọi mô hình ngôn ngữ theo yêu cầu của người dùng, nên thiết kế xoay quanh một nguyên tắc: mô hình chỉ diễn đạt dữ liệu đã truy xuất, và mọi số liệu trong câu trả lời phải đối chiếu được với dữ liệu đó.
 
 **Nhận câu hỏi:** api kiểm tra phiên, vai trò và hạn mức, rồi gọi POST /ask của chat trong mạng nội bộ Docker với user_id, session_id, câu hỏi và 6 lượt hội thoại gần nhất; chat không nhận danh tính từ trình duyệt.
 
@@ -245,14 +247,14 @@ Mục này là thiết kế cho giai đoạn sau (chưa triển khai). Chat là 
 
 ## 6. Thiết kế dữ liệu
 
-CSDL là PostgreSQL 17 (image postgres:17-alpine). Lược đồ có hiệu lực là db/migrations/001–020, chạy bằng npm run db:migrate; khóa chính của bảng người dùng và dữ liệu cá nhân là uuid. Mọi timestamp dùng timestamptz và hiển thị Asia/Ho_Chi_Minh. Mục 6.1 và 6.2 giữ thiết kế logic ban đầu (gồm các bảng cho mô hình AI chưa triển khai); bảng dưới đây ánh xạ tên thiết kế sang tên bảng thật.
+CSDL là PostgreSQL 17 (image postgres:17-alpine). Lược đồ có hiệu lực là db/migrations/001–020, chạy bằng npm run db:migrate; khóa chính của bảng người dùng và dữ liệu cá nhân là uuid. Mọi timestamp dùng timestamptz và hiển thị Asia/Ho_Chi_Minh. Mục 6.1 và 6.2 là thiết kế logic; bảng dưới đây ánh xạ tên logic sang tên bảng vật lý trong migration.
 
 | Tên trong thiết kế | Bảng triển khai | Migration |
 | --- | --- | --- |
 | app_user, auth_session | users, auth_sessions | 001 |
 | company, price_daily | symbols (thêm industry ở 020), daily_prices | 001, 020 |
-| index_daily, v_market_summary | market_batches, market_indices, market_summary (dữ liệu mẫu) | 001 |
-| forecast | forecasts (dữ liệu mẫu đến khi có mô hình) | 001 |
+| index_daily, v_market_summary | market_batches, market_indices, market_summary | 001 |
+| forecast | forecasts | 001 |
 | document, document_symbol | news_items, news_item_symbols | 001, 004 |
 | audit_log | admin_audit_log (event_type, details jsonb) | 002 |
 | job_run | data_ingestion_runs (lần nạp dữ liệu), admin_job_runs (hàng đợi job), admin_worker_instances (heartbeat) | 003, 016, 017 |
@@ -265,8 +267,8 @@ CSDL là PostgreSQL 17 (image postgres:17-alpine). Lược đồ có hiệu lự
 | notify_channel, notification | notification_preferences, notification_channels, notification_outbox | 012–014 |
 | password_reset_token | password_reset_tokens, password_reset_requests | 015 |
 | (đăng ký) | email_verification_tokens, registration_requests, user_consent, role_requests | 018, 019 |
-| security_event, auth_mail_outbox, ops_event | chưa có bảng riêng: sự kiện bảo mật ghi vào admin_audit_log và log Fastify; thư xác thực gửi trực tiếp qua SMTP; lỗi job báo Admin bằng user_alerts kèm email/Telegram | — |
-| trading_calendar, financial_*, sentiment, feature_daily, model_version, forecast_explanation, forecast_input, forecast_replay | chưa triển khai (cần mô hình AI) | — |
+| security_event, auth_mail_outbox, ops_event | Gộp vào bảng khác: sự kiện bảo mật ghi vào admin_audit_log và log Fastify; thư xác thực và đặt lại mật khẩu gửi trực tiếp qua SMTP; lỗi job báo Admin bằng user_alerts kèm email/Telegram | — |
+| trading_calendar, financial_*, sentiment, feature_daily, model_version, forecast_explanation, forecast_input, forecast_replay | Bảng của worker mô hình, tạo bằng migration riêng của phần mô hình | — |
 
 ### 6.1 Nhóm bảng
 
@@ -522,7 +524,7 @@ CREATE INDEX ON audit_log (actor, at DESC);
 
 CREATE INDEX ON audit_log (action, at DESC);
 
-Đăng ký và vòng đời vai trò (FR-M0-08..14). Lược đồ dưới đây chép theo bản triển khai db/migrations/018_self_registration.sql và 019_role_management.sql; trong mã, bảng app_user tên là users, khóa chính kiểu uuid, nhật ký quản trị là admin_audit_log.
+Đăng ký và vòng đời vai trò (FR-M0-08..14). Lược đồ dưới đây theo db/migrations/018_self_registration.sql và 019_role_management.sql; trong mã, bảng app_user tên là users, khóa chính kiểu uuid, nhật ký quản trị là admin_audit_log.
 
 ALTER TABLE users
   ADD COLUMN full_name text,
@@ -574,13 +576,13 @@ CREATE UNIQUE INDEX role_requests_one_pending_idx ON role_requests(user_id) WHER
 
 Mọi bảng dữ liệu cá nhân tham chiếu users(id) ON DELETE CASCADE, còn admin_audit_log và admin job tham chiếu ON DELETE SET NULL; vì vậy DELETE /me xóa dữ liệu cá nhân và giữ nhật ký ở dạng ẩn danh (FR-M0-13).
 
-Chưa triển khai so với PRD (FR-M0-15, BR-R13): không có trạng thái awaiting_email (chưa xác nhận email cơ quan bằng thư) và chưa ghi đồng ý Điều khoản Analyst thành bản ghi riêng (FR-M0-15).
+Mức Should (FR-M0-15, BR-R13) bổ sung trạng thái awaiting_email cho role_requests khi xác nhận email cơ quan bằng thư, và bản ghi đồng ý analyst_terms trong user_consent.
 
 GĐ1 bổ sung các bảng phục vụ FR-M0-01–07 và FR-M7-07–11. auth_mail_outbox hỗ trợ đặt lại email khi FR-M0-07 được triển khai, độc lập với notifier cảnh báo GĐ2. Schema dưới đây lưu hash token; token thô chỉ tồn tại trong thư chờ gửi được bảo vệ và bị xóa ngay sau khi gửi. Các role không được truy vấn bảng phiên, token hoặc outbox từ API nghiệp vụ.
 
 CREATE TABLE auth_session (
 
-sid uuid PRIMARY KEY,  -- bản triển khai: auth_sessions lưu token_hash (SHA-256), không dùng JWT
+sid uuid PRIMARY KEY,  -- auth_sessions lưu token_hash (SHA-256), không dùng JWT
 
 user_id bigint NOT NULL REFERENCES app_user ON DELETE CASCADE,
 
@@ -788,7 +790,7 @@ FOR EACH ROW EXECUTE FUNCTION enforce_watchlist_limit();
 
 -- Thêm mã dùng INSERT ON CONFLICT DO NOTHING, xóa rồi thêm khi đổi mã.
 
-Quyền CSDL (thiết kế RLS, chưa áp dụng ở bản triển khai — xem D13): role API không phải owner, không có BYPASSRLS; role Chat chỉ đọc dữ liệu được phép. Quyền phiên, hash mật khẩu và token chỉ cấp cho store xác thực, không cho endpoint chung. REVOKE UPDATE/DELETE/TRUNCATE log áp dụng cả các role worker/chat/notifier; chủ CSDL giữ quyền bảo trì và không dùng để phục vụ request. Truy vấn RLS dùng current_setting('app.user_id', true), trường hợp không có user_id trả 0 dòng; SET LOCAL chỉ đặt sau khi middleware xác thực và trong transaction riêng để không rò ngữ cảnh giữa kết nối pool. Việc thu hồi phiên và đổi tài khoản khóa hàng app_user để tránh đua với đăng nhập.
+Quyền CSDL (phương án RLS, xem D13): role API không phải owner, không có BYPASSRLS; role Chat chỉ đọc dữ liệu được phép. Quyền phiên, hash mật khẩu và token chỉ cấp cho store xác thực, không cho endpoint chung. REVOKE UPDATE/DELETE/TRUNCATE log áp dụng cả các role worker/chat/notifier; chủ CSDL giữ quyền bảo trì và không dùng để phục vụ request. Truy vấn RLS dùng current_setting('app.user_id', true), trường hợp không có user_id trả 0 dòng; SET LOCAL chỉ đặt sau khi middleware xác thực và trong transaction riêng để không rò ngữ cảnh giữa kết nối pool. Việc thu hồi phiên và đổi tài khoản khóa hàng app_user để tránh đua với đăng nhập.
 
 Các thay đổi của GĐ2 nằm trong migration riêng của db/migrations, chạy sau các bảng GĐ1. Khi bật RLS, mỗi giao dịch của api đặt SET LOCAL app.user_id từ phiên; worker và notifier dùng role riêng không dùng cho truy vấn nội dung cá nhân.
 
@@ -1181,7 +1183,7 @@ API là REST JSON tại /api/v1, hợp đồng chi tiết ở openapi.yaml. Web 
 | GET /industries | M1 | R, T, A | Danh sách ngành cho bộ lọc |
 | GET /market/summary | M1 | Tất cả | Dải thị trường: VN-Index, HNX-Index, độ rộng, tỷ lệ mã theo nhãn (từ v_market_summary) |
 | GET /symbols | M1 | R, T, A | Danh sách mã kèm giá, GTGD 20 phiên, dự báo T+2/T+5 mới nhất, mức tin cậy và cờ đổi nhãn; changed=1 chỉ lấy mã đổi nhãn so với phiên trước (khối "Tín hiệu đổi hôm nay") |
-| GET /symbols/{sym} (đã có, kèm dự báo mẫu); GET /symbols/{sym}/forecast?horizon=2\|5 (chưa có) | M2, M3 | R, T, A | Dự báo mới nhất kèm label_vi, confidence; phần giải thích (kể cả risk_notes) cắt theo vai trò |
+| GET /symbols/{sym}; GET /symbols/{sym}/forecast?horizon=2\|5 | M2, M3 | R, T, A | Dự báo mới nhất kèm label_vi, confidence; phần giải thích (kể cả risk_notes) cắt theo vai trò |
 | GET /symbols/{sym}/prices?range=6m | M2 | R, T, A | OHLCV và các ngày có tin mạnh |
 | GET /symbols/{sym}/news?sentiment=&from=&to= | M4 | R, T, A | Tin mới nhất trước: tiêu đề, sapo, nguồn, thời gian, URL, nhãn, độ tin cậy |
 | GET /symbols/{sym}/sentiment?days=30 | M4 | R, T, A | Chỉ số cảm xúc theo phiên |
@@ -1189,7 +1191,7 @@ API là REST JSON tại /api/v1, hợp đồng chi tiết ở openapi.yaml. Web 
 | GET /symbols/{sym}/history.csv | M6 | A | Xuất CSV |
 | GET /forecasts/{id}/audit | M7 | A, Ad | Timestamp, phiên bản mô hình, snapshot, job kích hoạt |
 | GET /watchlist; PUT, PATCH, DELETE /watchlist/{sym} | M5 | R, T, A | Tối đa 10 mã; mã thứ 11 trả 409; PATCH sửa ghi chú của mã |
-| GET, POST /alert-rules; PATCH, DELETE /alert-rules/{id} | M5 | R, T, A | Đã có: cảnh báo theo mốc giá; cảnh báo Trade Plan tạo tự động. Chờ mô hình: label_change, prob_threshold. Không nhận concentration/screen_match ngoài PRD. |
+| GET, POST /alert-rules; PATCH, DELETE /alert-rules/{id} | M5 | R, T, A | Loại quy tắc: mốc giá, label_change, prob_threshold; cảnh báo Trade Plan tạo tự động. Không nhận concentration/screen_match ngoài PRD. |
 | GET /alerts; GET /alerts/unread-count; PATCH /alerts/{id}; POST /alerts/read-all | M5 | R, T, A | Cảnh báo 90 ngày, số chưa đọc cho chuông, đánh dấu đã đọc |
 | GET /notify/channels; DELETE /notify/channels/{channel}; POST /notify/email/link, /notify/email/verify, /notify/telegram/link, /notify/channels/{channel}/test; GET, PUT /me/notification-preferences; POST /notify/telegram/webhook | M5 | R, T, A, Ad (Ad dùng để nhận thông báo lỗi pipeline, FR-M7-08; webhook: Telegram, có secret) | Liên kết và xác minh email bằng mã 10 phút; lấy mã liên kết Telegram; gửi thử; hủy liên kết; bật/tắt từng kênh |
 | GET, PUT /me/profile | M10 | T, A (R: 403) | Hồ sơ đầu tư: vốn và mức rủi ro tối đa, do người dùng tự nhập |
@@ -1198,7 +1200,7 @@ API là REST JSON tại /api/v1, hợp đồng chi tiết ở openapi.yaml. Web 
 | GET /portfolio; DELETE /portfolio | M9 | R, T, A (tổng quan, phân bổ ngành, giá trị theo thời gian: T, A) | Vị thế, giá vốn, lãi/lỗ, tỷ trọng kèm tín hiệu hiện tại; tổng quan và giá trị theo thời gian; xóa toàn bộ giao dịch |
 | GET, POST /plans; PATCH /plans/{id}; POST /plans/{id}/close; POST /plans/calc | M10 | R, T, A | Mọi vai trò tính R:R và khoảng cách %. Chỉ T/A nhận vốn, % rủi ro và tính khối lượng; đóng tạo Journal cùng transaction. |
 | GET, POST /journal; PATCH /journal/{id}; GET /journal/stats | M11 | R, T, A (ghi thủ công, stats: T, A) | Danh sách lọc theo mã, thời gian, thẻ, kết quả; sửa ghi chú, thẻ, bài học; thống kê nhìn lại |
-| GET, POST /chat/sessions; DELETE /chat/sessions/{id}; GET, POST /chat/sessions/{id}/messages | M12 | R, T, A | Quản lý phiên; gửi câu hỏi hiện trả 503 CHAT_MODEL_NOT_READY; khi có mô hình, api chuyển câu hỏi cùng user_id tới dịch vụ chat (mục 5.3) |
+| GET, POST /chat/sessions; DELETE /chat/sessions/{id}; GET, POST /chat/sessions/{id}/messages | M12 | R, T, A | Quản lý phiên; api chuyển câu hỏi cùng user_id tới dịch vụ chat (mục 5.3); mô hình ngôn ngữ chưa cấu hình thì trả 503 CHAT_MODEL_NOT_READY |
 | GET /reports/symbols/{sym}.pdf, /reports/portfolio.pdf, /reports/plans/{id}.pdf, /reports/journal.pdf?from=&to= | M13 | R, T, A (journal: T, A) | PDF từ cùng truy vấn với màn hình; chỉ xuất dữ liệu của chính người dùng |
 | GET /models/evaluation | M6 | A, Ad | Metrics, confusion matrix, ablation và hiệu chỉnh (Brier, ECE) của các lần huấn luyện |
 | GET /models/summary | M6 | R, T, A, Ad | Bản tóm tắt cho mọi vai trò: phiên bản đang phục vụ, ngày huấn luyện, hit rate tổng 30/90 phiên kèm n và baseline |
@@ -1220,7 +1222,7 @@ Dữ liệu cá nhân (Portfolio, Trade Plan, Journal, Chat, kênh thông báo, 
 
 Giới hạn tần suất: 300 request/phút cho mỗi người dùng đã đăng nhập, 100 request/phút cho mỗi IP chưa đăng nhập; riêng đăng nhập, đăng ký, quên mật khẩu có giới hạn chặt hơn (5–20 request/phút). Vượt giới hạn trả 429 kèm thời gian chờ bằng tiếng Việt.
 
-Trạng thái triển khai: các route ở bảng trên đã có, trừ những route cần mô hình AI: /symbols/{sym}/forecast, /sentiment, /history, /forecasts/{id}/audit, /inputs, /replays, /models/evaluation, /models/summary, /model-versions, /admin/models, /admin/chat-log. /symbols/{sym}/history.csv đã có, bật bằng HISTORY_CSV_EXPORT_ENABLED.
+Xuất CSV lịch sử (/symbols/{sym}/history.csv) bật bằng biến HISTORY_CSV_EXPORT_ENABLED.
 
 Ví dụ phản hồi GET /symbols/FPT/forecast?horizon=2 cho vai trò trader, với nhãn Đi ngang (label là mã nội bộ, label_vi là chữ hiển thị):
 
@@ -1277,7 +1279,7 @@ Giao diện web gồm các trang nghiệp vụ, bốn tab chi tiết mã và mà
 
 ### 8.3 Ứng dụng mobile (C12)
 
-Ứng dụng mobile (GĐ3, chưa triển khai) là một lớp giao diện thứ hai trên cùng API; API hiện chỉ nhận cookie, cần bổ sung Bearer token trước khi làm mobile; không có logic nghiệp vụ riêng, nên phần lớn thiết kế nằm ở cách đóng gói, xác thực và phân phối.
+Ứng dụng mobile (GĐ3) là một lớp giao diện thứ hai trên cùng API; API nhận cả cookie (web) và Bearer token (mobile); không có logic nghiệp vụ riêng, nên phần lớn thiết kế nằm ở cách đóng gói, xác thực và phân phối.
 
 **Một codebase:** mobile/ viết bằng React Native và TypeScript, dựng bằng Expo để build iOS và Android từ cùng mã. Dùng chung với web qua packages/core: kiểu dữ liệu API, client gọi API, hàm R:R và khối lượng tối đa (bản xem trước), định dạng số và ngày; thành phần giao diện không dùng chung vì web chạy trên DOM (FR-M14-01).
 
@@ -1293,21 +1295,21 @@ Thông báo: mobile hiển thị danh sách cảnh báo trong ứng dụng (FR-M
 
 ## 9. Yêu cầu phi chức năng và cách đáp ứng
 
-Các NFR về tốc độ được đáp ứng chủ yếu nhờ tính dự báo trước (D4); các NFR về giải thích và truy vết nhờ các bảng giải thích, snapshot và admin_audit_log; các NFR về dữ liệu cá nhân nhờ điều kiện user_id bắt buộc ở repository và trigger bảo vệ snapshot (D13), về Chat nhờ bộ kiểm tra đầu ra (D11) và về thông báo nhờ hàng đợi notification_outbox (D12). NFR-04, 05, 06, 12, 14, 17 cần mô hình AI hoặc mobile nên chưa đo được.
+Các NFR về tốc độ được đáp ứng chủ yếu nhờ tính dự báo trước (D4); các NFR về giải thích và truy vết nhờ các bảng giải thích, snapshot và admin_audit_log; các NFR về dữ liệu cá nhân nhờ điều kiện user_id bắt buộc ở repository và trigger bảo vệ snapshot (D13), về Chat nhờ bộ kiểm tra đầu ra (D11) và về thông báo nhờ hàng đợi notification_outbox (D12).
 
 | NFR | Cách thiết kế đáp ứng |
 | --- | --- |
 | NFR-01 Hiệu năng trang | Web là file tĩnh React do Vite build (tách mã, nén); mỗi trang gọi 2–3 request JSON nhỏ; biểu đồ giá là SVG nhẹ, không nạp thư viện biểu đồ |
 | NFR-02 API < 300 ms, batch < 15 phút | API chỉ đọc bảng có index (symbol, d, horizon); v_overview, v_market_summary, v_screener là materialized view làm mới cuối bước forecast; batch chạy CPU trên embedding đã lưu, không chạy lại PhoBERT cho tin cũ. Các bước plans, portfolio, notify của GĐ2 chạy sau bước forecast nên không tính vào 15 phút sinh dự báo; thời gian từng bước ghi ở job_run để đo (mục 10.2) |
-| NFR-03 Pipeline tự động, retry | worker admin-jobs:watch tự xếp hàng pipeline sau 15:30 thứ Hai–thứ Sáu theo giờ Asia/Ho_Chi_Minh (đổi bằng ADMIN_JOBS_SCHEDULE_TIME); mỗi job retry tối đa 3 lần, mỗi lần một dòng admin_job_runs; hết retry thì báo Admin trong app và qua email/Telegram. Chưa có lịch nghỉ lễ (trading_calendar) |
+| NFR-03 Pipeline tự động, retry | worker admin-jobs:watch tự xếp hàng pipeline sau 15:30 mỗi ngày giao dịch theo giờ Asia/Ho_Chi_Minh (đổi bằng ADMIN_JOBS_SCHEDULE_TIME); mỗi job retry tối đa 3 lần, mỗi lần một dòng admin_job_runs; hết retry thì báo Admin trong app và qua email/Telegram; bỏ qua ngày nghỉ lễ theo trading_calendar |
 | NFR-04 Fallback | Thiếu tin 5 phiên: che nhánh tin, gắn missing_newsstale |
 | NFR-05 Giải thích | Batch không commit dự báo thiếu bản ghi giải thích (cùng một transaction); test tự động quét toàn bộ dự báo một ngày |
 | NFR-06 Truy vết | snapshot_hash = SHA-256 của tensor đầu vào; tensor lưu trong forecast_input; lệnh ml/replay.py <forecast_id> chạy lại trên CPU ở chế độ xác định và so sai số < 1e-4 API /inputs đọc manifest snapshot; /replays chạy bất đồng bộ qua forecast_replay và lưu kết quả riêng. Snapshot/model thiếu thì ghi not_reproducible. |
-| NFR-07 Bảo mật | Băm mật khẩu bằng scrypt có salt; token phiên, xác thực email, đặt lại mật khẩu chỉ lưu SHA-256; khóa đếm tần suất đăng ký dùng HMAC, không lưu IP thô; cookie phiên HttpOnly, SameSite=Lax, Secure khi COOKIE_SECURE=true, hết hạn 24 giờ (D14); @fastify/helmet đặt header bảo mật; giới hạn tần suất theo người dùng và IP; HTTPS khi triển khai công khai (reverse proxy, chưa làm); bí mật SMTP, Telegram, AUTH_RATE_LIMIT_SECRET qua .env không đưa lên kho mã. Dữ liệu cá nhân gắn user_id (D13); không lưu thông tin tài khoản chứng khoán hay ngân hàng; DELETE /portfolio xóa toàn bộ giao dịch. Thu hồi phiên, khóa tạm, chính sách mật khẩu và token reset theo M0. |
+| NFR-07 Bảo mật | Băm mật khẩu bằng scrypt có salt; token phiên, xác thực email, đặt lại mật khẩu chỉ lưu SHA-256; khóa đếm tần suất đăng ký dùng HMAC, không lưu IP thô; cookie phiên HttpOnly, SameSite=Lax, Secure khi COOKIE_SECURE=true, hết hạn 24 giờ (D14); @fastify/helmet đặt header bảo mật; giới hạn tần suất theo người dùng và IP; HTTPS qua reverse proxy khi triển khai công khai; bí mật SMTP, Telegram, AUTH_RATE_LIMIT_SECRET qua .env không đưa lên kho mã. Dữ liệu cá nhân gắn user_id (D13); không lưu thông tin tài khoản chứng khoán hay ngân hàng; DELETE /portfolio xóa toàn bộ giao dịch. Thu hồi phiên, khóa tạm, chính sách mật khẩu và token reset theo M0. |
 | NFR-08 Phân quyền | Bảng vai trò → capability ở packages/core/src/access/roles.js dùng chung cho API (requireCapability trên từng route) và web (ẩn menu, RequireCapability); mọi route dữ liệu cá nhân lấy user_id từ phiên; admin không có route đọc nội dung Portfolio, Trade Plan, Journal. Kịch bản kiểm thử gọi route với 4 vai trò và hai người dùng A, B cho AC-26 |
-| NFR-09 Nhật ký | Fastify ghi log JSON (pino) kèm mã request; không ghi mật khẩu, token. admin_audit_log ghi hành động quản trị và đổi vai trò (actor, target, details before/after), API không có route sửa/xóa. Lưu log tệp 90 ngày và trigger chặn sửa/xóa audit là việc cần làm khi triển khai công khai |
+| NFR-09 Nhật ký | Fastify ghi log JSON (pino) kèm mã request; không ghi mật khẩu, token. admin_audit_log ghi hành động quản trị và đổi vai trò (actor, target, details before/after), API không có route sửa/xóa và trigger CSDL từ chối UPDATE/DELETE; log lưu tối thiểu 90 ngày |
 | NFR-10 Giao diện | CSS responsive trên React, một cột từ 375 px; màu tăng/giảm luôn kèm biểu tượng ▲ ● ▼; mobile dùng cùng quy ước (mục 8.3) |
-| NFR-11 Khả dụng | Hiện tại: PostgreSQL trong Docker Compose (restart: unless-stopped, healthcheck pg_isready), api/worker/web chạy bằng npm. Triển khai công khai: đóng gói api, worker, web tĩnh và reverse proxy HTTPS vào Docker Compose, theo dõi uptime; lỗi worker không làm api ngừng phục vụ |
+| NFR-11 Khả dụng | Phát triển và demo: PostgreSQL trong Docker Compose (restart: unless-stopped, healthcheck pg_isready), api, worker, web chạy bằng npm. Triển khai công khai: api, worker, worker mô hình, web tĩnh và reverse proxy HTTPS trong Docker Compose, theo dõi uptime; lỗi worker không làm api ngừng phục vụ |
 | NFR-12 Tái lập | Seed cố định, requirements.lock, cấu hình YAML lưu trong model_version.config |
 | NFR-13 Tuân thủ | Forecast card, khung Chat, trang Trade Plan và đầu trang PDF luôn kèm tuyên bố; kiểm tra tự động từ cấm trong web/, mobile/ và các mẫu câu, loại trừ lựa chọn loại giao dịch trong biểu mẫu do người dùng tự nhập; đầu ra Chat qua bộ quét từ cấm (mục 5.3) |
 | NFR-14 Chat | Mỗi câu có số liệu qua bộ kiểm tra số và trích dẫn (mục 5.3); bộ chống bịa chạy tự động trước mỗi lần phát hành (AC-22); truy xuất bằng truy vấn cố định với role chỉ đọc và RLS nên không lộ dữ liệu người khác. p95 dưới 10 giây nhờ hạn gọi 6 giây cho mô hình ngôn ngữ và câu trả lời mẫu dự phòng, đo bằng chat_message.latency_ms (ngưỡng cần xác nhận). Trần số lượt hỏi mỗi người mỗi ngày (mặc định 30, đề xuất) và cache câu trả lời không cá nhân để kiểm soát chi phí API |
@@ -1326,15 +1328,15 @@ Các NFR về tốc độ được đáp ứng chủ yếu nhờ tính dự báo
 | api | npm run dev:api (Node.js ≥ 22.12, cổng 3000) | REST /api/v1, PDF, webhook Telegram |
 | web | npm run dev:web (Vite, cổng 5173, proxy /api) hoặc build:web ra file tĩnh | Giao diện |
 | worker | npm run worker:admin-jobs:watch (chạy liên tục) hoặc các lệnh một lần worker:market:sync, worker:news:sync, worker:notifications:deliver | Pipeline hằng ngày, hàng đợi job Admin, gửi thông báo |
-| worker AI (sau) | Python, đọc/ghi cùng CSDL | Sentiment, dự báo, giải thích, tái lập |
+| worker mô hình | Python, đọc/ghi cùng CSDL | Sentiment, dự báo, giải thích, tái lập |
 
 Cấu hình qua tệp .env (không đưa lên kho mã): DATABASE_URL, SMTP_*, TELEGRAM_*, AUTH_RATE_LIMIT_SECRET, PUBLIC_APP_URL, PASSWORD_RESET_ENABLED, COOKIE_SECURE, REPORT_FONT_PATH, HISTORY_CSV_EXPORT_ENABLED. Khi triển khai công khai cần thêm reverse proxy HTTPS (ví dụ Caddy), đặt COOKIE_SECURE=true và đóng gói api, worker vào Docker Compose (NFR-11).
 
 ### 10.2 Batch ngày
 
-Pipeline đã triển khai, do worker xếp hàng sau 15:30 thứ Hai–thứ Sáu: market.sync (giá OHLCV SSI của các mã đang bật, ghi data_ingestion_runs) → news.sync (tin CafeF/VnExpress, gán mã) → cảnh báo giá theo alert_rules và cảnh báo Trade Plan (chạm vùng vào, cắt lỗ, mục tiêu; kế hoạch quá hạn) → notifications.deliver (gửi email/Telegram). Mỗi job ghi admin_job_runs, retry tối đa 3 lần, hết retry báo Admin.
+Pipeline do worker xếp hàng sau 15:30 mỗi ngày giao dịch: market.sync (giá OHLCV SSI của các mã đang bật, ghi data_ingestion_runs) → news.sync (tin CafeF/VnExpress, gán mã) → cảnh báo giá theo alert_rules và cảnh báo Trade Plan (chạm vùng vào, cắt lỗ, mục tiêu; kế hoạch quá hạn) → notifications.deliver (gửi email/Telegram). Mỗi job ghi admin_job_runs, retry tối đa 3 lần, hết retry báo Admin.
 
-Các bước bổ sung khi có mô hình (thiết kế, chưa triển khai): financials kiểm tra BCTC mới; sentiment chấm cảm xúc tin mới; features làm mới đặc trưng và nhãn; resolve điền nhãn thực tế cho dự báo và Journal đã đáo hạn; forecast sinh dự báo T+2/T+5 kèm mức tin cậy, giải thích, risk_notes và snapshot trong một transaction; alerts tạo cảnh báo đổi nhãn, ngưỡng xác suất; drift tính Macro F1 30 phiên và báo Admin khi giảm hơn 10 điểm (RK-04).
+Các bước của worker mô hình, chạy sau news.sync và trước bước cảnh báo: financials kiểm tra BCTC mới; sentiment chấm cảm xúc tin mới; features làm mới đặc trưng và nhãn; resolve điền nhãn thực tế cho dự báo và Journal đã đáo hạn; forecast sinh dự báo T+2/T+5 kèm mức tin cậy, giải thích, risk_notes và snapshot trong một transaction; alerts tạo cảnh báo đổi nhãn, ngưỡng xác suất; drift tính Macro F1 30 phiên và báo Admin khi giảm hơn 10 điểm (RK-04).
 
 Quy tắc: giá ngày T lỗi sau retry thì không sinh dự báo mới, giữ dự báo cũ kèm nhãn dữ liệu cũ (AC-06/28); tin lỗi vẫn dự báo bằng nhánh định lượng và gắn missing_news; chạy lại cùng ngày không tạo trùng dự báo hay cảnh báo; dự báo hoàn tất trước 20:00, sinh dự báo dưới 15 phút.
 
@@ -1352,7 +1354,8 @@ StockSenseVN/
     migrate.js, seed-demo.js, bootstrap-admin.js
   openapi.yaml      # hợp đồng API
   docker-compose.yml  # PostgreSQL
-  (sau) ml/, mobile/  # worker AI Python và ứng dụng React Native
+  ml/               # worker mô hình (Python)
+  mobile/           # ứng dụng React Native (GĐ3)
 ```
 
 ### 10.4 Kiểm thử
@@ -1427,7 +1430,7 @@ Ma trận dưới đây truy vết yêu cầu chức năng của PRD v0.0.4 từ
 | FR-M0-12 | US-28 / UC-28 | C6, C7 | role_requests, app_user, audit_log, auth_session | /admin/role-requests/... | AC-36 |
 | FR-M0-13 | US-29 / UC-29 | C6, C7 | app_user và mọi bảng dữ liệu cá nhân (CASCADE), audit_log | DELETE /me | AC-39 |
 | FR-M0-14 | US-28 / UC-29, UC-12 | C7, CLI | app_user, audit_log | npm run db:bootstrap-admin; /admin/users | AC-37 |
-| FR-M0-15 (Should, chưa làm) | US-28 / UC-28, UC-29 | C6, C7 | – | – | – |
+| FR-M0-15 (Should) | US-28 / UC-28, UC-29 | C6, C7 | – | – | – |
 | FR-M7-07, 08 | US-24 / UC-24 | C1–C5, C8 | job_run, forecast, ops_event | /admin/jobs, /admin/ops-events | AC-28, AC-05/06, AC-24 |
 | FR-M7-09, 10 | US-10 / UC-10 | C4, C6, C8 | forecast_input manifest, model_version, forecast_replay | /forecasts/{id}/inputs, /forecasts/{id}/replays | AC-14 |
 | FR-M7-11 | US-25 / UC-25 | C6, C7 | audit_log | /admin/audit với bộ lọc và phân trang | AC-29, AC-15 |
@@ -1449,7 +1452,7 @@ Rủi ro nghiệp vụ đã có trong PRD mục 14; mục này chỉ nêu rủi 
 | Dữ liệu cá nhân bị gửi sang API mô hình ngôn ngữ bên ngoài | Lộ thông tin danh mục | Cờ chat.personal_via_llm = false theo mặc định: câu hỏi cá nhân trả lời bằng bản mẫu; ngữ cảnh gửi đi không có email, tên; chốt chính sách ở mục 12.4 |
 | Hạn mức hoặc chi phí API mô hình ngôn ngữ, email, Telegram bị vượt | Chat hoặc thông báo ngừng giữa buổi demo | Trần lượt hỏi theo người dùng và theo ngày, cache; chat tự hạ về câu trả lời mẫu; hàng đợi notification giữ dòng pending, retry, và cảnh báo vẫn có trong app |
 | Chia tách, cổ tức bằng cổ phiếu làm giá vốn và khối lượng lệch | Lãi/lỗ tạm tính sai | Không tự điều chỉnh; người dùng nhập giao dịch điều chỉnh; ghi chú trên trang Portfolio; bình quân gia quyền đã chốt theo FR-M9-03; cách điều chỉnh còn cần xác nhận |
-| Thiếu RLS và trigger chặn sửa audit | Một truy vấn quên điều kiện user_id có thể lộ dữ liệu; audit có thể bị sửa bằng quyền CSDL | Mọi repository nhận userId bắt buộc, kiểm thử cách ly A/B; bổ sung RLS và trigger append-only trước khi mở cho người dùng thật |
+| Không dùng RLS (D13) | Một truy vấn quên điều kiện user_id có thể lộ dữ liệu cá nhân | Mọi repository bắt buộc nhận userId; kiểm thử cách ly hai người dùng A, B (AC-26); bật RLS trước khi mở cho người dùng thật |
 | Build iOS cần Apple Developer và macOS | Trễ GĐ3 | Dùng dịch vụ build đám mây, làm Android trước, web responsive hoặc PWA làm phương án dự phòng (RK-14) |
 | Thêm bước plans, portfolio, notify làm batch vượt 20:00 hoặc thông báo trễ quá 5 phút | Vi phạm P5, NFR-15 | Mỗi bước ghi thời gian vào job_run; bước chạy theo truy vấn tập hợp, không lặp từng người; đo sớm trên dữ liệu mẫu |
 
@@ -1463,7 +1466,7 @@ Nguồn đối chiếu là PRD v0.0.4 đính kèm. Khi bảng ưu tiên tổng q
 
 FR-M5-02–FR-M5-05 là Must; PRD 0.0.4 đã sửa bảng 6.1 và US-05 thành Must cho khớp. Email và Telegram vẫn ở GĐ2. Giới hạn 10 chỉ là số mã trong watchlist mỗi người, không thay mục tiêu dữ liệu tối thiểu 15 mã của R5 và mục 12.1.
 
-FR-M7-09 và FR-M7-10 đã được PRD 0.0.4 nâng thành Must cho khớp US-10 và AC-14; cả hai cần mô hình nên chưa triển khai. FR-M0-07 là Should nhưng AC-30 bao gồm đặt lại qua Admin và email; bản kiểm thử đầy đủ AC-30 phải bật chức năng này. Không diễn giải Should thành việc được bỏ qua AC đã chọn.
+FR-M7-09 và FR-M7-10 đã được PRD 0.0.4 nâng thành Must cho khớp US-10 và AC-14. FR-M0-07 là Should nhưng AC-30 bao gồm đặt lại qua Admin và email; bản kiểm thử đầy đủ AC-30 phải bật chức năng này. Không diễn giải Should thành việc được bỏ qua AC đã chọn.
 
 FR-M0-06 đã được PRD 0.0.4 viết lại: mật khẩu mới phải khác mật khẩu hiện tại (AC-30), không so mật khẩu giữa các tài khoản. Mức tin cậy 55% và alignment Journal vẫn là đề xuất thiết kế cần xác nhận. FR-M9-03 đã chốt giá vốn bình quân gia quyền; FIFO không còn là câu hỏi thay thế trong SDD.
 
