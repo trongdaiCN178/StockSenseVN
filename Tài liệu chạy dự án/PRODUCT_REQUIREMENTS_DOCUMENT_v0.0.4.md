@@ -1266,7 +1266,7 @@ Nguyên tắc: tách tài khoản khỏi quyền (đăng ký công khai chỉ t�
 | --- | --- |
 | BR-R01 | Chỉ vai trò retail được tự đăng ký công khai. Trường role trong yêu cầu đăng ký bị máy chủ bỏ qua. |
 | BR-R02 | Email duy nhất sau khi chuẩn hóa (cắt khoảng trắng, chữ thường), tối đa 254 ký tự. |
-| BR-R03 | Mật khẩu theo FR-M0-06 (8–64 ký tự, có chữ, số, ký tự đặc biệt), băm bằng hàm băm chậm có salt (triển khai: scrypt). |
+| BR-R03 | Mật khẩu theo FR-M0-06 (8–64 ký tự, có chữ, số, ký tự đặc biệt), băm bằng hàm băm chậm có salt (scrypt). |
 | BR-R04 | Bắt buộc tự khai đủ 18 tuổi; không thu thập ngày sinh. |
 | BR-R05 | Bắt buộc tick riêng Điều khoản sử dụng và Thông báo xử lý dữ liệu; không chọn sẵn; không gộp với đồng ý tùy chọn. |
 | BR-R06 | Nhận thông báo email/Telegram là tùy chọn, mặc định tắt, bật/tắt trong Cài đặt → Kênh thông báo. |
@@ -1671,7 +1671,7 @@ Với sản phẩm AI tài chính, hai yêu cầu phi chức năng quan trọng 
 | NFR-04 | Độ tin cậy / fallback | Thiếu tin: dự báo bằng nhánh định lượng và gắn cờ “thiếu dữ liệu tin”. Thiếu giá ngày T: không sinh dự báo mới, giữ dự báo cũ kèm nhãn “dữ liệu cũ”. | Kiểm thử với dữ liệu bị xóa có chủ đích |
 | NFR-05 | Tính giải thích | 100% dự báo hiển thị có giải thích ở mức phù hợp vai trò (retail: đơn giản; trader: nhóm yếu tố + hit rate; analyst: chi tiết); không bao giờ hiển thị giải thích cho dữ liệu không tồn tại. | Kiểm thử tự động trên toàn bộ dự báo 1 ngày |
 | NFR-06 | Tính truy vết | Mỗi dự báo gắn timestamp, phiên bản mô hình, mã snapshot dữ liệu (hash tập đặc trưng đầu vào); tái chạy cùng phiên bản + snapshot cho cùng xác suất (sai số < 1e-4). | Kiểm thử tái lập trên 10 dự báo ngẫu nhiên |
-| NFR-07 | Bảo mật | Xác thực bằng email + mật khẩu băm bằng hàm băm chậm có salt (scrypt hoặc bcrypt cost ≥ 12; triển khai dùng scrypt); phiên đăng nhập là token ngẫu nhiên chỉ lưu bản băm, cookie HttpOnly, hết hạn sau 24 giờ; HTTPS khi triển khai công khai. Mã xác thực email, mã đặt lại mật khẩu và mã xác minh kênh chỉ lưu bản băm. Dữ liệu danh mục cá nhân (Portfolio, Trade Plan, Journal, lịch sử Chat) chỉ lưu gắn với người sở hữu; không lưu thông tin tài khoản chứng khoán hay ngân hàng. | Review cấu hình và lược đồ dữ liệu |
+| NFR-07 | Bảo mật | Xác thực bằng email + mật khẩu băm bằng hàm băm chậm có salt (scrypt); phiên đăng nhập là token ngẫu nhiên chỉ lưu bản băm, cookie HttpOnly, hết hạn sau 24 giờ; HTTPS khi triển khai công khai. Mã xác thực email, mã đặt lại mật khẩu và mã xác minh kênh chỉ lưu bản băm. Dữ liệu danh mục cá nhân (Portfolio, Trade Plan, Journal, lịch sử Chat) chỉ lưu gắn với người sở hữu; không lưu thông tin tài khoản chứng khoán hay ngân hàng. | Review cấu hình và lược đồ dữ liệu |
 | NFR-08 | Phân quyền | RBAC 4 vai trò retail / trader / analyst / admin; API kiểm tra quyền ở phía server, không chỉ ẩn nút trên giao diện. Mọi API đọc/ghi dữ liệu cá nhân kiểm tra quyền sở hữu theo người dùng; admin không xem được nội dung Portfolio, Trade Plan, Journal. | Kiểm thử gọi API với vai trò sai trả 403; gọi dữ liệu của người khác trả 403/404 |
 | NFR-09 | Nhật ký hệ thống | Log có cấu trúc (JSON) cho API, ETL, huấn luyện và suy luận; lưu tối thiểu 90 ngày; không ghi mật khẩu hoặc token. | Kiểm tra mẫu log |
 | NFR-10 | Khả dụng / UI | Web responsive, ưu tiên laptop 1366–1920 px, dùng được trên điện thoại ≥ 375 px; ứng dụng mobile native (GĐ3) hỗ trợ iOS và Android (xem NFR-17); giao diện tiếng Việt; màu tăng/giảm kèm biểu tượng (không chỉ dựa vào màu). | Kiểm thử thủ công trên Chrome/Safari |

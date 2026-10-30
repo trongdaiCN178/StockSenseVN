@@ -126,7 +126,7 @@ Thiết kế ưu tiên dùng lại mã sẵn có và hạ tầng miễn phí; r�
 | D2 | Worker dữ liệu viết bằng Node.js (apps/worker): đồng bộ giá, tin, cảnh báo, gửi thông báo, pipeline theo lịch. Phần huấn luyện và suy luận mô hình (sentiment, dự báo, giải thích) là worker Python riêng | Phần ETL và thông báo không cần thư viện học máy nên viết chung ngôn ngữ với API; mô hình cần PyTorch, Transformers, Captum nên để Python | Viết toàn bộ worker bằng Python: hai ngôn ngữ cho cả phần không cần học máy |
 | D3 | Các tiến trình chỉ giao tiếp qua PostgreSQL: Admin chạy lại job bằng một dòng admin_job_runs trạng thái queued, worker lấy dòng, ghi heartbeat vào admin_worker_instances; API không bao giờ chạy job trong request HTTP | Một nguồn sự thật, không cần message broker, dễ truy vết | Redis/BullMQ: thêm một dịch vụ phải vận hành |
 | D4 | Dự báo tính theo lô mỗi ngày và lưu sẵn, kèm giải thích. Chat không suy luận dự báo, chỉ đọc dự báo đã lưu | Đáp ứng NFR-01/02 và A4; giải thích bằng IG tốn thời gian, không nên tính theo yêu cầu; mô hình ngôn ngữ chỉ diễn đạt dữ liệu đã truy xuất (PRD A6) | Suy luận trực tuyến mỗi lần mở trang |
-| D5 | Lược đồ kế thừa db/schema.sql (3 tầng thô / xử lý / đặc trưng, point-in-time 15:00) và bổ sung bảng ứng dụng ở GĐ1, bảng dữ liệu cá nhân và thông báo ở GĐ2 | Lược đồ hiện có đã khớp PRD về cut-off và BCTC theo ngày công bố | Thiết kế lại từ đầu |
+| D5 | Lược đồ quản lý bằng các migration SQL đánh số tuần tự (db/migrations, chạy bằng db/migrate.js); giữ nguyên tắc 3 tầng thô / xử lý / đặc trưng và point-in-time 15:00 kế thừa từ thiết kế DATN_2026; bảng ứng dụng thêm ở GĐ1, bảng dữ liệu cá nhân và thông báo ở GĐ2 | Dựng lại được CSDL mới bằng một lệnh; mỗi thay đổi lược đồ có lịch sử; nguyên tắc cut-off và BCTC theo ngày công bố khớp PRD | Dùng nguyên db/schema.sql của DATN_2026: gắn với mã Go cũ, không có lịch sử thay đổi. Công cụ migration của ORM (Prisma, Knex): thêm phụ thuộc, không cần khi viết SQL trực tiếp |
 | D6 | Giao diện web viết bằng React 19 + JavaScript (JSX), đóng gói bằng Vite thành file tĩnh; biểu đồ giá vẽ bằng SVG tự viết; bảng quyền, chính sách mật khẩu, hàm R:R/khối lượng và nhãn dự báo nằm trong packages/core dùng chung giữa web và API | Nhiều trang nghiệp vụ, biểu mẫu và trạng thái; không cần thư viện biểu đồ nặng cho đường giá đóng cửa 6 tháng; một hàm tính dùng chung nên số trên biểu mẫu khớp số lưu | TypeScript: an toàn kiểu hơn nhưng thêm bước build, chưa cần ở quy mô này. TradingView Lightweight Charts: thêm phụ thuộc, để dành khi cần biểu đồ nến |
 | D7 | Mobile là ứng dụng React Native một codebase cho iOS và Android, dùng chung API REST /api/v1 và packages/core với web; web responsive từ 375 px (có thể thêm PWA) là phương án dự phòng. Xác thực: web giữ cookie phiên HttpOnly, mobile (GĐ3) gửi Authorization: Bearer với token lưu trong Keychain/Keystore, middleware chấp nhận cả hai; kênh thông báo đẩy được chừa sẵn (mục 8.3). Đăng xuất trên mobile gọi POST /auth/logout để thu hồi phiên rồi mới xóa token trong Keychain/Keystore; khi nhận 401 thì xóa token và chuyển về màn hình đăng nhập. | Theo PRD 6.1 (M14, Must-have GĐ3), FR-M14-01..05 và NFR-17; Project Brief 0.0.2 nêu "nhận thông báo" trong chức năng cốt lõi của mobile | Chỉ web responsive (quyết định ở bản 0.0.1): không đáp ứng M14. Hai codebase native riêng hoặc Flutter: thêm ngôn ngữ và không dùng chung được với web |
 | D8 | Một mô hình đa phương thức với hai đầu ra T+2 và T+5; embedding PhoBERT tính một lần và lưu lại | Theo PRD 12.4 và RK-10; suy luận trên CPU đủ nhanh | Hai mô hình riêng cho từng kỳ hạn |
@@ -197,7 +197,7 @@ Tự đặt lại qua email (Should, FR-M0-07): /auth/forgot-password luôn tr�
 
 **M4. Tin tức và cảm xúc.** Tin được loại trùng bằng content_hash và khóa (source, url); giao diện chỉ hiển thị tiêu đề, sapo, nguồn, thời gian, link gốc (C3 của PRD), nội dung đầy đủ chỉ dùng nội bộ cho NLP. Biểu đồ cảm xúc 30 phiên lấy từ sentiment_daily. Cut-off 15:00 được thực thi một chỗ duy nhất trong view này (FR-M4-06).
 
-**M5. Watchlist và cảnh báo.** Giới hạn 10 mã/người được kiểm tra trong transaction của API: khóa hàng users (SELECT … FOR UPDATE) trước khi đếm để hai request đồng thời không vượt giới hạn; mã thứ 11 trả 409 WATCHLIST_LIMIT_REACHED. PUT thêm cùng mã là idempotent. Các loại cảnh báo: mốc giá đóng cửa, đổi nhãn, ngưỡng xác suất và Trade Plan; chuông thông báo đếm số chưa đọc, đánh dấu đã đọc từng cái hoặc tất cả; lịch sử 90 ngày. Ghi chú watchlist.note thuộc phần mở rộng GĐ2. Cảnh báo trong app FR-M5-02–05 là Must GĐ1 theo bảng FR: mọi R/T/A có thể đặt ngưỡng theo mã/kỳ hạn, xem đổi nhãn và lịch sử 90 ngày. C5 lưu last_state; chỉ tạo cảnh báo khi từ dưới lên đạt ngưỡng, không lặp khi còn trên ngưỡng, chỉ tái kích hoạt sau khi đã xuống dưới. event_key duy nhất theo user bảo đảm chạy lại không trùng. Giao diện poll 60 giây để hiển thị trong 5 phút sau forecast. GĐ2 thêm plan_touch và các kênh email/Telegram đã xác thực; notifier poll 30 giây, lần gửi đầu ngay, tối đa 3 lần retry sau 30, 60 và 120 giây để hỗ trợ mục tiêu 5 phút. Hết retry ghi failed; cảnh báo trong app vẫn tồn tại. Liên kết Telegram và xác thực email dùng mã một lần (FR-M5-06–08).
+**M5. Watchlist và cảnh báo.** Giới hạn 10 mã/người được kiểm tra trong transaction của API: khóa hàng users (SELECT … FOR UPDATE) trước khi đếm để hai request đồng thời không vượt giới hạn; mã thứ 11 trả 409 WATCHLIST_LIMIT_REACHED. PUT thêm cùng mã là idempotent. Các loại cảnh báo: mốc giá đóng cửa, đổi nhãn, ngưỡng xác suất và Trade Plan; chuông thông báo đếm số chưa đọc, đánh dấu đã đọc từng cái hoặc tất cả; lịch sử 90 ngày. Ghi chú watchlist.note thuộc phần mở rộng GĐ2. Cảnh báo trong app FR-M5-02–05 là Must GĐ1 theo bảng FR: mọi R/T/A có thể đặt ngưỡng theo mã/kỳ hạn, xem đổi nhãn và lịch sử 90 ngày. C5 lưu last_state; chỉ tạo cảnh báo khi từ dưới lên đạt ngưỡng, không lặp khi còn trên ngưỡng, chỉ tái kích hoạt sau khi đã xuống dưới. event_key duy nhất theo user bảo đảm chạy lại không trùng. Giao diện poll 60 giây để hiển thị trong 5 phút sau forecast. GĐ2 thêm plan_touch và các kênh email/Telegram đã xác thực; worker gửi thông báo (notifications.deliver) quét hàng đợi, lần gửi đầu ngay, tối đa 3 lần retry sau 30, 60 và 120 giây để hỗ trợ mục tiêu 5 phút. Hết retry ghi failed; cảnh báo trong app vẫn tồn tại. Liên kết Telegram và xác thực email dùng mã một lần (FR-M5-06–08).
 
 **M6. Lịch sử dự báo và đánh giá.** C5 điền actual_label cho dự báo đã đủ 2 hoặc 5 phiên bằng cùng quy tắc gán nhãn với lúc huấn luyện; dự báo chưa đáo hạn có actual_label rỗng và hiển thị "Đang chờ". Hit rate, precision, recall theo lớp trong cửa sổ 30/90 phiên tính bằng SQL khi gọi API. Trang Đánh giá mô hình đọc model_run.metrics của các lần huấn luyện, gồm baseline và 3 cấu hình ablation. Mỗi hit rate trả kèm n (số dự báo đã đáo hạn trong cửa sổ), cờ small_sample khi n dưới 50 và hit rate của baseline "lớp phổ biến nhất" trong cùng cửa sổ; giao diện ghi chú T+5 chồng lấn nên số mẫu độc lập ít hơn n (FR-M6-06). Retail và trader xem bản tóm tắt qua GET /models/summary (phiên bản đang phục vụ, ngày huấn luyện, hit rate tổng 30/90 phiên kèm n và baseline); confusion matrix, ablation và hiệu chỉnh chỉ dành cho analyst và admin. Từ GĐ2, evaluate.py thêm Brier score, ECE và dữ liệu reliability diagram vào model_run.metrics.calibration (FR-M6-07).
 
@@ -231,7 +231,7 @@ Chat là thành phần duy nhất gọi mô hình ngôn ngữ theo yêu cầu c�
 
 **Bộ chặn đầu vào:** quy tắc từ khóa và mẫu câu (nên mua, bán, đặt lệnh, giá mục tiêu, mua bao nhiêu...) nhận ra yêu cầu lệnh hoặc tư vấn cá nhân hóa và trả thông điệp cố định kèm gợi ý xem dự báo, giải thích hoặc Trade Plan của chính người dùng, không gọi mô hình ngôn ngữ (FR-M12-03).
 
-**Truy xuất:** nhận diện mã (trong company.in_universe), kỳ hạn, ngày và nhóm ý định (dự báo, lý do, tin tức, lịch sử/hit rate, thuật ngữ, dữ liệu cá nhân); mỗi nhóm ứng với một hàm truy vấn tham số hóa chạy bằng role CSDL chỉ đọc có RLS và user_id của phiên. Kết quả là các bản ghi dữ kiện có mã tham chiếu (ví dụ forecast:18342, news:5521). Không có dữ liệu thì trả lời "Hệ thống không có dữ liệu này" mà không gọi mô hình ngôn ngữ (FR-M12-02).
+**Truy xuất:** nhận diện mã (trong symbols.is_enabled), kỳ hạn, ngày và nhóm ý định (dự báo, lý do, tin tức, lịch sử/hit rate, thuật ngữ, dữ liệu cá nhân); mỗi nhóm ứng với một hàm truy vấn tham số hóa chạy bằng role CSDL chỉ đọc có RLS và user_id của phiên. Kết quả là các bản ghi dữ kiện có mã tham chiếu (ví dụ forecast:18342, news:5521). Không có dữ liệu thì trả lời "Hệ thống không có dữ liệu này" mà không gọi mô hình ngôn ngữ (FR-M12-02).
 
 **Diễn đạt:** LLMClient nhận dữ kiện cùng chỉ dẫn hệ thống (chỉ dùng dữ kiện, mỗi câu có số liệu phải ghi mã tham chiếu, không nêu giá mục tiêu hay khuyến nghị) và trả câu trả lời kèm danh sách tham chiếu. Hạn gọi 6 giây; quá hạn hoặc lỗi thì dùng câu trả lời mẫu dựng thẳng từ dữ kiện, như câu giải thích cho retail ở mục 7.6.
 
@@ -272,15 +272,15 @@ CSDL là PostgreSQL 17 (image postgres:17-alpine). Lược đồ có hiệu lự
 
 ### 6.1 Nhóm bảng
 
-| Nhóm | Bảng / view | Nguồn | Ghi chú |
+| Nhóm | Bảng / view (tên logic) | Nguồn thiết kế | Ghi chú |
 | --- | --- | --- | --- |
-| Danh mục | company, trading_calendar (mới) | Có sẵn | Thêm cột company.in_universe; lịch nghỉ lễ để tính ngày đáo hạn T+2/T+5 |
-| Thị trường | price_daily, index_daily | Có sẵn | Thêm mã chỉ số HNX, HNX30 |
-| Báo cáo tài chính | financial_report, financial_item, financial_ratio | Có sẵn | published_at là mốc point-in-time |
-| Văn bản | document, document_symbol | Có sẵn | raw giữ HTML gốc để trích xuất lại |
-| NLP | nlp_model, sentiment, doc_embedding (mới) | Có sẵn + mới | Thêm cột sentiment.label; nhãn tay là model human |
+| Danh mục | company, trading_calendar (mới) | Kế thừa DATN_2026 | Cờ chọn mã vào danh sách theo dõi (symbols.is_enabled); lịch nghỉ lễ để tính ngày đáo hạn T+2/T+5 |
+| Thị trường | price_daily, index_daily | Kế thừa DATN_2026 | Thêm mã chỉ số HNX, HNX30 |
+| Báo cáo tài chính | financial_report, financial_item, financial_ratio | Kế thừa DATN_2026 | published_at là mốc point-in-time |
+| Văn bản | document, document_symbol | Kế thừa DATN_2026 | raw giữ HTML gốc để trích xuất lại |
+| NLP | nlp_model, sentiment, doc_embedding (mới) | Kế thừa DATN_2026 + mới | Thêm cột sentiment.label; nhãn tay là model human |
 | Đặc trưng | feature_daily, sentiment_daily, label_daily (mới) | Materialized view | Làm mới sau mỗi batch |
-| Thí nghiệm | dataset, model_run, model_version (mới) | Có sẵn + mới | model_version là bản đã đăng ký để phục vụ |
+| Thí nghiệm | dataset, model_run, model_version (mới) | Kế thừa DATN_2026 + mới | model_version là bản đã đăng ký để phục vụ |
 | Dự báo | forecast, forecast_explanation, forecast_input (mới) | Mới | Chỉ thêm, không sửa xác suất sau khi ghi |
 | Ứng dụng | app_user, watchlist, alert_rule, alert (mới) | Mới | GĐ2 thêm cột hồ sơ đầu tư và is_demo vào app_user, note vào watchlist, loại quy tắc mới vào alert_rule (mục 6.2); alert.event_key chống tạo trùng |
 | Vận hành | job_run, audit_log | Mới | Mã job, quan hệ batch/bước; before/after, outcome và log quản trị chỉ thêm |
@@ -398,7 +398,7 @@ id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 
 email         text NOT NULL UNIQUE,
 
-password_hash text NOT NULL,     -- scrypt$salt$key (thiết kế ban đầu: bcrypt)
+password_hash text NOT NULL,     -- scrypt$salt$key
 
 role          text NOT NULL CHECK (role IN ('retail', 'trader', 'analyst', 'admin')),
 
@@ -578,7 +578,7 @@ Mọi bảng dữ liệu cá nhân tham chiếu users(id) ON DELETE CASCADE, cò
 
 Mức Should (FR-M0-15, BR-R13) bổ sung trạng thái awaiting_email cho role_requests khi xác nhận email cơ quan bằng thư, và bản ghi đồng ý analyst_terms trong user_consent.
 
-GĐ1 bổ sung các bảng phục vụ FR-M0-01–07 và FR-M7-07–11. auth_mail_outbox hỗ trợ đặt lại email khi FR-M0-07 được triển khai, độc lập với notifier cảnh báo GĐ2. Schema dưới đây lưu hash token; token thô chỉ tồn tại trong thư chờ gửi được bảo vệ và bị xóa ngay sau khi gửi. Các role không được truy vấn bảng phiên, token hoặc outbox từ API nghiệp vụ.
+GĐ1 bổ sung các bảng phục vụ FR-M0-01–07 và FR-M7-07–11. auth_mail_outbox hỗ trợ đặt lại email khi FR-M0-07 được triển khai, độc lập với hàng đợi thông báo cảnh báo GĐ2. Schema dưới đây lưu hash token; token thô chỉ tồn tại trong thư chờ gửi được bảo vệ và bị xóa ngay sau khi gửi. Các role không được truy vấn bảng phiên, token hoặc outbox từ API nghiệp vụ.
 
 CREATE TABLE auth_session (
 
@@ -790,9 +790,9 @@ FOR EACH ROW EXECUTE FUNCTION enforce_watchlist_limit();
 
 -- Thêm mã dùng INSERT ON CONFLICT DO NOTHING, xóa rồi thêm khi đổi mã.
 
-Quyền CSDL (phương án RLS, xem D13): role API không phải owner, không có BYPASSRLS; role Chat chỉ đọc dữ liệu được phép. Quyền phiên, hash mật khẩu và token chỉ cấp cho store xác thực, không cho endpoint chung. REVOKE UPDATE/DELETE/TRUNCATE log áp dụng cả các role worker/chat/notifier; chủ CSDL giữ quyền bảo trì và không dùng để phục vụ request. Truy vấn RLS dùng current_setting('app.user_id', true), trường hợp không có user_id trả 0 dòng; SET LOCAL chỉ đặt sau khi middleware xác thực và trong transaction riêng để không rò ngữ cảnh giữa kết nối pool. Việc thu hồi phiên và đổi tài khoản khóa hàng app_user để tránh đua với đăng nhập.
+Quyền CSDL (phương án RLS, xem D13): role API không phải owner, không có BYPASSRLS; role Chat chỉ đọc dữ liệu được phép. Quyền phiên, hash mật khẩu và token chỉ cấp cho store xác thực, không cho endpoint chung. REVOKE UPDATE/DELETE/TRUNCATE log áp dụng cả các role worker/chat; chủ CSDL giữ quyền bảo trì và không dùng để phục vụ request. Truy vấn RLS dùng current_setting('app.user_id', true), trường hợp không có user_id trả 0 dòng; SET LOCAL chỉ đặt sau khi middleware xác thực và trong transaction riêng để không rò ngữ cảnh giữa kết nối pool. Việc thu hồi phiên và đổi tài khoản khóa hàng app_user để tránh đua với đăng nhập.
 
-Các thay đổi của GĐ2 nằm trong migration riêng của db/migrations, chạy sau các bảng GĐ1. Khi bật RLS, mỗi giao dịch của api đặt SET LOCAL app.user_id từ phiên; worker và notifier dùng role riêng không dùng cho truy vấn nội dung cá nhân.
+Các thay đổi của GĐ2 nằm trong migration riêng của db/migrations, chạy sau các bảng GĐ1. Khi bật RLS, mỗi giao dịch của api đặt SET LOCAL app.user_id từ phiên; worker dùng role riêng không dùng cho truy vấn nội dung cá nhân.
 
 -- GĐ2: migration riêng, chạy sau các bảng GĐ1
 
@@ -1281,7 +1281,7 @@ Giao diện web gồm các trang nghiệp vụ, bốn tab chi tiết mã và mà
 
 Ứng dụng mobile (GĐ3) là một lớp giao diện thứ hai trên cùng API; API nhận cả cookie (web) và Bearer token (mobile); không có logic nghiệp vụ riêng, nên phần lớn thiết kế nằm ở cách đóng gói, xác thực và phân phối.
 
-**Một codebase:** mobile/ viết bằng React Native và TypeScript, dựng bằng Expo để build iOS và Android từ cùng mã. Dùng chung với web qua packages/core: kiểu dữ liệu API, client gọi API, hàm R:R và khối lượng tối đa (bản xem trước), định dạng số và ngày; thành phần giao diện không dùng chung vì web chạy trên DOM (FR-M14-01).
+**Một codebase:** mobile/ viết bằng React Native (JavaScript, cùng ngôn ngữ với web và packages/core), dựng bằng Expo để build iOS và Android từ cùng mã. Dùng chung với web qua packages/core: kiểu dữ liệu API, client gọi API, hàm R:R và khối lượng tối đa (bản xem trước), định dạng số và ngày; thành phần giao diện không dùng chung vì web chạy trên DOM (FR-M14-01).
 
 Xác thực: POST /auth/login với client=mobile trả token trong thân phản hồi; ứng dụng lưu token trong Keychain (iOS) hoặc Keystore (Android) và gửi Authorization: Bearer. Middleware ưu tiên cookie, nếu không có thì đọc Bearer, cùng một bộ kiểm tra vai trò và quyền sở hữu. Token hết hạn sau 24 giờ thì ứng dụng yêu cầu đăng nhập lại (bản đầu chưa có refresh token); đăng xuất gọi POST /auth/logout để thu hồi phiên, sau đó xóa token cục bộ (FR-M0-02, FR-M14-04); nhận 401 cũng xóa token và chuyển về đăng nhập. Request dùng Bearer không cần chống CSRF vì không dựa vào cookie.
 
@@ -1362,7 +1362,7 @@ StockSenseVN/
 
 | Mức | Nội dung | Liên kết |
 | --- | --- | --- |
-| Unit | Bộ tách bài CafeF (etl/test_news.py có sẵn), tính chỉ báo, gán nhãn, sinh câu giải thích, giới hạn watchlist, mức tin cậy, giá vốn bình quân; hàm R:R và khối lượng trong packages/core (ví dụ AC-19), chạy bằng vitest | FR-M4-01, FR-M3-03, FR-M5-01, FR-M2-08, FR-M9-03, FR-M10-03, 04 |
+| Unit | JavaScript (vitest): bộ tách tin CafeF/VnExpress và nguồn SSI trong apps/worker, bảng quyền, chính sách mật khẩu, hàm R:R và khối lượng trong packages/core (ví dụ AC-19), giới hạn watchlist, giá vốn bình quân. Python (pytest) cho worker mô hình: tính chỉ báo, gán nhãn, sinh câu giải thích, mức tin cậy | FR-M4-01, FR-M3-03, FR-M5-01, FR-M2-08, FR-M9-03, FR-M10-03, 04 |
 | Dữ liệu | Tỷ lệ thiếu < 5%, không trùng, đủ phiên so với VN-Index, kiểm tra cut-off 15:00 và BCTC point-in-time | R0, AC-08 |
 | Tích hợp | Chạy batch 12 bước trên CSDL mẫu 3 mã × 60 phiên; xóa có chủ đích tin hoặc giá để kiểm tra fallback; chạy lại batch hai lần để kiểm tra không có cảnh báo và thông báo trùng | AC-05, AC-06, AC-10–AC-12, AC-24 |
 | API | Gọi mọi route với mọi vai trò; kiểm tra 403 và phần giải thích cắt theo vai trò; Screener so với truy vấn SQL viết tay trên 5 bộ lọc mẫu; import CSV có 2 dòng lỗi; đóng Trade Plan hai lần chỉ có một Journal; thử sửa snapshot | AC-04, AC-15–AC-20 |
@@ -1493,8 +1493,6 @@ Build iOS: tài khoản Apple Developer, máy macOS hay dịch vụ build đám 
 Cảnh báo concentration, screen_match và push không thuộc phạm vi triển khai theo PRD v0.0.4. Chỉ xem xét sau khi có yêu cầu và tiêu chí nghiệm thu mới được chấp thuận.
 
 Đăng ký: khi nào bổ sung FR-M0-15 (TOTP và nguyên tắc hai người khi tạo Admin, xác nhận email cơ quan bằng thư, captcha, đồng ý lại khi đổi phiên bản); thời hạn lưu dữ liệu sau khi xóa tài khoản và đầu mối bảo vệ dữ liệu cá nhân; pháp chế xác nhận các điểm ở PRD §7.2 (C6) trước khi mở cho người dùng thật. Gmail SMTP (App Password) chỉ dùng cho demo, giới hạn khoảng 500 người nhận/ngày; triển khai thật cần dịch vụ gửi thư có tên miền riêng.
-
-Đối chiếu số bảng/view có sẵn của db/schema.sql với mục 6.1 (bản 0.0.1 ghi 15, mục 6.1 liệt kê 14).
 
 
 > Ghi chú: Tài liệu Word gốc có 3 ảnh/đối tượng hình ảnh nhúng; nội dung văn bản và bảng đã được chuyển đổi, hình ảnh không được nhúng trực tiếp vào Markdown.
