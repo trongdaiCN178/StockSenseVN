@@ -6,7 +6,7 @@
 | STATUS | TEST |
 | AUTHOR | HOANG MINH TUAN |
 | VERIFY | HOANG MINH TUAN |
-| UPDATE | 29/10/2026 |
+| UPDATE | 30/10/2026 |
 | RELATED DOCUMENT | Project Brief CAPSTONE_PB v0.0.4; SDD CAPSTONE_SDD v0.0.5 |
 
 | Phiên bản | Ngày | Người sửa | Nội dung thay đổi |
@@ -14,11 +14,11 @@
 | 0.0.1 | 7/10/2026 | Hoang Minh Tuan | Khởi tạo tài liệu. |
 | 0.0.2 | 7–8/10/2026 | Hoang Minh Tuan | Tách rõ MVP Sản Phẩm với MVP nghiên cứu bổ sung để tránh chồng lấn chức năng. Mở rộng phạm vi theo Project Brief 0.0.2: thêm Screener, Portfolio, Trade Plan, Journal, Chat, PDF, thông báo email/Telegram và ứng dụng mobile theo 3 giai đoạn; sửa các lỗi và mâu thuẫn nội bộ. |
 | 0.0.3 | 9/10/2026 | Tran Trong Đai | Bổ sung thêm US-23: đăng nhập, đăng xuất, US-24; tự động cập nhật dự báo sau mỗi phiên giao dịch và US-25 xem lịch sử quản trị. Cập nhật các yêu cầu liên quan: FR (M0, M7); thêm AC-27 đến AC-30. Giảm số mã tối đa từ 30 xuống 10. Thêm FR-M7-09 hiển thị dữ liệu đầu vào FR-M7-10 chạy lại để tái lập theo US10. Thêm đặc tả use case cho US. |
-| 0.0.4 | 29/10/2026 | Tran Trong Đai | Bổ sung luồng đăng ký và vòng đời tài khoản: quy tắc nghiệp vụ BR-R01..BR-R20, căn cứ pháp lý (§7.2), US-26..US-29, UC-26..UC-29, FR-M0-08..FR-M0-15, AC-31..AC-39, NFR-18; ràng buộc pháp lý C6 (Luật Bảo vệ dữ liệu cá nhân 2025, Nghị định 356/2025); sửa điều kiện trước của UC-12, UC-23; cập nhật §4.2, §6.1, §8, §16. NFR-07: băm mật khẩu bằng hàm băm chậm có salt (triển khai scrypt), phiên lưu dạng token băm. |
+| 0.0.4 | 29/10/2026 | Tran Trong Đai | Bổ sung luồng đăng ký và vòng đời tài khoản: quy tắc nghiệp vụ BR-R01..BR-R20, căn cứ pháp lý (§7.2), US-26..US-29, UC-26..UC-29, FR-M0-08..FR-M0-15, AC-31..AC-39, NFR-18; ràng buộc pháp lý C6 (Luật Bảo vệ dữ liệu cá nhân 2025, Nghị định 356/2025); sửa điều kiện trước của UC-12, UC-23; cập nhật §4.2, §6.1, §8, §16. NFR-07: băm mật khẩu bằng hàm băm chậm có salt (triển khai scrypt), phiên lưu dạng token băm. Rà soát 30/10/2026: đưa một số mã UPCoM thanh khoản cao vào phạm vi (danh sách 17 mã); sửa C4 theo ngăn xếp đã triển khai (Node.js, React, PostgreSQL); viết lại FR-M0-06; thống nhất mức ưu tiên cảnh báo trong app (US-05, §6.1 → Must) và xem đầu vào, tái lập dự báo (FR-M7-09, FR-M7-10, §6.1 → Must) với US-10, AC-14; cập nhật A8 (hạn mức Gmail); FR-M5-07 thêm Admin để nhận thông báo lỗi pipeline qua email/Telegram. |
 
 ## 1. Tổng quan sản phẩm
 
-IDSS (Investment Decision Support System; tên thương mại tạm: StockSense VN) là hệ thống web và ứng dụng mobile cho biết xác suất cổ phiếu HOSE/HNX tăng, đi ngang hay giảm sau 2 và 5 phiên (T+2, T+5), kèm lý do dự báo và lịch sử kiểm chứng, đồng thời giúp người dùng tự lập kế hoạch giao dịch, theo dõi danh mục và nhìn lại quyết định của mình. Lõi sản phẩm là một mô hình học sâu đa phương thức hợp nhất hai nhóm tín hiệu: đặc trưng định lượng (giá, khối lượng, chỉ báo kỹ thuật, chỉ số tài chính) và đặc trưng định tính (cảm xúc tin tức tiếng Việt).
+IDSS (Investment Decision Support System; tên thương mại tạm: StockSense VN) là hệ thống web và ứng dụng mobile cho biết xác suất cổ phiếu HOSE/HNX (kèm một số mã UPCoM thanh khoản cao) tăng, đi ngang hay giảm sau 2 và 5 phiên (T+2, T+5), kèm lý do dự báo và lịch sử kiểm chứng, đồng thời giúp người dùng tự lập kế hoạch giao dịch, theo dõi danh mục và nhìn lại quyết định của mình. Lõi sản phẩm là một mô hình học sâu đa phương thức hợp nhất hai nhóm tín hiệu: đặc trưng định lượng (giá, khối lượng, chỉ báo kỹ thuật, chỉ số tài chính) và đặc trưng định tính (cảm xúc tin tức tiếng Việt).
 
 **Đầu vào**: dữ liệu giá, báo cáo tài chính, tin tức theo mã; giao dịch, kế hoạch và ghi chú do người dùng tự nhập (hoặc import CSV).
 
@@ -50,7 +50,7 @@ Sản phẩm thành công khi chứng minh được mô hình đa phương thứ
 | R2 | Vượt mức ngẫu nhiên và mức “dự báo lớp phổ biến nhất” | Macro F1, AUC-ROC (one-vs-rest) | Macro F1 ≥ 0,40; AUC macro ≥ 0,60 (cần xác nhận) |
 | R3 | Chứng minh đóng góp của cảm xúc tin tức | Ablation 3 cấu hình: chỉ định lượng / chỉ văn bản / kết hợp | Cấu hình kết hợp tốt nhất trên ít nhất 1 trong 2 kỳ hạn |
 | R4 | Đánh giá không rò rỉ dữ liệu | Walk-forward theo thời gian, cut-off tin 15:00 | 100% thí nghiệm dùng chia tập theo thời gian |
-| R5 | Bộ dữ liệu hợp nhất | Số mã, số năm lịch sử | ≥ 15 mã HOSE/HNX, ≥ 3 năm lịch sử |
+| R5 | Bộ dữ liệu hợp nhất | Số mã, số năm lịch sử | ≥ 15 mã HOSE/HNX/UPCoM, ≥ 3 năm lịch sử |
 
 ### 3.2 Mục tiêu sản phẩm
 
@@ -154,8 +154,8 @@ Sản phẩm triển khai theo 3 giai đoạn. GĐ1 (MVP, 12 tuần) gói gọn 
 | Must-have (MVP) | So sánh T+2 với T+5 cạnh nhau | M2 | GĐ1 |
 | Must-have (MVP) | Đóng góp đặc trưng chi tiết cho analyst (top 15 đặc trưng) | M3 | GĐ1 |
 | Must-have (MVP) | Audit log cơ bản cho dự báo và lần chạy mô hình | M7 | GĐ1 |
-| Should-have | Cảnh báo trong app khi tín hiệu đổi hoặc xác suất vượt ngưỡng | M5 | GĐ1 |
-| Should-have | Analyst mode: dữ liệu đầu vào, so sánh mô hình | M3, M6 | GĐ1 |
+| Must-have (MVP) | Cảnh báo trong app khi tín hiệu đổi hoặc xác suất vượt ngưỡng | M5 | GĐ1 |
+| Must-have (MVP) | Analyst mode: xem dữ liệu đầu vào và tái lập một dự báo, so sánh mô hình | M3, M6, M7 | GĐ1 |
 | Should-have | Chọn phiên bản mô hình đang phục vụ và rollback | M7 | GĐ1 |
 | Should-have | Dải thị trường, khối “tín hiệu đổi hôm nay”, mức tin cậy, khối “điều gì có thể làm dự báo sai”, hiệu chỉnh xác suất | M1, M2, M6 | GĐ2 |
 | Must-have | Screener sàng lọc cổ phiếu theo tín hiệu dự báo | M8 | GĐ2 |
@@ -176,7 +176,7 @@ Tự động đặt lệnh hoặc tích hợp trực tiếp với hệ thống g
 
 Cam kết lợi nhuận, tư vấn đầu tư cá nhân hóa hoặc đảm bảo độ chính xác.
 
-Toàn bộ thị trường, UPCoM, phái sinh, chứng quyền, trái phiếu, quỹ, thị trường quốc tế.
+Toàn bộ thị trường (kể cả toàn sàn UPCoM; chỉ một số mã UPCoM thanh khoản cao được chọn vào danh sách theo dõi), phái sinh, chứng quyền, trái phiếu, quỹ, thị trường quốc tế.
 
 Dữ liệu tick-by-tick, giao dịch tần suất cao, suy luận thời gian thực mức mili-giây.
 
@@ -208,7 +208,7 @@ A6. Chat dùng mô hình ngôn ngữ chạy cục bộ (mô hình nhỏ mã ngu�
 
 A7. Telegram Bot API miễn phí và đủ cho lượng thông báo của bản demo; người dùng tự liên kết tài khoản Telegram bằng bot.
 
-A8. Email gửi qua SMTP miễn phí (hạn mức gửi mỗi ngày chưa kiểm chứng) là đủ cho số người dùng thử.
+A8. Email gửi qua SMTP miễn phí là đủ cho số người dùng thử; bản demo dùng Gmail SMTP với App Password, hạn mức khoảng 500 người nhận mỗi ngày.
 
 A9. Ứng dụng mobile phát hành thử nghiệm (TestFlight cho iOS, bản cài đặt trực tiếp cho Android); đưa lên App Store/Google Play chỉ khi có ngân sách và thời gian.
 
@@ -222,7 +222,7 @@ C2. Chi phí: GĐ1 gần 0 đồng, chỉ dùng dữ liệu và hạ tầng mi�
 
 C3. Pháp lý: tuân thủ điều khoản sử dụng của nguồn tin; chỉ lưu tiêu đề, tóm tắt, URL và điểm cảm xúc khi hiển thị, không tái xuất bản toàn văn.
 
-C4. Kỹ thuật: tái sử dụng mã sẵn có trong DATN_2026 (Go web service, ETL Python CafeF/SSI, PostgreSQL).
+C4. Kỹ thuật: ngăn xếp đã triển khai là Node.js (Fastify) cho API và worker dữ liệu, React + Vite cho web, PostgreSQL; mô hình học máy (cảm xúc, dự báo, giải thích) viết bằng Python, chạy như một worker riêng và trao đổi với hệ thống qua CSDL. Nguồn dữ liệu kế thừa từ DATN_2026: giá SSI, tin CafeF (bổ sung VnExpress).
 
 C5. Không phải sản phẩm thương mại; mọi màn hình dự báo, Trade Plan, cửa sổ Chat và báo cáo PDF phải có tuyên bố “chỉ mang tính tham khảo”.
 
@@ -268,7 +268,7 @@ Mỗi story có mã để truy vết sang functional requirement (mục 10) và 
 | US-02 | Nhà đầu tư cá nhân | Là nhà đầu tư cá nhân, tôi muốn đọc 3 lý do bằng lời dễ hiểu để biết vì sao hệ thống dự báo như vậy. | Must | FR-M3-01, FR-M3-03 |
 | US-03 | Nhà đầu tư cá nhân | Là nhà đầu tư cá nhân, tôi muốn xem các tin mới nhất về mã kèm sắc thái để không phải tự đọc từng bài. | Must | FR-M4-01..03 |
 | US-04 | Nhà đầu tư cá nhân | Là nhà đầu tư cá nhân, tôi muốn thêm mã vào watchlist để lần sau mở lại nhanh. | Must | FR-M5-01 |
-| US-05 | Swing trader | Là swing trader, tôi muốn nhận cảnh báo khi tín hiệu đổi từ đi ngang sang tăng để phản ứng nhanh hơn. | Should | FR-M5-02..04 |
+| US-05 | Swing trader | Là swing trader, tôi muốn nhận cảnh báo khi tín hiệu đổi từ đi ngang sang tăng để phản ứng nhanh hơn. | Must | FR-M5-02..05 |
 | US-06 | Swing trader | Là swing trader, tôi muốn so sánh T+2 với T+5 cạnh nhau để biết tín hiệu ngắn và dài hơn có đồng thuận không. | Must | FR-M2-05 |
 | US-07 | Swing trader | Là swing trader, tôi muốn lọc danh sách theo sàn, ngành, thanh khoản và xu hướng để sàng lọc nhanh. | Must | FR-M1-02 |
 | US-08 | Swing trader | Là swing trader, tôi muốn xem hit rate lịch sử của tín hiệu từng mã để biết có nên tin tín hiệu hay không. | Must | FR-M6-01..03 |
@@ -572,7 +572,7 @@ Thiếu dự báo của một kỳ hạn → hiển thị trạng thái dữ li�
 
 **Các bước**
 
-**Người dùng** chọn một hoặc nhiều điều kiện lọc: sàn (HOSE, HNX), ngành, thanh khoản, xu hướng dự báo (Tăng, Đi ngang, Giảm), kỳ hạn.
+**Người dùng** chọn một hoặc nhiều điều kiện lọc: sàn (HOSE, HNX, UPCoM), ngành, thanh khoản, xu hướng dự báo (Tăng, Đi ngang, Giảm), kỳ hạn.
 
 **Hệ thống** áp dụng đồng thời các điều kiện và hiển thị các mã thỏa mọi điều kiện (FR-M1-02, AC-02).
 
@@ -1450,7 +1450,7 @@ Hệ thống chia thành 15 module: M0–M7 thuộc GĐ1, M8–M13 thuộc GĐ2,
 | FR-M0-03 | Từ chối đăng nhập tài khoản bị khóa; việc khóa hoặc đổi vai trò có hiệu lực ngay (thu hồi phiên đang dùng) | Tất cả | Must |
 | FR-M0-04 | Mỗi tài khoản đăng nhập sai 5 lần liên tiếp trong 15 phút thì bị khóa tạm 15 phút. Trong thời gian khóa, kể cả nhập đúng cũng bị từ chối với thông báo chung. Số lần sai về 0 khi đăng nhập đúng. Mỗi lần sai và mỗi lần khóa tạm được ghi nhật ký bảo mật. | Tất cả | Must |
 | FR-M0-05 | Người dùng đã đăng nhập đổi mật khẩu bằng cách nhập mật khẩu hiện tại và mật khẩu mới. Thành công thì mọi phiên khác của tài khoản bị thu hồi và sự kiện được ghi log. | Tất cả | Must |
-| FR-M0-06 | Chính sách mật khẩu: tối thiểu 8-64 ký tự, bao gồm kí tự chữ, số và ít nhất 1 kí tự đặc biệt, mật khẩu là duy nhất cho 1 tài khoản | Tất cả | Must |
+| FR-M0-06 | Chính sách mật khẩu: 8–64 ký tự, có chữ, số và ít nhất 1 ký tự đặc biệt; kiểm tra ở cả giao diện và máy chủ; mật khẩu mới khi đổi hoặc đặt lại phải khác mật khẩu hiện tại. | Tất cả | Must |
 | FR-M0-07 | Đặt lại mật khẩu: Admin đặt mật khẩu tạm cho người dùng, mọi phiên cũ bị thu hồi, người dùng bị buộc đổi ở lần đăng nhập kế tiếp. Tự đặt lại qua email: liên kết dùng một lần, hết hạn 30 phút | Tất cả | Should |
 | FR-M0-08 | Tự đăng ký công khai bằng email, mật khẩu, tên hiển thị (tùy chọn) và 3 ô đồng ý bắt buộc (đủ 18 tuổi, Điều khoản sử dụng, Thông báo xử lý dữ liệu). Chỉ tạo tài khoản retail; trường vai trò trong yêu cầu bị bỏ qua. Luôn trả cùng một thông điệp; email đã tồn tại thì gửi thư "Bạn đã có tài khoản" và không tạo mới. Giới hạn 5 lần đăng ký mỗi giờ theo IP và theo email | Khách | Must |
 | FR-M0-09 | Xác thực email bằng liên kết một lần, hết hạn 24 giờ, chỉ lưu bản băm SHA-256 của mã. Chưa xác thực thì không đăng nhập được. Gửi lại tối đa 5 lần mỗi ngày, cách nhau ≥ 60 giây. Tài khoản chưa xác thực quá 7 ngày tự xóa | Khách, R | Must |
@@ -1468,7 +1468,7 @@ Màn hình: Trang chủ / Tổng quan thị trường. Dữ liệu: danh mục m
 | Mã | Yêu cầu | Vai trò | Ưu tiên |
 | --- | --- | --- | --- |
 | FR-M1-01 | Hiển thị danh sách mã mục tiêu: mã, tên công ty, sàn, ngành, giá đóng cửa, % thay đổi, GTGD bình quân 20 phiên. | R, T, A | Must |
-| FR-M1-02 | Lọc theo sàn (HOSE/HNX), ngành, thanh khoản, xu hướng dự báo (tăng/đi ngang/giảm) và kỳ hạn. | R, T, A | Must |
+| FR-M1-02 | Lọc theo sàn (HOSE/HNX/UPCoM), ngành, thanh khoản, xu hướng dự báo (tăng/đi ngang/giảm) và kỳ hạn. | R, T, A | Must |
 | FR-M1-03 | Hiển thị tín hiệu mới nhất T+2 và T+5 mỗi mã bằng nhãn màu + xác suất của lớp được chọn. | R, T, A | Must |
 | FR-M1-04 | Sắp xếp theo xác suất tăng/giảm, thanh khoản, % thay đổi; tìm kiếm theo mã/tên. | R, T, A | Must |
 | FR-M1-05 | Hiển thị ngày dữ liệu và thời điểm cập nhật dự báo gần nhất ở đầu trang. | Tất cả | Must |
@@ -1527,7 +1527,7 @@ Màn hình: trang Watchlist, biểu tượng chuông thông báo. Dữ liệu: w
 | FR-M5-04 | Lưu và hiển thị lịch sử cảnh báo 90 ngày (thời gian, mã, nội dung, đã đọc/chưa). | R, T, A | Must |
 | FR-M5-05 | Cảnh báo hiển thị trong ứng dụng (biểu tượng chuông và danh sách thông báo). | R, T, A | Must |
 | FR-M5-06 | Gửi cảnh báo ra ngoài ứng dụng qua email và Telegram cho cùng các sự kiện của FR-M5-02, FR-M5-03 và FR-M10-06; người dùng bật/tắt từng kênh. | R, T, A | Must (GĐ2) |
-| FR-M5-07 | Liên kết Telegram bằng bot (người dùng gửi mã liên kết) và xác thực email; có nút gửi thử và hủy liên kết. | R, T, A | Must (GĐ2) |
+| FR-M5-07 | Liên kết Telegram bằng bot (người dùng gửi mã liên kết) và xác thực email; có nút gửi thử và hủy liên kết. Admin cũng liên kết được kênh của mình để nhận thông báo lỗi pipeline (FR-M7-08). | R, T, A, Ad | Must (GĐ2) |
 | FR-M5-08 | Chống gửi trùng: mỗi sự kiện chỉ gửi một lần cho mỗi kênh dù batch chạy lại; retry tối đa 3 lần khi lỗi kênh và ghi log gửi (thời gian, kênh, trạng thái). | Hệ thống | Must (GĐ2) |
 
 ### M6. Backtest / forecast history
@@ -1558,8 +1558,8 @@ Màn hình: khu vực Quản trị (chỉ admin), tab Audit trong trang chi ti�
 | FR-M7-06 | Chọn phiên bản mô hình đang phục vụ và rollback về phiên bản trước. | Ad | Should |
 | FR-M7-07 | Tự chạy pipeline sau 15:30 mỗi ngày giao dịch (giá, tin, báo cáo tài chính, sắc thái, đặc trưng, nhãn thực tế, dự báo, cảnh báo); mỗi lần chạy ghi mã job, trạng thái, số bản ghi | Hệ thống | Must |
 | FR-M7-08 | Khi pipeline lỗi sau 3 lần thử, báo cho admin (hiển thị ở trang nguồn dữ liệu và gửi thông báo) | Hệ thống | Should |
-| FR-M7-09 | Với một dự báo, hiển thị dữ liệu đầu vào đã dùng: giá và đặc trưng kỹ thuật, chỉ số tài chính, danh sách tin tham chiếu (tiêu đề, nguồn, thời điểm đăng), mã snapshot, thời điểm cut-off | A, Ad | Should |
-| FR-M7-10 | Chạy lại một dự báo bằng đúng phiên bản mô hình và snapshot đã lưu, so xác suất mới với xác suất đã lưu và báo "đạt" khi sai số < 1e-4. Kết quả chạy lại được ghi riêng, không ghi đè dự báo gốc. Nếu snapshot hoặc phiên bản mô hình không còn thì báo "không tái lập được" và ghi log | A, Ad | Should |
+| FR-M7-09 | Với một dự báo, hiển thị dữ liệu đầu vào đã dùng: giá và đặc trưng kỹ thuật, chỉ số tài chính, danh sách tin tham chiếu (tiêu đề, nguồn, thời điểm đăng), mã snapshot, thời điểm cut-off | A, Ad | Must |
+| FR-M7-10 | Chạy lại một dự báo bằng đúng phiên bản mô hình và snapshot đã lưu, so xác suất mới với xác suất đã lưu và báo "đạt" khi sai số < 1e-4. Kết quả chạy lại được ghi riêng, không ghi đè dự báo gốc. Nếu snapshot hoặc phiên bản mô hình không còn thì báo "không tái lập được" và ghi log | A, Ad | Must |
 | FR-M7-11 | Admin xem nhật ký quản trị, lọc theo khoảng thời gian, người thực hiện, loại hành động và đối tượng, có phân trang. Vai trò khác không truy cập được (403). | Ad | Must |
 
 ### M8. Screener
@@ -1697,7 +1697,7 @@ Bài toán là phân loại 3 lớp (tăng / đi ngang / giảm) cho hai kỳ h�
 | Báo cáo tài chính (vnstock hoặc tương đương) | ROE, ROA, EPS, P/E, P/B, nợ/vốn, tăng trưởng doanh thu/lợi nhuận | Theo quý, dùng theo ngày công bố | Chưa có ETL |
 | Tập gán nhãn cảm xúc | 2.000–3.000 tin tự gán nhãn 3 lớp | Một lần | Chưa có |
 
-Phạm vi mã: tối thiểu 15 mã thanh khoản cao thuộc VN30 và HNX30; lịch sử từ 2021 (≥ 3 năm), mở rộng về 2018 nếu nguồn tin đáp ứng.
+Phạm vi mã: tối thiểu 15 mã thanh khoản cao, chủ yếu thuộc VN30 và HNX30, có thể kèm một số mã UPCoM thanh khoản cao; danh sách hiện tại gồm 17 mã: 10 HOSE (ACB, FPT, GAS, HPG, MBB, MWG, SSI, VCB, VIC, VNM), 4 HNX (HUT, IDC, PVS, SHS) và 3 UPCoM (BSR, QNS, VGT); lịch sử từ 2021 (≥ 3 năm), mở rộng về 2018 nếu nguồn tin đáp ứng.
 
 ### 12.2 Đặc trưng
 

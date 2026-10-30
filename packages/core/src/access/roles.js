@@ -67,6 +67,8 @@ export const ROLE_CAPABILITIES = Object.freeze({
     'admin.jobs.enqueue', 'admin.models.manage', 'admin.audit.read',
     'admin.notifications.read', 'admin.ops-events.read',
     'admin.chat-log.read.redacted', 'admin.role-requests.manage',
+    // FR-M7-08: admins link their own email/Telegram to receive job-failure alerts.
+    'notifications.channels.manage.self',
   ],
 });
 

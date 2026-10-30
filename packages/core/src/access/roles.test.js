@@ -28,4 +28,8 @@ describe('hasCapability', () => {
   it('admin does not inherit the self-service capabilities granted to other roles', () => {
     expect(hasCapability(ROLES.ADMIN, 'watchlist.manage.self')).toBe(false);
   });
+
+  it('admin can manage own notification channels to receive job-failure alerts', () => {
+    expect(hasCapability(ROLES.ADMIN, 'notifications.channels.manage.self')).toBe(true);
+  });
 });
