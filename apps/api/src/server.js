@@ -23,7 +23,7 @@ import { createChatRepository, validateChatSession } from './chat/repository.js'
 import { createNotificationPreferencesRepository, createNotificationChannelsRepository, validateNotificationPreferences, hashVerificationCode } from './notifications/repository.js';
 import { emailProviderConfigured, telegramProviderConfigured, sendVerificationEmail, sendPasswordResetEmail, sendRegistrationVerificationEmail, sendAccountAlreadyExistsEmail, sendTestEmail, sendTelegramMessage } from './notifications/providers.js';
 import { ApiError } from './errors.js';
-import { createFixtureMarketRepository, createPostgresMarketRepository } from './market/repository.js';
+import { createFixtureMarketRepository, createPostgresMarketRepository, PRICE_RANGES } from './market/repository.js';
 import { createPdfReport, formatReportValue } from './reports/pdf.js';
 
 if (process.env.NODE_ENV === 'production') {
@@ -620,6 +620,8 @@ app.get('/api/v1/market/summary', { preHandler: requireCapability('market.read')
   const data = await market.summary();
   return data ? envelope(data) : dataNotReady(reply, request);
 });
+// End-of-day price board for the enabled symbols (not real-time).
+app.get('/api/v1/market/board', { preHandler: requireCapability('symbols.read') }, async () => envelope(await market.board()));
 
 app.get('/api/v1/symbols', { preHandler: requireCapability('symbols.read') }, async (request, reply) => {
   const q = typeof request.query.q === 'string' ? request.query.q.trim().toUpperCase() : '';
@@ -811,7 +813,7 @@ app.get('/api/v1/symbols/:symbol', { preHandler: requireCapability('symbols.read
 app.get('/api/v1/symbols/:symbol/prices', { preHandler: requireCapability('history.read') }, async (request, reply) => {
   const symbol = request.params.symbol.toUpperCase();
   const range = request.query.range ?? '3m';
-  if (!['1m', '3m', '6m'].includes(range)) return fail(reply, request, 422, 'VALIDATION_ERROR', 'Khoảng thời gian không hợp lệ.');
+  if (!PRICE_RANGES.includes(range)) return fail(reply, request, 422, 'VALIDATION_ERROR', 'Khoảng thời gian không hợp lệ.');
   const data = await market.prices(symbol, range);
   return data ? envelope(data) : fail(reply, request, 404, 'NOT_FOUND', 'Không tìm thấy dữ liệu giá cho mã này.');
 });

@@ -1,5 +1,6 @@
 import { marketMock } from '../../../../mocks/market.js';
 import { calculateRiskReward } from '@stocksense/core/calc';
+import { buildBoardQuote } from '@stocksense/core/price-board';
 
 const SESSION_KEY = 'stocksense.mock.session.v1';
 const validRoles = new Set(['retail', 'trader', 'analyst', 'admin']);
@@ -173,6 +174,18 @@ export const mockApi = {
     async status() { await delay(); return structuredClone(marketMock.status); },
     async summary() { await delay(); return structuredClone(marketMock.summary); },
     async symbols() { await delay(); return structuredClone(marketMock.symbols); },
+    async board() {
+      await delay();
+      const items = marketMock.symbols.items.map((item) => {
+        const previousClose = Math.round(item.closePrice / (1 + item.changePercent / 100));
+        const latest = { date: marketMock.status.dataDate, open: previousClose, high: Math.max(previousClose, item.closePrice),
+          low: Math.min(previousClose, item.closePrice), close: item.closePrice, volume: null, turnover: null };
+        return { symbol: item.symbol, name: item.name, exchange: item.exchange, industry: item.industry,
+          ...buildBoardQuote(item.exchange, latest, { close: previousClose }),
+          forecasts: { t2: item.forecasts?.t2 ?? null, t5: item.forecasts?.t5 ?? null }, priceDataStatus: 'demo' };
+      });
+      return { date: marketMock.status.dataDate, items };
+    },
     async industries() { await delay(); return { items: [...new Set(marketMock.symbols.items.map((item) => item.industry).filter(Boolean))].sort() }; },
   },
   screener: {
@@ -431,13 +444,19 @@ export const mockApi = {
       const item = marketMock.symbols.items.find((row) => row.symbol === symbol);
       if (!item) { const error = new Error('Không tìm thấy mã cổ phiếu.'); error.status = 404; throw error; }
       const seed = [...symbol].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-      const points = Array.from({ length: 30 }, (_, index) => {
+      const points = Array.from({ length: 120 }, (_, index) => {
         const drift = ((index * (seed % 7 + 3)) % 17 - 8) / 100;
         const wave = Math.sin((index + seed) / 3) * 0.012;
-        const close = Math.round(item.closePrice * (0.91 + index * 0.003 + drift * 0.01 + wave));
-        return { date: new Date(Date.UTC(2026, 9, 7 - (29 - index) * 3)).toISOString().slice(0, 10), close };
+        const close = Math.round(item.closePrice * (0.85 + index * 0.0012 + drift * 0.01 + wave));
+        return { date: new Date(Date.UTC(2026, 9, 7 - (119 - index))).toISOString().slice(0, 10), close, volume: 1_000_000 + ((index * 7919) % 500_000) };
       });
       points[points.length - 1].close = item.closePrice;
+      points.forEach((bar, index) => {
+        bar.open = index ? points[index - 1].close : bar.close;
+        bar.high = Math.round(Math.max(bar.open, bar.close) * 1.01);
+        bar.low = Math.round(Math.min(bar.open, bar.close) * 0.99);
+        bar.turnover = bar.close * bar.volume;
+      });
       return { symbol, currency: 'VND', interval: '1d', sourceStatus: 'demo', latestDate: points.at(-1).date, items: points };
     },
     async news(symbol) {

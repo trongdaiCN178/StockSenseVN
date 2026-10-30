@@ -7,6 +7,8 @@
     "./access": "./src/access/roles.js",
     "./labels": "./src/labels/forecast.js",
     "./calc": "./src/calc/riskReward.js",
+    "./price-board": "./src/market/priceBoard.js",
+    "./indicators": "./src/market/indicators.js",
     "./password": "./src/auth/passwordPolicy.js"
   }
 }

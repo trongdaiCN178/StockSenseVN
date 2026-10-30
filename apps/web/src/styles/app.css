@@ -356,3 +356,43 @@ th.r .sort-button { text-align: right; }
 #root { min-height: 100%; }
 .login { min-height: 100vh; }
 a.brand { text-decoration: none; color: inherit; }
+
+/* Price board colours: ceiling (tím), floor (xanh lam), reference (vàng). */
+:root { --ceil: #8E3FB0; --floor: #0A7EA4; --ref: #A86B0C; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ceil: #D58BFF; --floor: #4FC8F0; --ref: #E3AE48; } }
+:root[data-theme="dark"] { --ceil: #D58BFF; --floor: #4FC8F0; --ref: #E3AE48; }
+.tone-ceiling { color: var(--ceil); } .tone-floor { color: var(--floor); } .tone-ref { color: var(--ref); }
+.tone-up { color: var(--up); } .tone-down { color: var(--down); } .tone-none { color: var(--muted); }
+.board-table td { padding: 7px 8px; } .board-table th { padding: 7px 8px; }
+.board-table .board-close { font-weight: 700; }
+.board-table .sym small { font-weight: 400; }
+.board-breadth { display: flex; gap: 12px; flex-wrap: wrap; font-weight: 600; }
+.board-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+.board-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: currentColor; margin-right: 5px; vertical-align: -1px; }
+.watch-dot { color: var(--warn); }
+
+/* Symbol detail: quote panel · candlestick chart · forecast column. */
+.quote-layout { display: grid; grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(240px, 300px); gap: 16px; align-items: start; }
+.quote-stats { display: grid; gap: 12px; }
+.quote-stats .kv { padding-top: 10px; border-top: 1px solid var(--line); }
+.quote-stats .limits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+.quote-stats .limits div { display: grid; gap: 2px; padding: 6px 4px; background: var(--surface-2); border-radius: var(--r-sm); }
+.quote-forecast { display: grid; gap: 12px; }
+.quote-forecast .fc { margin: 0; }
+.candle-chart { display: grid; gap: 6px; }
+.candle-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+.candle-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.candle-legend b { color: var(--ink); font-weight: 600; }
+.candle-main { height: 420px; }
+.candle-sub { height: 110px; }
+.candle-sub-title { font-size: 11px; color: var(--muted); font-family: var(--f-num); }
+@media (max-width: 1280px) {
+  .quote-layout { grid-template-columns: minmax(220px, 260px) minmax(0, 1fr); }
+  .quote-forecast { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quote-forecast .card-h, .quote-forecast .note, .quote-forecast .disc, .quote-forecast > .small { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  .quote-layout, .quote-forecast { grid-template-columns: minmax(0, 1fr); }
+  .quote-stats { order: 2; }
+  .candle-main { height: 320px; }
+}

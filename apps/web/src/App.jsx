@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useAuth } from './auth/AuthContext.jsx';
 import { LoginPage } from './features/auth/LoginPage.jsx';
 import { OverviewPage } from './features/market-overview/OverviewPage.jsx';
 import { AppShell } from './app/AppShell.jsx';
 import { RequireCapability } from './app/RequireCapability.jsx';
 import { navigate } from './app/navigation.js';
-import { SymbolDetailPage } from './features/symbol-detail/SymbolDetailPage.jsx';
+// The candlestick chart library is only loaded when a symbol page is opened.
+const SymbolDetailPage = lazy(() => import('./features/symbol-detail/SymbolDetailPage.jsx').then((module) => ({ default: module.SymbolDetailPage })));
+import { PriceBoardPage } from './features/price-board/PriceBoardPage.jsx';
 import { ChangePasswordPage } from './features/auth/ChangePasswordPage.jsx';
 import { AdminUsersPage } from './features/admin/AdminUsersPage.jsx';
 import { AdminJobsPage } from './features/admin/AdminJobsPage.jsx';
@@ -85,6 +87,7 @@ export function App() {
   const symbolMatch = pathname.match(/^\/symbols\/([A-Za-z0-9.-]+)\/?$/);
   const isOverview = pathname === '/' || pathname === '/overview';
   const routes = {
+    '/board': ['symbols.read', PriceBoardPage],
     '/watchlist': ['watchlist.manage.self', WatchlistPage],
     '/alerts': ['alerts.inbox.read.self', AlertsPage],
     '/screener': ['screener.read', ScreenerPage],
@@ -99,7 +102,7 @@ export function App() {
   return (
     <AppShell>
       {symbolMatch ? (
-        <RequireCapability capability="symbols.read"><SymbolDetailPage symbol={decodeURIComponent(symbolMatch[1]).toUpperCase()} /></RequireCapability>
+        <RequireCapability capability="symbols.read"><Suspense fallback={<main className="content"><div className="card muted">Đang tải…</div></main>}><SymbolDetailPage symbol={decodeURIComponent(symbolMatch[1]).toUpperCase()} /></Suspense></RequireCapability>
       ) : pathname === '/settings' || pathname.startsWith('/settings/') ? (
         <TabbedHub title="Cài đặt" description="Kênh nhận cảnh báo, hồ sơ đầu tư và tài khoản của bạn." tabs={SETTINGS_TABS} pathname={pathname} />
       ) : pathname === '/admin' || pathname.startsWith('/admin/') ? (

@@ -30,6 +30,7 @@ export const realApi = {
   market: {
     status: () => request('/market/status'),
     summary: () => request('/market/summary'),
+    board: () => request('/market/board'),
     symbols: () => request('/symbols'),
     industries: () => request('/industries'),
   },

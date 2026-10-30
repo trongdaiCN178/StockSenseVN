@@ -11,6 +11,7 @@ const canAdmin = (role) => ADMIN_CAPABILITIES.some((capability) => hasCapability
 // Navigation grouped as in the HTML prototype. `match` lists the routes that keep the item highlighted.
 const NAV = [
   { group: 'Thị trường', label: 'Tổng quan', icon: 'home', path: '/overview', match: ['/', '/overview', '/symbols/'], allow: (role) => hasCapability(role, 'symbols.read') },
+  { group: 'Thị trường', label: 'Bảng giá', icon: 'board', path: '/board', allow: (role) => hasCapability(role, 'symbols.read') },
   { group: 'Thị trường', label: 'Screener', icon: 'filter', path: '/screener', allow: (role) => hasCapability(role, 'screener.read') },
   { group: 'Thị trường', label: 'Watchlist & cảnh báo', icon: 'star', path: '/watchlist', match: ['/watchlist', '/alerts'], allow: (role) => hasCapability(role, 'watchlist.manage.self') },
   { group: 'Của tôi', label: 'Portfolio', icon: 'pie', path: '/portfolio', allow: (role) => hasCapability(role, 'portfolio.manage.self') },

@@ -1,6 +1,10 @@
 import { marketMock } from '../../../../mocks/market.js';
+import { buildBoardQuote } from '@stocksense/core/price-board';
 
 const number = (value) => value === null || value === undefined ? null : Number(value);
+// Months of daily bars returned for each chart range.
+const RANGE_MONTHS = { '1m': 1, '3m': 3, '6m': 6, '1y': 12, all: 600 };
+export const PRICE_RANGES = Object.keys(RANGE_MONTHS);
 
 export function createFixtureMarketRepository() {
   const bySymbol = (symbol) => marketMock.symbols.items.find((item) => item.symbol === symbol.toUpperCase());
@@ -27,18 +31,36 @@ export function createFixtureMarketRepository() {
     },
     async industries() { return { items: [...new Set(marketMock.symbols.items.map((item) => item.industry).filter(Boolean))].sort() }; },
     async symbol(symbol) { return structuredClone(bySymbol(symbol) ?? null); },
+    // End-of-day board built from the fixture close and change (no previous bar in fixtures).
+    async board() {
+      const items = marketMock.symbols.items.map((item) => {
+        const previousClose = Math.round(item.closePrice / (1 + item.changePercent / 100));
+        const latest = { date: marketMock.status.dataDate, open: previousClose, high: Math.max(previousClose, item.closePrice),
+          low: Math.min(previousClose, item.closePrice), close: item.closePrice, volume: null, turnover: null };
+        return { symbol: item.symbol, name: item.name, exchange: item.exchange, industry: item.industry,
+          ...buildBoardQuote(item.exchange, latest, { close: previousClose }),
+          forecasts: { t2: item.forecasts?.t2 ?? null, t5: item.forecasts?.t5 ?? null }, priceDataStatus: 'demo' };
+      });
+      return { date: marketMock.status.dataDate, items };
+    },
     async prices(symbol, range = '3m') {
       const item = bySymbol(symbol);
       if (!item) return null;
-      const count = range === '1m' ? 10 : range === '6m' ? 60 : 30;
+      const count = Math.min(RANGE_MONTHS[range] ?? 3, 12) * 20;
       const seed = [...symbol].reduce((sum, char) => sum + char.charCodeAt(0), 0);
       const items = Array.from({ length: count }, (_, index) => {
         const drift = ((index * (seed % 7 + 3)) % 17 - 8) / 100;
         const wave = Math.sin((index + seed) / 3) * 0.012;
         const close = Math.round(item.closePrice * (0.91 + index * 0.003 + drift * 0.01 + wave));
-        return { date: new Date(Date.UTC(2026, 9, 7 - (count - 1 - index) * 3)).toISOString().slice(0, 10), close, volume: 1_000_000 + index * 127 };
+        return { date: new Date(Date.UTC(2026, 9, 7 - (count - 1 - index))).toISOString().slice(0, 10), close, volume: 1_000_000 + index * 127 };
       });
       items.at(-1).close = item.closePrice;
+      items.forEach((bar, index) => {
+        bar.open = index ? items[index - 1].close : bar.close;
+        bar.high = Math.max(bar.open, bar.close);
+        bar.low = Math.min(bar.open, bar.close);
+        bar.turnover = bar.close * bar.volume;
+      });
         return { symbol: symbol.toUpperCase(), currency: 'VND', interval: '1d', sourceStatus: 'demo', latestDate: items.at(-1).date, items };
     },
     async news(symbol) {
@@ -147,9 +169,43 @@ export function createPostgresMarketRepository(pool) {
       return { items: rows.map((row) => row.industry) };
     },
     symbol: readSymbol,
+    // End-of-day price board: last two bars per enabled symbol give reference, ceiling and floor.
+    async board() {
+      const { rows } = await pool.query(`WITH latest AS (SELECT id FROM market_batches ORDER BY data_date DESC, id DESC LIMIT 1)
+        SELECT s.symbol, s.name, s.exchange, s.industry, bars.items AS bars,
+          f2.label AS t2_label, f2.probability_up AS t2_up, f2.probability_hold AS t2_hold, f2.probability_down AS t2_down, f2.confidence AS t2_confidence,
+          f5.label AS t5_label, f5.probability_up AS t5_up, f5.probability_hold AS t5_hold, f5.probability_down AS t5_down, f5.confidence AS t5_confidence
+        FROM symbols s
+        LEFT JOIN latest ON true
+        LEFT JOIN forecasts f2 ON f2.symbol = s.symbol AND f2.batch_id = latest.id AND f2.horizon = 't2'
+        LEFT JOIN forecasts f5 ON f5.symbol = s.symbol AND f5.batch_id = latest.id AND f5.horizon = 't5'
+        LEFT JOIN LATERAL (
+          SELECT json_agg(bar ORDER BY bar.date DESC) AS items FROM (
+            SELECT p.trade_date::text AS date, p.open, p.high, p.low, p.close, p.volume, p.turnover, p.source
+            FROM daily_prices p
+            WHERE p.symbol = s.symbol
+              AND (p.source = 'ssi' OR NOT EXISTS (SELECT 1 FROM daily_prices real WHERE real.symbol = p.symbol AND real.source = 'ssi'))
+            ORDER BY p.trade_date DESC LIMIT 2
+          ) bar
+        ) bars ON true
+        WHERE s.is_enabled = true AND bars.items IS NOT NULL
+        ORDER BY s.symbol`);
+      const toBar = (bar) => bar && { date: bar.date, open: number(bar.open), high: number(bar.high), low: number(bar.low),
+        close: number(bar.close), volume: number(bar.volume), turnover: number(bar.turnover) };
+      const forecast = (row, h) => (row[`${h}_label`] ? { label: row[`${h}_label`], confidence: row[`${h}_confidence`],
+        probabilities: { up: number(row[`${h}_up`]), hold: number(row[`${h}_hold`]), down: number(row[`${h}_down`]) } } : null);
+      const items = rows.map((row) => ({
+        symbol: row.symbol, name: row.name, exchange: row.exchange, industry: row.industry,
+        ...buildBoardQuote(row.exchange, toBar(row.bars[0]), toBar(row.bars[1])),
+        forecasts: { t2: forecast(row, 't2'), t5: forecast(row, 't5') },
+        priceDataStatus: row.bars[0].source === 'ssi' ? 'live' : 'demo',
+      }));
+      const date = items.reduce((max, item) => (item.date && item.date > max ? item.date : max), '');
+      return { date: date || null, items };
+    },
     async prices(symbol, range = '3m') {
-      const monthCount = range === '1m' ? 1 : range === '6m' ? 6 : 3;
-      const { rows } = await pool.query(`SELECT p.symbol, p.trade_date::text AS date, p.close, p.volume, p.source
+      const monthCount = RANGE_MONTHS[range] ?? 3;
+      const { rows } = await pool.query(`SELECT p.symbol, p.trade_date::text AS date, p.open, p.high, p.low, p.close, p.volume, p.turnover, p.source
         FROM daily_prices p
         WHERE p.symbol = $1 AND p.trade_date >= (timezone('Asia/Ho_Chi_Minh', now())::date - ($2::integer * interval '1 month'))::date
           -- Once real SSI bars exist for a symbol, seeded demo bars are hidden so the chart never mixes price scales.
@@ -161,7 +217,8 @@ export function createPostgresMarketRepository(pool) {
       return {
         symbol: rows[0].symbol, currency: 'VND', interval: '1d', sourceStatus,
         latestDate: rows.at(-1).date,
-        items: rows.map((row) => ({ date: row.date, close: number(row.close), volume: number(row.volume) })),
+        items: rows.map((row) => ({ date: row.date, open: number(row.open), high: number(row.high), low: number(row.low),
+          close: number(row.close), volume: number(row.volume), turnover: number(row.turnover) })),
       };
     },
     async news(symbol) {
