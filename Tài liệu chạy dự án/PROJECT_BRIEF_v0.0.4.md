@@ -14,7 +14,7 @@
 | 0.0.1 | 7/10/2026 | Hoang Minh Tuan | Khởi tạo tài liệu. |
 | 0.0.2 | 8/10/2026 | Hoang Minh Tuan | Mở rộng phạm vi: thêm vòng quyết định, Chat, PDF, thông báo, mobile; chia 3 giai đoạn; thống nhất tên IDSS. |
 | 0.0.3 | 09/10/2026 | Tran Trong Dai | Đồng bộ với PRD v0.0.3 |
-| 0.0.4 | 29/10/2026 | Tran Trong Dai | Bổ sung luồng đăng ký và vòng đời tài khoản vào phạm vi; đồng bộ PRD v0.0.4, SDD v0.0.5. Rà soát 30/10/2026: thống nhất tên nhãn Tăng / Đi ngang / Giảm; Screener lưu bộ lọc cho trader, analyst; Journal liên kết Trade Plan đã đóng hoặc ghi thủ công; PDF Journal cho trader, analyst; phạm vi mã gồm một số mã UPCoM thanh khoản cao; thông báo trên mobile qua danh sách trong app và email/Telegram; ghi ngăn xếp kỹ thuật đã triển khai. |
+| 0.0.4 | 29/10/2026 | Tran Trong Dai | Bổ sung luồng đăng ký và vòng đời tài khoản vào phạm vi; đồng bộ PRD v0.0.4, SDD v0.0.5. Rà soát 30/10/2026: thống nhất tên nhãn Tăng / Đi ngang / Giảm; Screener lưu bộ lọc cho trader, analyst; Journal liên kết Trade Plan đã đóng hoặc ghi thủ công; PDF Journal cho trader, analyst; phạm vi mã gồm một số mã UPCoM thanh khoản cao; thông báo trên mobile qua danh sách trong app và email/Telegram; ghi ngăn xếp kỹ thuật. |
 
 # Tổng quan dự án
 
