@@ -27,6 +27,7 @@ import { RegisterPage } from './features/auth/RegisterPage.jsx';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage.jsx';
 import { AccountPage } from './features/settings/AccountPage.jsx';
 import { AdminRoleRequestsPage } from './features/admin/AdminRoleRequestsPage.jsx';
+import { AdminChatLogPage } from './features/admin/AdminChatLogPage.jsx';
 import { AlertsPage } from './features/alerts/AlertsPage.jsx';
 import { TabbedHub } from './app/TabbedHub.jsx';
 
@@ -42,6 +43,7 @@ const ADMIN_TABS = [
   { path: '/admin/jobs', label: 'Nguồn dữ liệu & job', capability: 'admin.jobs.read', component: AdminJobsPage },
   { path: '/admin/notifications', label: 'Nhật ký thông báo', capability: 'admin.notifications.read', component: AdminNotificationsPage },
   { path: '/admin/ops-events', label: 'Sự kiện vận hành', capability: 'admin.ops-events.read', component: AdminOpsEventsPage },
+  { path: '/admin/chat-log', label: 'Nhật ký Chat', capability: 'admin.chat-log.read.redacted', component: AdminChatLogPage },
 ];
 
 function usePathname() {

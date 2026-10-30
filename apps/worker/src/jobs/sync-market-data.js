@@ -1,6 +1,7 @@
 import { createPriceCrossingAlerts, createTradePlanAlerts, expireTradePlans, pruneAlertHistory } from './price-alerts.js';
 
 const LOCK_KEY = 'stocksense:daily-prices:ssi:v1';
+const MARKET_INDICES = ['VNINDEX', 'HNXINDEX', 'VN30'];
 
 export async function syncMarketData({ pool, provider, startDate, endDate, logger = console }) {
   const client = await pool.connect();
@@ -46,6 +47,20 @@ export async function syncMarketData({ pool, provider, startDate, endDate, logge
       } catch (error) {
         errors.push(`${symbol}: ${safeMessage(error)}`);
         logger.error(`[StockSense worker] ${symbol}: ${safeMessage(error)}`);
+      }
+    }
+
+    // FR-M1-06: market indices for the overview strip; an index failure only makes the run partial.
+    if (provider.fetchIndexHistory) {
+      for (const code of MARKET_INDICES) {
+        try {
+          const records = await provider.fetchIndexHistory(code, startDate, endDate);
+          const written = await upsertIndexRecords(client, records, code);
+          logger.info(`[StockSense worker] ${code}: ${written} index rows upserted.`);
+        } catch (error) {
+          errors.push(`${code}: ${safeMessage(error)}`);
+          logger.error(`[StockSense worker] ${code}: ${safeMessage(error)}`);
+        }
       }
     }
 
@@ -98,6 +113,22 @@ async function upsertRecords(client, records, symbol, startDate, endDate) {
       ON CONFLICT (symbol, trade_date) DO UPDATE SET open=EXCLUDED.open, high=EXCLUDED.high,
         low=EXCLUDED.low, close=EXCLUDED.close, volume=EXCLUDED.volume,
         turnover=EXCLUDED.turnover, source=EXCLUDED.source`, params);
+    count += result.rowCount;
+  }
+  return count;
+}
+
+async function upsertIndexRecords(client, records, code) {
+  let count = 0;
+  for (const row of records) {
+    if (row.code !== code) throw new Error(`SSI returned a mismatched index row for ${code}.`);
+    const result = await client.query(`INSERT INTO market_index_daily
+      (code, trade_date, open, high, low, close, change_points, change_percent, volume, turnover, source)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'ssi')
+      ON CONFLICT (code, trade_date) DO UPDATE SET open=EXCLUDED.open, high=EXCLUDED.high, low=EXCLUDED.low,
+        close=EXCLUDED.close, change_points=EXCLUDED.change_points, change_percent=EXCLUDED.change_percent,
+        volume=EXCLUDED.volume, turnover=EXCLUDED.turnover, source=EXCLUDED.source`,
+    [row.code, row.tradeDate, row.open, row.high, row.low, row.close, row.changePoints, row.changePercent, row.volume, row.turnover]);
     count += result.rowCount;
   }
   return count;

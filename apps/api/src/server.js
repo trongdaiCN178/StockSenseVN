@@ -20,6 +20,7 @@ import { createJournalRepository, validateJournalUpdate, validateManualJournal }
 import { createInvestmentProfileRepository, validateInvestmentProfile } from './profile/repository.js';
 import { createAccountRepository } from './profile/account-repository.js';
 import { createChatRepository, validateChatSession } from './chat/repository.js';
+import { createChatAssistant } from './chat/assistant.js';
 import { createNotificationPreferencesRepository, createNotificationChannelsRepository, validateNotificationPreferences, hashVerificationCode } from './notifications/repository.js';
 import { emailProviderConfigured, telegramProviderConfigured, sendVerificationEmail, sendPasswordResetEmail, sendRegistrationVerificationEmail, sendAccountAlreadyExistsEmail, sendTestEmail, sendTelegramMessage } from './notifications/providers.js';
 import { ApiError } from './errors.js';
@@ -54,6 +55,7 @@ const journal = databaseEnabled ? createJournalRepository(pool) : null;
 const investmentProfiles = databaseEnabled ? createInvestmentProfileRepository(pool) : null;
 const account = databaseEnabled ? createAccountRepository(pool) : null;
 const chat = databaseEnabled ? createChatRepository(pool) : null;
+const chatAssistant = createChatAssistant({ market, portfolios, plans, journal, watchlist: personalMarketTools });
 const notificationPreferences = databaseEnabled ? createNotificationPreferencesRepository(pool) : null;
 const notificationChannels = databaseEnabled ? createNotificationChannelsRepository(pool) : null;
 const sessions = new Map();
@@ -523,7 +525,16 @@ app.post('/api/v1/chat/sessions/:sessionId/messages', { preHandler: [requireCapa
   const content = request.body?.content;
   if (typeof content !== 'string' || !content.trim() || content.trim().length > 8000) return fail(reply, request, 422, 'VALIDATION_ERROR', 'Message must contain 1 to 8000 characters.');
   await chat.assertSession(request.user.id, request.params.sessionId);
-  return fail(reply, request, 503, 'CHAT_MODEL_NOT_READY', 'Chat inference is unavailable until the approved ONNX model and safety pipeline are configured. The message was not stored.');
+  const question = content.trim();
+  const answer = await chatAssistant.answer({ user: request.user, question });
+  return envelope(await chat.addExchange(request.user.id, request.params.sessionId, question, answer));
+});
+// FR-M12-07: chat log for analysts and admins, personal content masked.
+app.get('/api/v1/admin/chat-log', { preHandler: [requireCapability('admin.chat-log.read.redacted'), requireChatStore] }, async (request, reply) => {
+  const limit = Number(request.query.limit ?? 100);
+  const status = request.query.status ?? '';
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500 || !['', 'complete', 'blocked'].includes(status)) return fail(reply, request, 422, 'VALIDATION_ERROR', 'Bộ lọc nhật ký Chat không hợp lệ.');
+  return envelope(await chat.listLog({ limit, status }));
 });
 app.delete('/api/v1/chat/sessions/:sessionId', { preHandler: [requireCapability('chat.use.self'), requireChatStore] }, async (request, reply) => {
   if (!/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(request.params.sessionId)) return fail(reply, request, 422, 'VALIDATION_ERROR', 'Invalid chat session id.');

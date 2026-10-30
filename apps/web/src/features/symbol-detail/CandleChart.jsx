@@ -25,14 +25,14 @@ function baseOptions(colors, { showTime = true } = {}) {
 }
 
 // FR-M2-06: candlestick chart (TradingView Lightweight Charts) with volume, moving averages, RSI and MACD.
-export function CandleChart({ bars = [] }) {
+export function CandleChart({ bars = [], newsDays = [] }) {
   const mainRef = useRef(null);
   const rsiRef = useRef(null);
   const macdRef = useRef(null);
   const chartRef = useRef(null);
   const [barInterval, setBarInterval] = useState('day');
   const [range, setRange] = useState('6m');
-  const [show, setShow] = useState({ ma20: true, ma50: true, rsi: true, macd: true });
+  const [show, setShow] = useState({ ma20: true, ma50: true, news: true, rsi: true, macd: true });
   const [hover, setHover] = useState(null);
 
   const data = useMemo(() => aggregateBars(bars.filter((bar) => bar.open != null && bar.high != null && bar.low != null), barInterval), [bars, barInterval]);
@@ -48,6 +48,7 @@ export function CandleChart({ bars = [] }) {
     const candles = main.addCandlestickSeries({ upColor: colors.up, downColor: colors.down, wickUpColor: colors.up, wickDownColor: colors.down, borderVisible: false });
     candles.setData(data.map((bar) => ({ time: bar.date, open: bar.open, high: bar.high, low: bar.low, close: bar.close })));
     candles.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.26 } });
+    if (show.news) candles.setMarkers(newsMarkers(data, newsDays, barInterval, colors.accent));
     const volume = main.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'volume', lastValueVisible: false, priceLineVisible: false });
     volume.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
     volume.setData(data.map((bar, i) => ({ time: bar.date, value: bar.volume ?? 0, color: `${i && bar.close < data[i - 1].close ? colors.down : colors.up}66` })));
@@ -88,7 +89,7 @@ export function CandleChart({ bars = [] }) {
     return () => { chartRef.current = null; charts.forEach((chart) => chart.remove()); };
     // `range` is applied separately so changing it does not rebuild the charts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, show]);
+  }, [data, show, newsDays]);
 
   useEffect(() => { if (chartRef.current) applyRange(chartRef.current, data, range); }, [range, data]);
 
@@ -101,7 +102,7 @@ export function CandleChart({ bars = [] }) {
     <div className="candle-toolbar">
       <div className="seg" role="group" aria-label="Khung thời gian">{INTERVALS.map(([value, label]) => <button key={value} type="button" className={barInterval === value ? 'on' : ''} onClick={() => setBarInterval(value)}>{label}</button>)}</div>
       <div className="seg" role="group" aria-label="Khoảng hiển thị">{RANGES.map(([value, label]) => <button key={value} type="button" className={range === value ? 'on' : ''} onClick={() => setRange(value)}>{label}</button>)}</div>
-      <div className="seg" role="group" aria-label="Chỉ báo">{[['ma20', 'MA20'], ['ma50', 'MA50'], ['rsi', 'RSI'], ['macd', 'MACD']].map(([key, label]) => <button key={key} type="button" aria-pressed={show[key]} className={show[key] ? 'on' : ''} onClick={() => setShow((current) => ({ ...current, [key]: !current[key] }))}>{label}</button>)}</div>
+      <div className="seg" role="group" aria-label="Chỉ báo">{[['ma20', 'MA20'], ['ma50', 'MA50'], ['news', 'Tin'], ['rsi', 'RSI'], ['macd', 'MACD']].map(([key, label]) => <button key={key} type="button" aria-pressed={show[key]} className={show[key] ? 'on' : ''} onClick={() => setShow((current) => ({ ...current, [key]: !current[key] }))}>{label}</button>)}</div>
     </div>
     <div className="candle-legend num">
       <span>{new Date(`${last.date}T00:00:00`).toLocaleDateString('vi-VN')}</span>
@@ -114,6 +115,20 @@ export function CandleChart({ bars = [] }) {
     {show.rsi && <><div className="candle-sub-title">RSI (14)</div><div ref={rsiRef} className="candle-sub" /></>}
     {show.macd && <><div className="candle-sub-title">MACD (12, 26, 9) <span style={{ color: '#2962FF' }}>MACD</span> <span style={{ color: '#FF6D00' }}>Signal</span></div><div ref={macdRef} className="candle-sub" /></>}
   </div>;
+}
+
+// FR-M2-06: mark sessions that have linked news. newsDays holds the session each article counts for
+// (articles after 15:00 count for the next session); weekly/monthly bars collect the news inside them.
+function newsMarkers(data, newsDays, interval, color) {
+  const counts = new Map();
+  for (const day of newsDays) {
+    const index = interval === 'day'
+      ? data.findIndex((bar) => bar.date >= day)
+      : data.findLastIndex((bar) => bar.date <= day);
+    if (index >= 0) counts.set(data[index].date, (counts.get(data[index].date) ?? 0) + 1);
+  }
+  return [...counts].sort(([a], [b]) => a.localeCompare(b))
+    .map(([time, count]) => ({ time, position: 'belowBar', color, shape: 'circle', text: `${count} tin` }));
 }
 
 function applyRange(chart, data, range) {

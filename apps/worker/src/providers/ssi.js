@@ -1,9 +1,18 @@
 const HISTORY_URL = 'https://iboard-api.ssi.com.vn/statistics/company/ssmi/stock-info';
 
 export function createSsiProvider({ fetchImpl = fetch, timeoutMs = 20_000 } = {}) {
-  return { fetchHistory };
+  return { fetchHistory, fetchIndexHistory };
 
   async function fetchHistory(symbol, startDate, endDate) {
+    return fetchPages(symbol, startDate, endDate, (row) => normalizeRow(symbol, row));
+  }
+
+  // Index rows (VNINDEX, HNXINDEX, VN30) carry their values in the non-"Raw" fields.
+  async function fetchIndexHistory(code, startDate, endDate) {
+    return fetchPages(code, startDate, endDate, (row) => normalizeIndexRow(code, row));
+  }
+
+  async function fetchPages(symbol, startDate, endDate, normalize) {
     const rows = [];
     let page = 1;
     let expectedTotal = Infinity;
@@ -25,7 +34,7 @@ export function createSsiProvider({ fetchImpl = fetch, timeoutMs = 20_000 } = {}
         throw new Error(`SSI history for ${symbol} ended before all pages were returned.`);
       }
 
-      rows.push(...payload.data.map((row) => normalizeRow(symbol, row)).filter(Boolean));
+      rows.push(...payload.data.map(normalize).filter(Boolean));
       expectedTotal = payload.paging.total;
       if (rows.length >= expectedTotal) break;
       page += 1;
@@ -62,6 +71,26 @@ function normalizeRow(symbol, row) {
     high: optionalPositiveNumber(row.highRaw),
     low: optionalPositiveNumber(row.lowRaw),
     close,
+    volume: optionalInteger(row.totalMatchVol),
+    turnover: optionalNonNegativeNumber(row.totalMatchVal),
+  };
+}
+
+function normalizeIndexRow(code, row) {
+  const tradeDate = parseSsiDate(row?.tradingDate);
+  const close = positiveNumber(row?.close);
+  if (!tradeDate || !close) throw new Error(`SSI returned invalid index data for ${code}.`);
+  const change = Number(row.priceChanged);
+  const percent = Number(row.perPriceChange);
+  return {
+    code,
+    tradeDate,
+    open: optionalPositiveNumber(row.open),
+    high: optionalPositiveNumber(row.high),
+    low: optionalPositiveNumber(row.low),
+    close,
+    changePoints: Number.isFinite(change) ? change : null,
+    changePercent: Number.isFinite(percent) ? percent : null,
     volume: optionalInteger(row.totalMatchVol),
     turnover: optionalNonNegativeNumber(row.totalMatchVal),
   };

@@ -1,6 +1,6 @@
 # Báo cáo tiến độ: StockSense VN so với PRD v0.0.4 / SDD v0.0.5
 
-Ngày lập: 25/10/2026 · **Cập nhật lần cuối: 29/10/2026 (PRD v0.0.4 bổ sung 8 FR luồng đăng ký FR-M0-08..15, tổng FR tăng từ 107 lên 115).**
+Ngày lập: 25/10/2026 · **Cập nhật lần cuối: 30/10/2026 (Chat chế độ không dùng mô hình ngôn ngữ, chỉ số thị trường thật, lịch nghỉ lễ, trạng thái dữ liệu; bảng giá và biểu đồ nến).**
 
 Phạm vi: đối chiếu toàn bộ **115 yêu cầu chức năng (FR-M0 → FR-M14)** trong `PRODUCT_REQUIREMENTS_DOCUMENT_v0.0.4.md` với code trong `apps/` và `packages/`. Yêu cầu phi chức năng (NFR), kiến trúc trong SDD và các tài liệu đề xuất bổ sung không được tính vào tỷ lệ phần trăm.
 
@@ -8,13 +8,15 @@ Phạm vi: đối chiếu toàn bộ **115 yêu cầu chức năng (FR-M0 → FR
 
 Cách chấm từng FR: **Đạt = 1 điểm**, **Một phần = 0,5 điểm**, **Chưa làm = 0 điểm**. Chức năng có giao diện nhưng chạy trên dữ liệu dự báo mẫu (seed) được chấm là **Một phần**, vì PRD yêu cầu dự báo thật.
 
-| Chỉ số | Trước (25/10, PRD 0.0.3) | 26/10 (PRD 0.0.3) | **Hiện tại (29/10, PRD 0.0.4)** |
-| --- | --- | --- | --- |
-| **Mức hoàn thành toàn bộ PRD (M0–M14)** | 41 / 107 ≈ 38% | 54 / 107 ≈ 50% | **60,5 / 115 ≈ 53%** |
-| Không tính app mobile M14 (giai đoạn 3) | 41 / 102 ≈ 40% | 54 / 102 ≈ 53% | **60,5 / 110 ≈ 55%** |
-| Số FR đạt đầy đủ | 21 | 43 | **49** |
-| Số FR làm một phần | 40 | 22 | **23** |
-| Số FR chưa làm | 46 | 42 | **43** |
+| Chỉ số | Trước (25/10, PRD 0.0.3) | 26/10 (PRD 0.0.3) | 29/10 (PRD 0.0.4) | **Hiện tại (30/10, PRD 0.0.4)** |
+| --- | --- | --- | --- | --- |
+| **Mức hoàn thành toàn bộ PRD (M0–M14)** | 41 / 107 ≈ 38% | 54 / 107 ≈ 50% | 60,5 / 115 ≈ 53% | **67 / 115 ≈ 58%** |
+| Không tính app mobile M14 (giai đoạn 3) | 41 / 102 ≈ 40% | 54 / 102 ≈ 53% | 60,5 / 110 ≈ 55% | **67 / 110 ≈ 61%** |
+| Số FR đạt đầy đủ | 21 | 43 | 49 | **54** |
+| Số FR làm một phần | 40 | 22 | 23 | **26** |
+| Số FR chưa làm | 46 | 42 | 43 | **35** |
+
+Đợt 30/10/2026: Chat trả lời theo dữ liệu (không dùng mô hình ngôn ngữ) đạt FR-M12-02, 03, 04, 05, 07 và một phần FR-M12-01, 08; FR-M2-03 lên một phần nhờ lịch nghỉ lễ. Ngoài PRD: trang Bảng giá cuối ngày và biểu đồ nến (yêu cầu bổ sung của nhóm), chưa có FR tương ứng.
 
 Luồng đăng ký đã được code từ trước nhưng chưa có trong PRD 0.0.3; khi đưa vào PRD 0.0.4 thành FR-M0-08..15 thì 6 FR đạt, FR-M0-10 một phần (chưa có đồng ý lại khi đổi phiên bản văn bản), FR-M0-15 (Should: TOTP, xác nhận email cơ quan, captcha…) chưa làm.
 
@@ -27,7 +29,7 @@ Luồng đăng ký đã được code từ trước nhưng chưa có trong PRD 0
 | --- | ---: | ---: | ---: | --- |
 | M0. Xác thực, đăng ký & tài khoản | 15 | 6,5 / 7 | **13,5 (90%)** | Đồng ý lại khi đổi phiên bản (FR-M0-10); TOTP, xác nhận email cơ quan, captcha, thư kết quả duyệt (FR-M0-15) |
 | M1. Market overview | 7 | 3,5 | **4 (57%)** | Lọc/sắp xếp theo dự báo, tỷ lệ nhãn, "tín hiệu đổi hôm nay" |
-| M2. Forecast card & chi tiết mã | 9 | 3 | **3 (33%)** | Toàn bộ phần dự báo |
+| M2. Forecast card & chi tiết mã | 9 | 3 | **3,5 (39%)** | Toàn bộ phần dự báo |
 | M3. Explainability | 4 | 0 | **0** | Toàn bộ |
 | M4. Tin tức & sentiment | 6 | 1,5 | **1,5 (25%)** | Chấm sentiment, biểu đồ cảm xúc, attention, cut-off |
 | M5. Watchlist & cảnh báo | 8 | 3,5 | **5,5 (69%)** | Cảnh báo đổi nhãn / ngưỡng xác suất |
@@ -37,10 +39,10 @@ Luồng đăng ký đã được code từ trước nhưng chưa có trong PRD 0
 | M9. Portfolio | 6 | 3 | **5 (83%)** | Tín hiệu T+2/T+5 cạnh vị thế |
 | M10. Trade Plan | 9 | 4,5 | **8 (89%)** | Snapshot dự báo, cảnh báo nhãn ngược |
 | M11. Journal | 7 | 3,5 | **4,5 (64%)** | So sánh quyết định với dự báo |
-| M12. Chat | 8 | 1 | **1 (13%)** | Mô hình ngôn ngữ và pipeline an toàn |
+| M12. Chat | 8 | 1 | **7 (88%)** | Trả lời "lý do"/hit rate (cần mô hình); bộ chống bịa đủ 50 + 20 câu chạy với mô hình ngôn ngữ thật |
 | M13. Báo cáo PDF | 6 | 3,5 | **4,5 (75%)** | Dự báo, giải thích, hit rate trong PDF |
 | M14. App mobile | 5 | 0 | **0** | Toàn bộ (giai đoạn 3) |
-| **Tổng** | **115** | **41 / 107** | **60,5 (≈ 53%)** | |
+| **Tổng** | **115** | **41 / 107** | **67 (≈ 58%)** | |
 
 ## 2. Những gì đã làm trong đợt 26/10/2026
 
@@ -134,17 +136,18 @@ Ký hiệu: ✅ Đạt · 🟡 Một phần · ❌ Chưa làm. Cột "Ghi chú" 
 | M1-03 Tín hiệu T+2/T+5 | 🟡 | Dữ liệu dự báo mẫu |
 | M1-04 Sắp xếp + tìm kiếm | 🟡 | Đã sắp xếp theo thanh khoản, %, giá; thiếu sắp xếp theo xác suất (cần AI) |
 | M1-05 Ngày dữ liệu, giờ cập nhật | ✅ | |
-| M1-06 Dải chỉ số, độ rộng, tỷ lệ theo nhãn | 🟡 | Tỷ lệ theo nhãn cần AI |
+| M1-06 Dải chỉ số, độ rộng, tỷ lệ theo nhãn | 🟡 | VN-Index, HNX-Index, VN30 thật từ SSI (market_index_daily); độ rộng tính trên 17 mã theo dõi; tỷ lệ theo nhãn cần AI |
 | M1-07 Tín hiệu đổi hôm nay | ❌ | Cần AI |
 
 ### M2. Forecast card & chi tiết mã — 3/9
 | FR | Mức | Ghi chú |
 | --- | --- | --- |
 | M2-01, M2-02 | 🟡 | Dữ liệu dự báo mẫu |
-| M2-03, M2-05, M2-08, M2-09 | ❌ | Phụ thuộc dự báo thật (ngày đáo hạn, T+5, tin cậy, rủi ro sai) |
+| M2-03 Thời điểm sinh, ngày T, ngày đáo hạn | 🟡 | Ngày đáo hạn đã bỏ qua cuối tuần và ngày nghỉ lễ (bảng market_holidays); dự báo vẫn là dữ liệu mẫu |
+| M2-05, M2-08, M2-09 | ❌ | Phụ thuộc dự báo thật (mâu thuẫn T+2/T+5, tin cậy, rủi ro sai) |
 | M2-04 Tuyên bố tham khảo | ✅ | |
-| M2-06 Biểu đồ 6 tháng có khối lượng | 🟡 | Đã có giá + khối lượng; đánh dấu "tin mạnh" cần sentiment |
-| M2-07 Trạng thái dữ liệu, độ tin cậy | 🟡 | Độ tin cậy cần AI |
+| M2-06 Biểu đồ 6 tháng có khối lượng | 🟡 | Biểu đồ nến 1 năm (Lightweight Charts) + khối lượng, MA, RSI, MACD; đánh dấu các phiên có tin (cut-off 15:00); "tin mạnh" cần sentiment |
+| M2-07 Trạng thái dữ liệu, độ tin cậy | 🟡 | Có cờ "dữ liệu cũ" và "thiếu tin"; "thiếu BCTC" chờ nguồn BCTC; độ tin cậy cần AI |
 
 ### M3. Explainability — 0/4
 M3-01 → M3-04: ❌, cần mô hình và SHAP/attention.
@@ -223,7 +226,16 @@ M6-01 → M6-07: ❌, cần dự báo thật.
 | M11-06 Thống kê tuần/tháng/quý | 🟡 | Đủ các chỉ số trừ "tỷ lệ làm theo tín hiệu" (cần AI) |
 
 ### M12. Chat — 1/8
-M12-06 (tuyên bố) ✅. Các FR còn lại ❌, cần mô hình ngôn ngữ và pipeline an toàn.
+| FR | Mức | Ghi chú |
+| --- | --- | --- |
+| M12-01 Trả lời về dự báo, lý do, tin tức, lịch sử, thuật ngữ | 🟡 | Trả lời giá, chỉ báo kỹ thuật, dự báo (mẫu), tin tức, thị trường, thuật ngữ, dữ liệu của chính người dùng; "lý do" và hit rate trả "Hệ thống không có dữ liệu này" vì cần mô hình |
+| M12-02 Chỉ dữ liệu hệ thống, trích dẫn, "Hệ thống không có dữ liệu này" | ✅ | Bộ trả lời rule-based-1 (apps/api/src/chat/assistant.js), nguồn bấm được tới màn hình hoặc bài gốc |
+| M12-03 Từ chối lệnh, khuyến nghị, giá mục tiêu | ✅ | Bộ chặn đầu vào, thông điệp cố định kèm gợi ý |
+| M12-04 Lọc đầu ra | ✅ | Chặn MUA/BÁN, "nên mua/bán", giá mục tiêu; ghi filter_result |
+| M12-05 Chỉ dữ liệu của chính người dùng | ✅ | Truy xuất qua repository theo user_id và capability; câu hỏi về người khác bị từ chối |
+| M12-06 Tuyên bố | ✅ | |
+| M12-07 Log 90 ngày, che nội dung cá nhân | ✅ | chat_messages lưu intent, engine, filter_result, personal (migration 021); trang Quản trị → Nhật ký Chat cho Analyst/Admin |
+| M12-08 Bộ chống bịa 50 + 20 câu | 🟡 | 45 kiểm thử tự động (20 câu có đáp án, 22 câu bẫy, cách ly dữ liệu, quyền, bộ lọc); chưa đủ 50 + 20 và chưa chạy với mô hình ngôn ngữ thật |
 
 ### M13. Báo cáo PDF — 4,5/6
 | FR | Mức | Ghi chú |
@@ -253,14 +265,15 @@ Ba tài liệu chính chỉ mô tả hệ thống cần xây; các điểm code 
 
 | Thiết kế | Hiện trạng code |
 | --- | --- |
-| Worker mô hình Python (sentiment, dự báo, giải thích, tái lập), bảng trading_calendar, financial_*, model_version, forecast_explanation, forecast_input, forecast_replay | Chưa có. Bảng `forecasts`, chỉ số thị trường và tỷ lệ nhãn là dữ liệu mẫu do `db:seed:demo` tạo; tin để sentiment trung tính |
+| Worker mô hình Python (sentiment, dự báo, giải thích, tái lập), bảng financial_*, model_version, forecast_explanation, forecast_input, forecast_replay | Chưa có. Bảng `forecasts` và tỷ lệ nhãn là dữ liệu mẫu do `db:seed:demo` tạo (chỉ số thị trường đã là dữ liệu thật); tin để sentiment trung tính |
 | Pipeline: giá → tin → sentiment → dự báo → cảnh báo → gửi thông báo | Chạy được giá → tin → cảnh báo mốc giá và Trade Plan → gửi thông báo; chưa có bước mô hình, cảnh báo đổi nhãn và ngưỡng xác suất |
-| Pipeline bỏ qua ngày nghỉ lễ theo trading_calendar | Chỉ chạy thứ Hai–thứ Sáu, chưa trừ ngày lễ |
-| Route cần mô hình: /symbols/{sym}/forecast, /sentiment, /history, /forecasts/{id}/audit, /inputs, /replays, /models/*, /model-versions, /admin/models, /admin/chat-log | Chưa có; trang Đánh giá mô hình hiện "Sắp có" |
-| Chat: chặn lệnh, truy xuất, mô hình ngôn ngữ, kiểm tra đầu ra | Có phiên và lịch sử; gửi câu hỏi trả 503 CHAT_MODEL_NOT_READY |
+| Pipeline bỏ qua ngày nghỉ lễ theo trading_calendar | Đã có bảng market_holidays (2025–2026 lấy từ các ngày VN-Index không có phiên, cộng 01/01/2027); cần bổ sung ngày lễ mỗi năm khi sàn công bố |
+| Route cần mô hình: /symbols/{sym}/forecast, /sentiment, /history, /forecasts/{id}/audit, /inputs, /replays, /models/*, /model-versions, /admin/models | Chưa có; trang Đánh giá mô hình hiện "Sắp có" |
+| Chat: chặn lệnh, truy xuất, mô hình ngôn ngữ, kiểm tra đầu ra | Chặn lệnh, truy xuất, kiểm tra đầu ra, log đã có; câu trả lời dựng bằng mẫu, chưa có mô hình ngôn ngữ diễn đạt |
 | API nhận Bearer token cho mobile | API chỉ nhận cookie; app mobile chưa làm (GĐ3) |
 | admin_audit_log có trigger CSDL từ chối UPDATE/DELETE; log tệp giữ 90 ngày | Chưa có trigger; API không có route sửa/xóa. Log chỉ ra console |
 | RLS là phương án tăng cường trước khi mở cho người dùng thật (D13) | Chưa bật RLS; cách ly bằng điều kiện user_id trong repository |
 | Triển khai công khai: Docker Compose đủ dịch vụ, reverse proxy HTTPS | Docker Compose mới có PostgreSQL; api, worker, web chạy bằng npm |
 | Quy tắc đăng ký BR-R09 (captcha), BR-R13 (xác nhận email cơ quan bằng thư, bản ghi đồng ý Điều khoản Analyst), BR-R15 (Admin nhập lại mật khẩu, chỉ email tổ chức, TOTP), BR-R18 (đồng ý lại khi đổi phiên bản) | Chưa làm (FR-M0-10 một phần, FR-M0-15) |
 | BR-R20 quy trình báo sự cố lộ lọt dữ liệu trong 72 giờ | Chưa xây dựng (quy trình vận hành, ngoài code) |
+| Trang Bảng giá (/board, GET /market/board) và biểu đồ nến trên trang chi tiết mã | Đã làm theo yêu cầu bổ sung của nhóm; chưa có trong PRD/SDD |

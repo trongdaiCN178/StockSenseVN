@@ -124,6 +124,7 @@ export const realApi = {
     ingestionRuns: () => request('/admin/ingestion-runs?limit=50'),
     notifications: () => request('/admin/notifications?limit=50'),
     opsEvents: () => request('/admin/ops-events?limit=50'),
+    chatLog: ({ status = '' } = {}) => request(`/admin/chat-log?limit=200&status=${encodeURIComponent(status)}`),
     jobs: () => request('/admin/jobs'),
     enqueueJob: (job) => request(`/admin/jobs/${encodeURIComponent(job)}/run`, { method: 'POST' }),
     roleRequests: {

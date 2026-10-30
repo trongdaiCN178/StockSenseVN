@@ -15,6 +15,7 @@ const LABEL_TEXT = { up: '▲ Tăng', hold: '● Đi ngang', down: '▼ Giảm' 
 function formatChange(value) {
   return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(2).replace('.', ',')}%`;
 }
+const formatDay = (iso) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('vi-VN') : '—');
 const changeClass = (value) => (value > 0 ? 'c-up' : value < 0 ? 'c-down' : 'c-hold');
 
 export function OverviewPage() {
@@ -83,8 +84,9 @@ export function OverviewPage() {
       {data.status.state === 'demo' && <span className="chip info">Dự báo đang là dữ liệu mẫu</span>}</div>
     <section className="strip">
       {['VNINDEX', 'HNX'].map((code) => { const item = index(code); return <div key={code}><div className="k">{item?.label ?? code}</div><div className="v num">{item ? number.format(item.value) : '—'}</div>
-        {item && <div className={`small num ${changeClass(item.changePoints)}`}>{item.changePoints >= 0 ? '▲' : '▼'} {item.changePoints > 0 ? '+' : ''}{number.format(item.changePoints)} ({formatChange(item.changePercent)})</div>}</div>; })}
-      <div><div className="k">Độ rộng thị trường</div><div className="v num" style={{ fontSize: 16 }}><span className="c-up">{breadth.advances}</span> · <span className="c-hold">{breadth.nochanges}</span> · <span className="c-down">{breadth.declines}</span></div>
+        {item && <div className={`small num ${changeClass(item.changePoints)}`}>{item.changePoints >= 0 ? '▲' : '▼'} {item.changePoints > 0 ? '+' : ''}{number.format(item.changePoints)} ({formatChange(item.changePercent)})</div>}
+          {item && <div className="small muted">{item.source === 'ssi' ? `SSI · ${formatDay(item.date)}` : 'Dữ liệu mẫu'}</div>}</div>; })}
+      <div><div className="k">Độ rộng {breadth.scope === 'tracked' ? `(${breadth.total} mã theo dõi)` : 'thị trường'}</div><div className="v num" style={{ fontSize: 16 }}><span className="c-up">{breadth.advances}</span> · <span className="c-hold">{breadth.nochanges}</span> · <span className="c-down">{breadth.declines}</span></div>
         <div className="breadth"><i className="bg-up" style={{ flex: breadth.advances }} /><i className="bg-hold" style={{ flex: breadth.nochanges }} /><i className="bg-down" style={{ flex: breadth.declines }} /></div></div>
       <div><div className="k">Tỷ lệ nhãn T+5 ({items.length || '—'} mã)</div>{canReadSymbols ? <><div className="v num" style={{ fontSize: 16 }}><span className="c-up">▲ {count('up')}</span> · <span className="c-hold">● {count('hold')}</span> · <span className="c-down">▼ {count('down')}</span></div>
         <div className="breadth"><i className="bg-up" style={{ flex: count('up') }} /><i className="bg-hold" style={{ flex: count('hold') }} /><i className="bg-down" style={{ flex: count('down') }} /></div></> : <div className="small muted">Không áp dụng cho vai trò này</div>}</div>

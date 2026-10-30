@@ -115,9 +115,11 @@ async function notifyAdmins(run, errorCode) {
 async function enqueueDailyPipeline() {
   const { rows } = await pool.query(`SELECT to_char(now() AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD') AS today,
     to_char(now() AT TIME ZONE 'Asia/Ho_Chi_Minh', 'HH24:MI') AS clock,
-    extract(isodow FROM now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::integer AS weekday`);
-  const { today, clock, weekday } = rows[0];
-  if (weekday > 5 || clock < SCHEDULE_TIME) return;
+    extract(isodow FROM now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::integer AS weekday,
+    EXISTS (SELECT 1 FROM market_holidays WHERE holiday = (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date) AS holiday`);
+  const { today, clock, weekday, holiday } = rows[0];
+  // No session on weekends or exchange holidays, so there is nothing to sync.
+  if (weekday > 5 || holiday || clock < SCHEDULE_TIME) return;
   for (const [index, jobKey] of DAILY_PIPELINE.entries()) {
     // ON CONFLICT also skips a day already scheduled and a job that an admin started manually.
     const inserted = await pool.query(`INSERT INTO admin_job_runs(job_key, scheduled_for, queued_at, payload)

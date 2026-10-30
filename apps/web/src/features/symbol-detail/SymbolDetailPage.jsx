@@ -45,6 +45,7 @@ export function SymbolDetailPage({ symbol }) {
   }, [symbol, canWatch]);
 
   const stats = useMemo(() => (data ? quoteStats(data.detail.exchange, data.prices.items) : null), [data]);
+  const newsDays = useMemo(() => (data ? data.news.items.map((item) => newsSession(item.publishedAt)) : []), [data]);
 
   // FR-M5-01: watchlist toggle from the symbol page.
   async function toggleWatch() {
@@ -120,15 +121,16 @@ export function SymbolDetailPage({ symbol }) {
           <dt>Sàn</dt><dd>{detail.exchange}</dd>
           <dt>Ngành</dt><dd>{detail.industry || '—'}</dd>
           <dt>Dữ liệu giá</dt><dd>{prices.sourceStatus === 'live' ? 'SSI, cuối ngày' : 'Minh họa'}</dd>
+          <dt>Trạng thái</dt><dd><DataStatusChips flags={detail.dataFlags} /></dd>
         </dl>
         <div className="small muted">Tham chiếu, trần, sàn của phiên gần nhất, tính từ phiên trước đó theo biên độ {detail.exchange === 'HOSE' ? '±7%' : detail.exchange === 'HNX' ? '±10%' : '±15%'} và bước giá của sàn.</div>
       </section>
       <section className="card chart"><div className="card-h"><h2>Biểu đồ giá</h2><span className="small muted">{prices.items.length} phiên · đến {formatDate(prices.latestDate)}</span></div>
-        <CandleChart bars={prices.items} /></section>
+        <CandleChart bars={prices.items} newsDays={newsDays} /></section>
       <section className="card quote-forecast"><div className="card-h"><h2>Dự báo xu hướng</h2></div>
         {conflict && <div className="note warn small"><b>Mâu thuẫn kỳ hạn:</b> T+2 {labelText[t2.label]}, T+5 {labelText[t5.label]}.</div>}
-        <ForecastCard horizon="t2" forecast={t2} dueDate={addTradingDays(status?.dataDate, 2)} />
-        <ForecastCard horizon="t5" forecast={t5} dueDate={addTradingDays(status?.dataDate, 5)} />
+        <ForecastCard horizon="t2" forecast={t2} dueDate={addTradingDays(status?.dataDate, 2, status?.holidays)} />
+        <ForecastCard horizon="t5" forecast={t5} dueDate={addTradingDays(status?.dataDate, 5, status?.holidays)} />
         {status?.state === 'demo' && <div className="small muted">Dự báo đang là dữ liệu mẫu.</div>}
         <Disclaimer />
       </section>
@@ -137,13 +139,13 @@ export function SymbolDetailPage({ symbol }) {
     {tab === 'fc' && <>
       {conflict && <div className="note warn"><b>Mâu thuẫn kỳ hạn.</b> T+2 dự báo {labelText[t2.label]}, T+5 dự báo {labelText[t5.label]}. Nên đọc cả hai thẻ trước khi quyết định.</div>}
       {status?.state === 'demo' && <div className="note info">Dự báo hiển thị là <b>dữ liệu mẫu</b> trong khi mô hình AI chưa triển khai; giá thị trường {prices.sourceStatus === 'live' ? 'lấy từ SSI' : 'là dữ liệu minh họa'}.</div>}
-      <div className="fcs"><ForecastCard horizon="t2" forecast={t2} dueDate={addTradingDays(status?.dataDate, 2)} /><ForecastCard horizon="t5" forecast={t5} dueDate={addTradingDays(status?.dataDate, 5)} /></div>
+      <div className="fcs"><ForecastCard horizon="t2" forecast={t2} dueDate={addTradingDays(status?.dataDate, 2, status?.holidays)} /><ForecastCard horizon="t5" forecast={t5} dueDate={addTradingDays(status?.dataDate, 5, status?.holidays)} /></div>
       <div className="grid g2">
         <section className="card"><div className="card-h"><h2>Tin mới nhất</h2><button className="btn sm" type="button" onClick={() => setTab('news')}>Xem tất cả</button></div>
           <div className="news">{news.items.slice(0, 3).map((item) => <NewsItem key={item.id} item={item} />)}{!news.items.length && <p className="muted">Chưa có tin tức cho mã {symbol}.</p>}</div></section>
         <section className="card"><div className="card-h"><h2>Trạng thái dữ liệu</h2></div>
-          <dl className="kv"><dt>Giá</dt><dd>{prices.sourceStatus === 'live' ? <span className="chip up">SSI · {formatDate(quote.date)}</span> : <span className="chip hold">Dữ liệu minh họa</span>}</dd>
-            <dt>Tin tức</dt><dd>{news.items.length ? <span className="chip up">{news.items.length} bài</span> : <span className="chip hold">Thiếu tin</span>}</dd>
+          <dl className="kv"><dt>Giá</dt><dd>{prices.sourceStatus !== 'live' ? <span className="chip hold">Dữ liệu minh họa</span> : detail.dataFlags?.stalePrice ? <span className="chip down">Dữ liệu cũ · {formatDate(quote.date)}</span> : <span className="chip up">SSI · {formatDate(quote.date)}</span>}</dd>
+            <dt>Tin tức</dt><dd>{detail.dataFlags?.missingNews ? <span className="chip hold">Thiếu tin 7 ngày gần nhất</span> : <span className="chip up">{news.items.length} bài</span>}</dd>
             <dt>Dự báo</dt><dd>{status?.state === 'demo' ? <span className="chip hold">Dữ liệu mẫu</span> : <span className="chip up">Mô hình {status?.modelVersion}</span>}</dd>
             <dt>Batch</dt><dd className="num">{status?.batchCompletedAt ? dateTime.format(new Date(status.batchCompletedAt)) : '—'}</dd></dl>
           <div className="small muted" style={{ marginTop: 12 }}>Phần “Vì sao?” và “Điều gì có thể làm dự báo sai” sẽ có khi mô hình AI và giải thích (SHAP) sẵn sàng.</div></section>
@@ -171,6 +173,27 @@ export function SymbolDetailPage({ symbol }) {
           {!stats.history.length && <tr><td colSpan="9" className="muted">Chưa có dữ liệu giá.</td></tr>}</tbody></table></div>
     </section>}
   </main>;
+}
+
+// FR-M4-06 cut-off: an article published after 15:00 (ICT) counts for the next session.
+function newsSession(publishedAt) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date(publishedAt)).map((part) => [part.type, part.value]));
+  const day = `${parts.year}-${parts.month}-${parts.day}`;
+  if (Number(parts.hour) < 15) return day;
+  const next = new Date(`${day}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
+}
+
+// FR-M2-07: data completeness of the symbol (price freshness, recent news).
+function DataStatusChips({ flags }) {
+  if (!flags) return <span className="muted">—</span>;
+  if (!flags.stalePrice && !flags.missingNews) return <span className="chip up">Đầy đủ</span>;
+  return <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+    {flags.stalePrice && <span className="chip down">Dữ liệu cũ</span>}
+    {flags.missingNews && <span className="chip hold">Thiếu tin</span>}
+  </span>;
 }
 
 // Quote panel numbers derived from the daily bars (oldest first).

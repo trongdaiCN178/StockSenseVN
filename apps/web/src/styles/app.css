@@ -38,6 +38,9 @@ button:disabled {
 .chat-message > span { font-size: 11px; opacity: .72; }
 .chat-message.from-user { margin-left: auto; background: var(--accent); color: var(--accent-ink); }
 .chat-message.from-assistant { background: var(--surface-2); }
+.chat-message.blocked { background: var(--hold-soft); }
+.chat-citations { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; font-size: 12px; align-items: baseline; }
+.chat-citations a, .chat-citations .text-button { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; font-size: 12px; padding: 0; }
 .chat-composer { border-top: 1px solid var(--line); padding-top: 12px; }
 .chat-composer textarea { width: 100%; resize: vertical; min-height: 74px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font: inherit; }
 .chat-composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }

@@ -5,6 +5,8 @@ const number = (value) => value === null || value === undefined ? null : Number(
 // Months of daily bars returned for each chart range.
 const RANGE_MONTHS = { '1m': 1, '3m': 3, '6m': 6, '1y': 12, all: 600 };
 export const PRICE_RANGES = Object.keys(RANGE_MONTHS);
+// SSI index code -> code and label used by the web overview strip.
+const INDEX_CODES = { VNINDEX: ['VNINDEX', 'VN-Index'], HNXINDEX: ['HNX', 'HNX-Index'], VN30: ['VN30', 'VN30'] };
 
 export function createFixtureMarketRepository() {
   const bySymbol = (symbol) => marketMock.symbols.items.find((item) => item.symbol === symbol.toUpperCase());
@@ -82,10 +84,20 @@ export function createPostgresMarketRepository(pool) {
     return rows[0] ?? null;
   }
 
+  // FR-M2-07: a symbol's data is "stale" when its last bar is older than the market's last session,
+  // and "missing news" when no article was linked in the last 7 days.
   async function readSymbol(symbol) {
     const { rows } = await pool.query(`${symbolSelect}
       WHERE price.close_price IS NOT NULL AND s.symbol = $1 AND s.is_enabled = true LIMIT 1`, [symbol.toUpperCase()]);
-    return rows[0] ? mapSymbol(rows[0]) : null;
+    if (!rows[0]) return null;
+    const item = mapSymbol(rows[0]);
+    const { rows: flags } = await pool.query(`SELECT
+        (SELECT max(trade_date)::text FROM daily_prices WHERE source = 'ssi') AS market_date,
+        (SELECT count(*)::integer FROM news_item_symbols l JOIN news_items n ON n.id = l.news_item_id
+          WHERE l.symbol = $1 AND n.published_at >= now() - interval '7 days') AS recent_news`, [item.symbol]);
+    const stalePrice = Boolean(flags[0].market_date && item.priceDate && item.priceDate < flags[0].market_date);
+    const missingNews = flags[0].recent_news === 0;
+    return { ...item, dataFlags: { stalePrice, missingNews }, dataStatus: stalePrice ? 'stale' : missingNews ? 'missing_news' : 'complete' };
   }
 
   return {
@@ -93,7 +105,12 @@ export function createPostgresMarketRepository(pool) {
       const batch = await latestBatch();
       if (!batch) return null;
       // Daily prices are synced from SSI independently of the forecast batch, so report both dates.
-      const { rows } = await pool.query(`SELECT max(trade_date)::text AS latest_price_date FROM daily_prices WHERE source='ssi'`);
+      const [{ rows }, holidays] = await Promise.all([
+        pool.query(`SELECT max(trade_date)::text AS latest_price_date FROM daily_prices WHERE source='ssi'`),
+        pool.query(`SELECT holiday::text FROM market_holidays
+          WHERE holiday BETWEEN (timezone('Asia/Ho_Chi_Minh', now())::date - 60) AND (timezone('Asia/Ho_Chi_Minh', now())::date + 90)
+          ORDER BY holiday`),
+      ]);
       return {
         dataDate: batch.data_date,
         latestPriceDate: rows[0]?.latest_price_date ?? null,
@@ -101,21 +118,38 @@ export function createPostgresMarketRepository(pool) {
         modelVersion: batch.model_version,
         state: batch.state,
         sourceStatus: batch.source_status,
+        holidays: holidays.rows.map((row) => row.holiday),
       };
     },
+    // FR-M1-06: real SSI indices and breadth of the tracked symbols; label shares still come from the forecast batch.
     async summary() {
       const batch = await latestBatch();
-      if (!batch) return null;
-      const [indicesResult, summaryResult] = await Promise.all([
-        pool.query(`SELECT code, label, value, change_points, change_percent FROM market_indices WHERE batch_id = $1 ORDER BY code`, [batch.id]),
-        pool.query(`SELECT advances, nochanges, declines, labels_up, labels_hold, labels_down FROM market_summary WHERE batch_id = $1`, [batch.id]),
+      const [indexResult, summaryResult, board] = await Promise.all([
+        pool.query(`SELECT DISTINCT ON (code) code, trade_date::text AS date, close, change_points, change_percent
+          FROM market_index_daily ORDER BY code, trade_date DESC`),
+        batch ? pool.query(`SELECT advances, nochanges, declines, labels_up, labels_hold, labels_down FROM market_summary WHERE batch_id = $1`, [batch.id]) : { rows: [] },
+        this.board(),
       ]);
       const summary = summaryResult.rows[0];
-      if (!summary) return null;
+      let indices;
+      if (indexResult.rows.length) {
+        indices = indexResult.rows.map((row) => ({ code: INDEX_CODES[row.code]?.[0] ?? row.code, label: INDEX_CODES[row.code]?.[1] ?? row.code,
+          value: number(row.close), changePoints: number(row.change_points), changePercent: number(row.change_percent), date: row.date, source: 'ssi' }));
+      } else if (batch) {
+        const { rows } = await pool.query(`SELECT code, label, value, change_points, change_percent FROM market_indices WHERE batch_id = $1 ORDER BY code`, [batch.id]);
+        indices = rows.map((row) => ({ code: row.code, label: row.label, value: number(row.value), changePoints: number(row.change_points), changePercent: number(row.change_percent), source: 'demo' }));
+      } else return null;
+      const tone = (item) => item.tones.close;
+      const breadth = board.items.length
+        ? { advances: board.items.filter((item) => ['up', 'ceiling'].includes(tone(item))).length,
+          nochanges: board.items.filter((item) => tone(item) === 'ref').length,
+          declines: board.items.filter((item) => ['down', 'floor'].includes(tone(item))).length,
+          scope: 'tracked', total: board.items.length, date: board.date }
+        : { advances: summary?.advances ?? 0, nochanges: summary?.nochanges ?? 0, declines: summary?.declines ?? 0, scope: 'demo' };
       return {
-        indices: indicesResult.rows.map((row) => ({ code: row.code, label: row.label, value: number(row.value), changePoints: number(row.change_points), changePercent: number(row.change_percent) })),
-        breadth: { advances: summary.advances, nochanges: summary.nochanges, declines: summary.declines },
-        labelDistribution: { up: summary.labels_up, hold: summary.labels_hold, down: summary.labels_down },
+        indices,
+        breadth,
+        labelDistribution: summary ? { up: summary.labels_up, hold: summary.labels_hold, down: summary.labels_down } : null,
       };
     },
     async symbols({ q = '', exchange = '' } = {}) {

@@ -19,14 +19,16 @@ export function Confidence({ level }) {
   return <><span className={`conf lv${lv}`} title={`Mức tin cậy ${text}`}><i /><i /><i /></span> <span>{text}</span></>;
 }
 
-// Adds trading days (Mon–Fri) to an ISO date; public holidays are not modelled.
-export function addTradingDays(isoDate, days) {
+// FR-M2-03: adds trading days to an ISO date, skipping weekends and exchange holidays (from /market/status).
+export function addTradingDays(isoDate, days, holidays = []) {
   if (!isoDate) return null;
+  const closed = new Set(holidays);
   const date = new Date(`${isoDate}T00:00:00Z`);
   let left = days;
   while (left > 0) {
     date.setUTCDate(date.getUTCDate() + 1);
-    if (date.getUTCDay() !== 0 && date.getUTCDay() !== 6) left -= 1;
+    const iso = date.toISOString().slice(0, 10);
+    if (date.getUTCDay() !== 0 && date.getUTCDay() !== 6 && !closed.has(iso)) left -= 1;
   }
   return date.toISOString().slice(0, 10);
 }

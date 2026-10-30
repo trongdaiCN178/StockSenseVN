@@ -5,7 +5,7 @@ import { ROLE_LABELS, hasCapability } from '@stocksense/core/access';
 import { navigate } from './navigation.js';
 import { Icon } from './icons.jsx';
 
-const ADMIN_CAPABILITIES = ['admin.users.manage', 'admin.jobs.read', 'admin.notifications.read', 'admin.ops-events.read', 'admin.role-requests.manage'];
+const ADMIN_CAPABILITIES = ['admin.users.manage', 'admin.jobs.read', 'admin.notifications.read', 'admin.ops-events.read', 'admin.role-requests.manage', 'admin.chat-log.read.redacted'];
 const canAdmin = (role) => ADMIN_CAPABILITIES.some((capability) => hasCapability(role, capability));
 
 // Navigation grouped as in the HTML prototype. `match` lists the routes that keep the item highlighted.
