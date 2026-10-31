@@ -277,3 +277,4 @@ Ba tài liệu chính chỉ mô tả hệ thống cần xây; các điểm code 
 | Quy tắc đăng ký BR-R09 (captcha), BR-R13 (xác nhận email cơ quan bằng thư, bản ghi đồng ý Điều khoản Analyst), BR-R15 (Admin nhập lại mật khẩu, chỉ email tổ chức, TOTP), BR-R18 (đồng ý lại khi đổi phiên bản) | Chưa làm (FR-M0-10 một phần, FR-M0-15) |
 | BR-R20 quy trình báo sự cố lộ lọt dữ liệu trong 72 giờ | Chưa xây dựng (quy trình vận hành, ngoài code) |
 | Trang Bảng giá (/board, GET /market/board) và biểu đồ nến trên trang chi tiết mã | Đã làm theo yêu cầu bổ sung của nhóm; chưa có trong PRD/SDD |
+| Dữ liệu từ SSI: HNX-Index thiếu 3 phiên (19/02/2025, 06/05/2025, 07/05/2025) | Nguồn SSI không có các phiên này; VN-Index, VN30 và 15 mã đủ 1.249 phiên (27/10/2021 → 30/10/2026). Kiểm tra 31/10/2026: không có giá ngoài biên độ, không có dữ liệu ngày nghỉ, không còn giá/tin mẫu lẫn với dữ liệu thật |

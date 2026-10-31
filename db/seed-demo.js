@@ -70,8 +70,10 @@ try {
         forecast.probabilities.hold, forecast.probabilities.down, forecast.confidence]);
     }
 
+    // Sample bars only for symbols that have no real SSI history yet; otherwise they would sit next to real prices.
+    const { rows: realPrices } = await client.query("SELECT EXISTS (SELECT 1 FROM daily_prices WHERE symbol=$1 AND source='ssi') AS has_real", [item.symbol]);
     const seed = [...item.symbol].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    for (let index = 0; index < 60; index += 1) {
+    for (let index = 0; index < (realPrices[0].has_real ? 0 : 60); index += 1) {
       const date = new Date(Date.UTC(2026, 9, 7 - (59 - index) * 3)).toISOString().slice(0, 10);
       const drift = ((index * (seed % 7 + 3)) % 17 - 8) / 100;
       const wave = Math.sin((index + seed) / 3) * 0.012;
@@ -94,7 +96,10 @@ try {
       { suffix: '1', title: `${item.name}: cập nhật hoạt động kinh doanh`, summary: 'Tin mẫu để hoàn thiện luồng giao diện. Nội dung thực tế cần được cấp phép và xác minh nguồn.', publishedAt: '2026-10-07T09:30:00+07:00', sentiment: 'neutral' },
       { suffix: '2', title: `Diễn biến đáng chú ý quanh cổ phiếu ${item.symbol}`, summary: 'Bản tin minh họa; chưa phải dữ liệu tin tức thực tế.', publishedAt: '2026-10-06T14:15:00+07:00', sentiment: 'positive' },
     ];
-    for (const article of news) {
+    // Sample news only for symbols without real articles, so it never mixes with CafeF/VnExpress news.
+    const { rows: realNews } = await client.query(`SELECT EXISTS (SELECT 1 FROM news_item_symbols l JOIN news_items n ON n.id = l.news_item_id
+      WHERE l.symbol = $1 AND n.source <> 'StockSense Demo') AS has_real`, [item.symbol]);
+    for (const article of realNews[0].has_real ? [] : news) {
       const insertedNews = await client.query(`INSERT INTO news_items(symbol, external_id, title, summary, source, published_at, sentiment, url)
         VALUES ($1, $2, $3, $4, 'StockSense Demo', $5, $6, NULL)
         ON CONFLICT (source, external_id) DO UPDATE SET title=EXCLUDED.title, summary=EXCLUDED.summary,

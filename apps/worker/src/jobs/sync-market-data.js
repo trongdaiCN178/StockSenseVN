@@ -26,6 +26,10 @@ export async function syncMarketData({ pool, provider, startDate, endDate, logge
   const errors = [];
 
   try {
+    // We hold the advisory lock, so a run of this dataset still marked 'running' was interrupted (process killed).
+    await client.query(`UPDATE data_ingestion_runs SET status='failed', completed_at=now(),
+      error_message=coalesce(error_message, 'Lần chạy bị ngắt giữa chừng trước khi hoàn tất.')
+      WHERE dataset=$1 AND status='running'`, ['daily_prices']);
     const symbols = await client.query('SELECT symbol FROM symbols WHERE is_enabled = true ORDER BY symbol');
     symbolsTotal = symbols.rowCount;
     const run = await client.query(`INSERT INTO data_ingestion_runs

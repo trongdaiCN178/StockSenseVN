@@ -24,6 +24,10 @@ export async function syncNews({ pool, provider, startDate, endDate, logger = co
   let rowsUpserted = 0;
   const failures = [];
   try {
+    // We hold the advisory lock, so a run of this dataset still marked 'running' was interrupted (process killed).
+    await client.query(`UPDATE data_ingestion_runs SET status='failed', completed_at=now(),
+      error_message=coalesce(error_message, 'Lần chạy bị ngắt giữa chừng trước khi hoàn tất.')
+      WHERE dataset=$1 AND status='running'`, ['news']);
     const symbolsResult = await client.query('SELECT symbol FROM symbols WHERE is_enabled = true ORDER BY symbol');
     const symbols = symbolsResult.rows.map(({ symbol }) => symbol);
     if (!symbols.length) throw new Error('No enabled symbols are configured in the symbols table.');
