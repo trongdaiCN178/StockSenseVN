@@ -4,7 +4,7 @@ import { navigate } from '../../app/navigation.js';
 import { CandleChart } from './CandleChart.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { hasCapability } from '@stocksense/core/access';
-import { buildBoardQuote } from '@stocksense/core/price-board';
+import { buildBoardQuote, tickSize } from '@stocksense/core/price-board';
 import { changeOver } from '@stocksense/core/indicators';
 import { Disclaimer, Icon } from '../../app/icons.jsx';
 import { ForecastCard, addTradingDays } from '../../components/forecast.jsx';
@@ -45,6 +45,7 @@ export function SymbolDetailPage({ symbol }) {
   }, [symbol, canWatch]);
 
   const stats = useMemo(() => (data ? quoteStats(data.detail.exchange, data.prices.items) : null), [data]);
+  const chartBars = useMemo(() => (data ? adjustedBars(data.prices.items) : []), [data]);
   const newsDays = useMemo(() => (data ? data.news.items.map((item) => newsSession(item.publishedAt)) : []), [data]);
 
   // FR-M5-01: watchlist toggle from the symbol page.
@@ -125,8 +126,8 @@ export function SymbolDetailPage({ symbol }) {
         </dl>
         <div className="small muted">Tham chiếu, trần, sàn của phiên gần nhất, tính từ phiên trước đó theo biên độ {detail.exchange === 'HOSE' ? '±7%' : detail.exchange === 'HNX' ? '±10%' : '±15%'} và bước giá của sàn.</div>
       </section>
-      <section className="card chart"><div className="card-h"><h2>Biểu đồ giá</h2><span className="small muted">{prices.items.length} phiên · đến {formatDate(prices.latestDate)}</span></div>
-        <CandleChart bars={prices.items} newsDays={newsDays} /></section>
+      <section className="card chart"><div className="card-h"><h2>Biểu đồ giá</h2><span className="small muted">{prices.items.length} phiên · đến {formatDate(prices.latestDate)} · giá điều chỉnh</span></div>
+        <CandleChart bars={chartBars} newsDays={newsDays} /></section>
       <section className="card quote-forecast"><div className="card-h"><h2>Dự báo xu hướng</h2></div>
         {conflict && <div className="note warn small"><b>Mâu thuẫn kỳ hạn:</b> T+2 {labelText[t2.label]}, T+5 {labelText[t5.label]}.</div>}
         <ForecastCard horizon="t2" forecast={t2} dueDate={addTradingDays(status?.dataDate, 2, status?.holidays)} />
@@ -162,7 +163,7 @@ export function SymbolDetailPage({ symbol }) {
       <div className="small muted" style={{ marginTop: 8 }}>Mới nhất trước. Hệ thống chỉ hiển thị tiêu đề, sapo và link gốc. Nhãn sắc thái sẽ chính xác khi mô hình sentiment sẵn sàng.</div>
     </section>}
 
-    {tab === 'hist' && <section className="card"><div className="card-h"><h2>Lịch sử giá theo phiên</h2><span className="small muted">{prices.sourceStatus === 'live' ? 'Nguồn SSI' : 'Dữ liệu minh họa'}</span></div>
+    {tab === 'hist' && <section className="card"><div className="card-h"><h2>Lịch sử giá theo phiên</h2><span className="small muted">{prices.sourceStatus === 'live' ? 'Nguồn SSI' : 'Dữ liệu minh họa'} · giá khớp thực tế; +/− so với tham chiếu (đã tính chia cổ tức, thưởng cổ phiếu)</span></div>
       <div className="tw" style={{ maxHeight: 520, overflowY: 'auto' }}><table><thead><tr><th>Ngày</th><th className="r">Mở cửa</th><th className="r">Cao</th><th className="r">Thấp</th><th className="r">Đóng cửa</th><th className="r">+/−</th><th className="r">%</th><th className="r">Khối lượng</th><th className="r">Giá trị (tỷ)</th></tr></thead>
         <tbody>{stats.history.map((row) => <tr key={row.date}><td className="num">{formatDate(row.date)}</td>
           <td className="r num">{row.open == null ? '—' : money.format(row.open)}</td><td className="r num">{row.high == null ? '—' : money.format(row.high)}</td>
@@ -196,22 +197,30 @@ function DataStatusChips({ flags }) {
   </span>;
 }
 
-// Quote panel numbers derived from the daily bars (oldest first).
+// Bars restated with back-adjusted prices, so stock dividends and splits do not show up as price drops.
+const adjustedBars = (bars) => bars.map((bar) => ({ ...bar,
+  open: bar.adjOpen ?? bar.open, high: bar.adjHigh ?? bar.high, low: bar.adjLow ?? bar.low, close: bar.adjClose ?? bar.close }));
+
+// Quote panel numbers derived from the daily bars (oldest first). The quote uses traded prices; period returns and
+// the 52-week range use adjusted prices.
 function quoteStats(exchange, bars) {
   const quote = buildBoardQuote(exchange, bars.at(-1), bars.at(-2));
-  const recent = bars.slice(-250);
-  const yearStart = bars.findIndex((bar) => bar.date.slice(0, 4) === bars.at(-1)?.date.slice(0, 4));
-  const ytdBase = yearStart > 0 ? bars[yearStart - 1].close : null;
+  const adjusted = adjustedBars(bars);
+  const recent = adjusted.slice(-250);
+  const yearStart = adjusted.findIndex((bar) => bar.date.slice(0, 4) === adjusted.at(-1)?.date.slice(0, 4));
+  const ytdBase = yearStart > 0 ? adjusted[yearStart - 1].close : null;
   const last20 = bars.slice(-20).map((bar) => bar.volume).filter((value) => value != null);
+  // Day-on-day change against the previous close restated on the same basis (ex-rights days stay correct).
   const history = bars.map((bar, i) => {
-    const previous = bars[i - 1]?.close;
-    const change = previous ? bar.close - previous : null;
+    const restated = i ? adjusted[i - 1].close * (bar.close / adjusted[i].close) : null;
+    const previous = restated == null ? null : Math.round(restated / tickSize(exchange, restated)) * tickSize(exchange, restated);
+    const change = previous ? Math.round(bar.close - previous) : null;
     return { ...bar, change, changePercent: change == null ? null : Number(((change / previous) * 100).toFixed(2)) };
   }).reverse();
   return {
     quote, history,
-    week: changeOver(bars, 5), month: changeOver(bars, 21), quarter: changeOver(bars, 63),
-    ytd: ytdBase ? Number((((bars.at(-1).close - ytdBase) / ytdBase) * 100).toFixed(2)) : null,
+    week: changeOver(adjusted, 5), month: changeOver(adjusted, 21), quarter: changeOver(adjusted, 63),
+    ytd: ytdBase ? Number((((adjusted.at(-1).close - ytdBase) / ytdBase) * 100).toFixed(2)) : null,
     rangeHigh: recent.length ? Math.max(...recent.map((bar) => bar.high ?? bar.close)) : null,
     rangeLow: recent.length ? Math.min(...recent.map((bar) => bar.low ?? bar.close)) : null,
     rangeLabel: recent.length >= 250 ? '52 tuần' : `${recent.length} phiên`,

@@ -62,6 +62,7 @@ export function createFixtureMarketRepository() {
         bar.high = Math.max(bar.open, bar.close);
         bar.low = Math.min(bar.open, bar.close);
         bar.turnover = bar.close * bar.volume;
+        Object.assign(bar, { adjOpen: bar.open, adjHigh: bar.high, adjLow: bar.low, adjClose: bar.close });
       });
         return { symbol: symbol.toUpperCase(), currency: 'VND', interval: '1d', sourceStatus: 'demo', latestDate: items.at(-1).date, items };
     },
@@ -215,7 +216,7 @@ export function createPostgresMarketRepository(pool) {
         LEFT JOIN forecasts f5 ON f5.symbol = s.symbol AND f5.batch_id = latest.id AND f5.horizon = 't5'
         LEFT JOIN LATERAL (
           SELECT json_agg(bar ORDER BY bar.date DESC) AS items FROM (
-            SELECT p.trade_date::text AS date, p.open, p.high, p.low, p.close, p.volume, p.turnover, p.source
+            SELECT p.trade_date::text AS date, p.open, p.high, p.low, p.close, p.volume, p.turnover, p.adj_close, p.source
             FROM daily_prices p
             WHERE p.symbol = s.symbol
               AND (p.source = 'ssi' OR NOT EXISTS (SELECT 1 FROM daily_prices real WHERE real.symbol = p.symbol AND real.source = 'ssi'))
@@ -225,7 +226,7 @@ export function createPostgresMarketRepository(pool) {
         WHERE s.is_enabled = true AND bars.items IS NOT NULL
         ORDER BY s.symbol`);
       const toBar = (bar) => bar && { date: bar.date, open: number(bar.open), high: number(bar.high), low: number(bar.low),
-        close: number(bar.close), volume: number(bar.volume), turnover: number(bar.turnover) };
+        close: number(bar.close), volume: number(bar.volume), turnover: number(bar.turnover), adjClose: number(bar.adj_close) };
       const forecast = (row, h) => (row[`${h}_label`] ? { label: row[`${h}_label`], confidence: row[`${h}_confidence`],
         probabilities: { up: number(row[`${h}_up`]), hold: number(row[`${h}_hold`]), down: number(row[`${h}_down`]) } } : null);
       const items = rows.map((row) => ({
@@ -239,8 +240,9 @@ export function createPostgresMarketRepository(pool) {
     },
     async prices(symbol, range = '3m') {
       const monthCount = RANGE_MONTHS[range] ?? 3;
-      const { rows } = await pool.query(`SELECT p.symbol, p.trade_date::text AS date, p.open, p.high, p.low, p.close, p.volume, p.turnover, p.source
-        FROM daily_prices p
+      const { rows } = await pool.query(`SELECT p.symbol, p.trade_date::text AS date, p.open, p.high, p.low, p.close, p.volume, p.turnover, p.source,
+          p.adj_open, p.adj_high, p.adj_low, p.adj_close
+        FROM daily_prices p JOIN symbols s ON s.symbol = p.symbol AND s.is_enabled = true
         WHERE p.symbol = $1 AND p.trade_date >= (timezone('Asia/Ho_Chi_Minh', now())::date - ($2::integer * interval '1 month'))::date
           -- Once real SSI bars exist for a symbol, seeded demo bars are hidden so the chart never mixes price scales.
           AND (p.source = 'ssi' OR NOT EXISTS (SELECT 1 FROM daily_prices real WHERE real.symbol = p.symbol AND real.source = 'ssi'))
@@ -251,8 +253,11 @@ export function createPostgresMarketRepository(pool) {
       return {
         symbol: rows[0].symbol, currency: 'VND', interval: '1d', sourceStatus,
         latestDate: rows.at(-1).date,
+        // Traded prices plus back-adjusted prices (falling back to traded prices for bars without adjustment data).
         items: rows.map((row) => ({ date: row.date, open: number(row.open), high: number(row.high), low: number(row.low),
-          close: number(row.close), volume: number(row.volume), turnover: number(row.turnover) })),
+          close: number(row.close), volume: number(row.volume), turnover: number(row.turnover),
+          adjOpen: number(row.adj_open ?? row.open), adjHigh: number(row.adj_high ?? row.high),
+          adjLow: number(row.adj_low ?? row.low), adjClose: number(row.adj_close ?? row.close) })),
       };
     },
     async news(symbol) {

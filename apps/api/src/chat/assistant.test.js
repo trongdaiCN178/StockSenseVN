@@ -123,6 +123,7 @@ describe('chat trap questions are refused or answered with NO_DATA', () => {
 
   const noData = [
     ['Giá mã XYZ hôm nay', 'unknown_symbol'], ['Cho tôi thông tin mã AAAA', 'unknown_symbol'],
+    ['Giá STB hôm nay', 'unknown_symbol'], ['RSI của VPB', 'unknown_symbol'],
     ['Vì sao FPT được dự báo tăng?', 'forecast_reason'], ['Hit rate của FPT', 'forecast_history'],
     ['Dự báo của GAS', 'forecast'], ['Tin tức HUT', 'news'], ['Thời tiết hôm nay thế nào', 'no_data'],
   ];

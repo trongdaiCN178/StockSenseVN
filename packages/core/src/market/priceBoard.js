@@ -22,7 +22,16 @@ export function referencePrice(exchange, previousBar) {
   if (exchange === 'UPCOM' && previousBar.volume > 0 && previousBar.turnover > 0) {
     return roundToTick(exchange, previousBar.turnover / previousBar.volume);
   }
-  return previousBar.close;
+  return roundToTick(exchange, previousBar.close);
+}
+
+// On an ex-rights day (stock dividend, bonus shares, split) the exchange lowers the reference price. Bars that carry
+// back-adjusted prices (adjClose) let us restate the previous session on the latest session's basis.
+function restatePrevious(latestBar, previousBar) {
+  if (!previousBar || !(latestBar?.adjClose > 0) || !(previousBar.adjClose > 0) || !(previousBar.close > 0)) return previousBar;
+  const factor = (previousBar.adjClose * (latestBar.close / latestBar.adjClose)) / previousBar.close;
+  if (Math.abs(factor - 1) < 0.0005) return previousBar;
+  return { ...previousBar, close: previousBar.close * factor, turnover: previousBar.turnover == null ? null : previousBar.turnover * factor };
 }
 
 // Ceiling/floor are rounded toward the reference price so they never exceed the band.
@@ -50,7 +59,7 @@ export function priceTone(price, { reference, ceiling, floor }) {
 
 // One board row from the latest and previous daily bars (newest first is not assumed).
 export function buildBoardQuote(exchange, latestBar, previousBar) {
-  const reference = referencePrice(exchange, previousBar);
+  const reference = referencePrice(exchange, restatePrevious(latestBar, previousBar));
   const { ceiling, floor } = priceLimits(exchange, reference);
   const close = latestBar?.close ?? null;
   const change = close != null && reference ? close - reference : null;

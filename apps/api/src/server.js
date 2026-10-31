@@ -838,8 +838,8 @@ app.get('/api/v1/symbols/:symbol/history.csv', { preHandler: requireCapability('
   const data = await market.prices(symbol, range);
   if (!data) return fail(reply, request, 404, 'NOT_FOUND', 'Price history was not found.');
   const escapeCsv = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
-  const rows = [['symbol', 'date', 'close', 'currency', 'interval', 'source'], ...data.items.map((item) =>
-    [symbol, item.date, item.close, data.currency, data.interval, data.sourceStatus])];
+  const rows = [['symbol', 'date', 'open', 'high', 'low', 'close', 'volume', 'adj_close', 'currency', 'interval', 'source'], ...data.items.map((item) =>
+    [symbol, item.date, item.open, item.high, item.low, item.close, item.volume, item.adjClose, data.currency, data.interval, data.sourceStatus])];
   const csv = `\uFEFF${rows.map((row) => row.map(escapeCsv).join(',')).join('\r\n')}\r\n`;
   return reply.header('Content-Type', 'text/csv; charset=utf-8')
     .header('Content-Disposition', `attachment; filename="stocksense-${symbol}-history.csv"`)

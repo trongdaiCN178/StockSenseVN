@@ -10,9 +10,24 @@ const CATEGORIES = Object.freeze({
 
 const CAFEF = 'https://cafef.vn';
 const VNEXPRESS = 'https://vnexpress.net';
+export const SYMBOL_PAGE_SIZE = 30;
 
 export function createNewsProvider({ fetchImpl = fetch, timeoutMs = 20_000 } = {}) {
-  return { categories: Object.keys(CATEGORIES), fetchCategory };
+  return { categories: Object.keys(CATEGORIES), fetchCategory, fetchSymbolPage };
+
+  // CafeF's per-symbol news list (company news and disclosures), newest first, 30 per page, going back many years.
+  async function fetchSymbolPage(symbol, page) {
+    const url = `${CAFEF}/du-lieu/Ajax/Events_RelatedNews_New.aspx?symbol=${encodeURIComponent(symbol)}&floorID=0&configID=0&PageIndex=${page}&PageSize=${SYMBOL_PAGE_SIZE}&Type=2`;
+    // A long backfill makes hundreds of requests; retry transient network errors twice before giving up.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return parseCafeFSymbolList(await fetchText(url, { fetchImpl, timeoutMs }), symbol);
+      } catch (error) {
+        if (attempt >= 3) throw error;
+        await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
+      }
+    }
+  }
 
   async function fetchCategory(category) {
     const config = CATEGORIES[category];
@@ -62,6 +77,29 @@ function parseCafeFList(html, category) {
       publishedAt,
       url: `${CAFEF}${link[1]}`,
       category,
+    });
+  }
+  return articles;
+}
+
+// Items look like: <span class="timeTitle">28/10/2026 18:03</span> ... <a class='docnhanhTitle' href="/..." title="...">.
+export function parseCafeFSymbolList(html, symbol) {
+  const articles = [];
+  for (const item of html.split(/<li\b/i).slice(1)) {
+    const time = /class="timeTitle">\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/.exec(item);
+    const link = /class=['"]docnhanhTitle['"][^>]*href="([^"]+)"[^>]*title="([^"]*)"/i.exec(item)
+      ?? /href="([^"]+)"[^>]*class=['"]docnhanhTitle['"][^>]*title="([^"]*)"/i.exec(item);
+    if (!time || !link) continue;
+    const path = link[1].split(/[?#]/)[0];
+    if (!/\.chn$/i.test(path)) continue;
+    const url = path.startsWith('http') ? path : `${CAFEF}${path}`;
+    articles.push({
+      externalId: url,
+      title: decodeEntities(link[2].trim()),
+      summary: '',
+      publishedAt: `${time[3]}-${time[2]}-${time[1]}T${time[4]}:${time[5]}:00+07:00`,
+      url,
+      category: `SYMBOL:${symbol}`,
     });
   }
   return articles;

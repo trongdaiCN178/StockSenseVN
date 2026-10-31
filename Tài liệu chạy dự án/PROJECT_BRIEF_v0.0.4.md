@@ -6,7 +6,7 @@
 | STATUS | TEST |
 | AUTHOR | HOANG MINH TUAN |
 | VERIFY | HOANG MINH TUAN |
-| UPDATE | 30/10/2026 |
+| UPDATE | 31/10/2026 |
 | RELATED DOCUMENT | PRD v0.0.4; SDD v0.0.5 |
 
 | Phiên bản | Ngày | Người sửa | Nội dung thay đổi |
@@ -14,7 +14,7 @@
 | 0.0.1 | 7/10/2026 | Hoang Minh Tuan | Khởi tạo tài liệu. |
 | 0.0.2 | 8/10/2026 | Hoang Minh Tuan | Mở rộng phạm vi: thêm vòng quyết định, Chat, PDF, thông báo, mobile; chia 3 giai đoạn; thống nhất tên IDSS. |
 | 0.0.3 | 09/10/2026 | Tran Trong Dai | Đồng bộ với PRD v0.0.3 |
-| 0.0.4 | 29/10/2026 | Tran Trong Dai | Bổ sung luồng đăng ký và vòng đời tài khoản vào phạm vi; đồng bộ PRD v0.0.4, SDD v0.0.5. Rà soát 30/10/2026: thống nhất tên nhãn Tăng / Đi ngang / Giảm; Screener lưu bộ lọc cho trader, analyst; Journal liên kết Trade Plan đã đóng hoặc ghi thủ công; PDF Journal cho trader, analyst; phạm vi mã gồm một số mã UPCoM thanh khoản cao; thông báo trên mobile qua danh sách trong app và email/Telegram; ghi ngăn xếp kỹ thuật. |
+| 0.0.4 | 29/10/2026 | Tran Trong Dai | Bổ sung luồng đăng ký và vòng đời tài khoản vào phạm vi; đồng bộ PRD v0.0.4, SDD v0.0.5. Rà soát 30/10/2026: thống nhất tên nhãn Tăng / Đi ngang / Giảm; Screener lưu bộ lọc cho trader, analyst; Journal liên kết Trade Plan đã đóng hoặc ghi thủ công; PDF Journal cho trader, analyst; phạm vi mã là 15 mã HOSE và lịch sử giá 5 năm do nhóm mô hình chốt (31/10/2026); thông báo trên mobile qua danh sách trong app và email/Telegram; ghi ngăn xếp kỹ thuật. |
 
 # Tổng quan dự án
 
@@ -28,7 +28,7 @@ Dự án được khởi xướng nhằm xây dựng IDSS (Investment Decision S
 
 | Mục tiêu SMART | Chỉ số đo lường / tiêu chí nghiệm thu |
 | --- | --- |
-| Xây dựng bộ dữ liệu hợp nhất cho một tập mã cổ phiếu đại diện trên HOSE/HNX (kèm một số mã UPCoM thanh khoản cao), đồng bộ dữ liệu giá, chỉ số tài chính và tin tức theo ngày giao dịch. | Tối thiểu 15 mã cổ phiếu; dữ liệu lịch sử từ 3 năm (rút xuống tối thiểu 2 năm nếu tin tức CafeF không đủ độ sâu lịch sử); có kiểm tra dữ liệu thiếu, trùng và sai lệch thời gian. |
+| Xây dựng bộ dữ liệu hợp nhất cho 15 mã cổ phiếu thanh khoản cao trên HOSE (FPT, VNM, STB, ACB, SSI, VIC, HPG, VCB, MSN, MBB, GAS, MWG, VPB, VRE, TCB), đồng bộ dữ liệu giá, chỉ số tài chính và tin tức theo ngày giao dịch. | 15 mã cổ phiếu HOSE; lịch sử giá 5 năm (giá đã điều chỉnh cho chia cổ tức bằng cổ phiếu, thưởng cổ phiếu và tách cổ phiếu); có kiểm tra dữ liệu thiếu, trùng và sai lệch thời gian. |
 | Phát triển mô hình phân loại đa phương thức dự báo xu hướng Tăng / Đi ngang / Giảm tại các mốc T+2 và T+5. | Có ít nhất một mô hình cơ sở và một mô hình đa phương thức để đối chiếu; đầu ra gồm nhãn xu hướng và xác suất cho từng lớp. |
 | Chứng minh mức đóng góp của dữ liệu cảm xúc tin tức. | So sánh ít nhất 3 cấu hình: chỉ dữ liệu định lượng, chỉ dữ liệu văn bản/cảm xúc, và mô hình kết hợp đa phương thức. |
 | Đánh giá mô hình theo quy trình kiểm thử chuỗi thời gian. | Báo cáo Accuracy, Precision, Recall, Macro F1-score, AUC-ROC phù hợp bài toán đa lớp; đánh giá trên tập kiểm tra chưa từng dùng khi huấn luyện. |
@@ -112,7 +112,7 @@ Tự động đặt lệnh mua/bán hoặc tích hợp trực tiếp với hệ 
 
 Cam kết lợi nhuận, đưa ra tư vấn đầu tư cá nhân hóa hoặc đảm bảo độ chính xác của dự báo.
 
-Phủ toàn bộ mã cổ phiếu (kể cả toàn sàn UPCoM; chỉ chọn một số mã UPCoM thanh khoản cao), phái sinh, chứng quyền, trái phiếu, quỹ hoặc thị trường quốc tế.
+Phủ toàn bộ mã cổ phiếu, cổ phiếu HNX và UPCoM, phái sinh, chứng quyền, trái phiếu, quỹ hoặc thị trường quốc tế.
 
 Dữ liệu tick-by-tick, giao dịch tần suất cao và suy luận thời gian thực ở mức mili-giây.
 

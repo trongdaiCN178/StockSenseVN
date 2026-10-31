@@ -456,6 +456,7 @@ export const mockApi = {
         bar.high = Math.round(Math.max(bar.open, bar.close) * 1.01);
         bar.low = Math.round(Math.min(bar.open, bar.close) * 0.99);
         bar.turnover = bar.close * bar.volume;
+        Object.assign(bar, { adjOpen: bar.open, adjHigh: bar.high, adjLow: bar.low, adjClose: bar.close });
       });
       return { symbol, currency: 'VND', interval: '1d', sourceStatus: 'demo', latestDate: points.at(-1).date, items: points };
     },

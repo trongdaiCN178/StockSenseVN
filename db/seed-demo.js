@@ -1,15 +1,17 @@
 import pg from 'pg';
-import { marketMock } from '../mocks/market.js';
+import { marketMock, TRACKED_SYMBOLS } from '../mocks/market.js';
 import { hashPassword } from '../apps/api/src/auth/password.js';
 
 const { Pool } = pg;
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required to seed demo market data.');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const client = await pool.connect();
+// --market-only refreshes symbols, demo forecasts and sample news without touching the demo accounts.
+const marketOnly = process.argv.includes('--market-only');
 
 try {
   await client.query('BEGIN');
-  const demoUsers = [
+  const demoUsers = marketOnly ? [] : [
     ['retail@stocksense.vn', 'retail'],
     ['trader@stocksense.vn', 'trader'],
     ['analyst@stocksense.vn', 'analyst'],
@@ -78,11 +80,13 @@ try {
       if (index === 59) close = item.closePrice;
       close = Math.round(close * 100) / 100;
       const turnover = Math.round(95_000_000_000 + (seed * 137 + index * 8_300_003) % 70_000_000_000);
+      // Sample bars never overwrite real SSI prices for the same day.
       await client.query(`INSERT INTO daily_prices(symbol, trade_date, open, high, low, close, volume, turnover, source)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'demo-seed')
         ON CONFLICT (symbol, trade_date) DO UPDATE SET open=EXCLUDED.open, high=EXCLUDED.high,
           low=EXCLUDED.low, close=EXCLUDED.close, volume=EXCLUDED.volume, turnover=EXCLUDED.turnover,
-          source=EXCLUDED.source`,
+          source=EXCLUDED.source
+        WHERE daily_prices.source <> 'ssi'`,
       [item.symbol, date, close, close * 1.01, close * 0.99, close, 1_000_000 + index * 127, turnover]);
     }
 
@@ -101,8 +105,13 @@ try {
     }
   }
 
+  // Symbols outside the tracked list are disabled (not deleted) so their price history and user data stay intact.
+  const disabled = await client.query(`UPDATE symbols SET is_enabled=false, updated_at=now()
+    WHERE is_enabled AND NOT (symbol = ANY($1::varchar[])) RETURNING symbol`, [TRACKED_SYMBOLS]);
+
   await client.query('COMMIT');
-  console.info(`Seeded demo batch ${batchId} with ${marketMock.symbols.total} symbols.`);
+  console.info(`Seeded demo batch ${batchId} with ${marketMock.symbols.total} symbols${marketOnly ? ' (market only, demo accounts untouched)' : ''}.`);
+  if (disabled.rowCount) console.info(`Disabled symbols outside the tracked list: ${disabled.rows.map((row) => row.symbol).join(', ')}.`);
 } catch (error) {
   await client.query('ROLLBACK');
   throw error;

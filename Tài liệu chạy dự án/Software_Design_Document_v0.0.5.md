@@ -6,7 +6,7 @@
 | STATUS | DRAFT UPDATED |
 | AUTHOR | HOANG MINH TUAN |
 | VERIFY | HOANG MINH TUAN |
-| UPDATE | 30/10/2026 |
+| UPDATE | 31/10/2026 |
 | RELATED DOCUMENT | PRD CAPSTONE_PRD v0.0.4; Project Brief CAPSTONE_PB v0.0.4 |
 
 | Mã tài liệu | Phiên bản | Trạng thái | Tác giả | Ngày cập nhật |
@@ -18,6 +18,8 @@
 | CAPSTONE_SDD | 0.0.5 | Test | Trần Trọng Đại | 29/10/2026 |
 
 Thay đổi 0.0.5: bổ sung thiết kế luồng đăng ký và vòng đời tài khoản (FR-M0-08..15, UC-26..29, AC-31..39) theo PRD v0.0.4 (§7.2 C6, §9.2.6): mục 2.1, 5.2 (M0), 6.1, 6.2, 8.1, 8.2, 10, 11, 12.4. Ghi nhận băm mật khẩu triển khai bằng scrypt.
+
+Cập nhật 31/10/2026: phạm vi mã là 15 mã HOSE do nhóm mô hình chốt; lịch sử giá 5 năm gồm giá đã điều chỉnh (mục 1.2, 6, 12.4).
 
 Rà soát 30/10/2026 (cùng phiên bản 0.0.5): thống nhất thiết kế kỹ thuật với ngăn xếp đã chọn: Node.js (Fastify) cho API và worker dữ liệu, React + Vite cho web, PostgreSQL 17, Python cho worker mô hình; phiên đăng nhập là token ngẫu nhiên lưu băm thay cho JWT; Telegram dùng webhook. Sửa các mục 1, 2, 3.2, 4, 5, 6, 8, 9, 10, 12.
 
@@ -35,7 +37,7 @@ Làm căn cứ để lập trình, kiểm thử và viết chương thiết kế
 
 ### 1.2 Phạm vi
 
-Hệ thống dự báo xác suất Tăng / Đi ngang / Giảm sau 2 và 5 phiên (T+2, T+5) cho tối thiểu 15 mã thanh khoản cao (hiện có 17 mã: 10 HOSE (ACB, FPT, GAS, HPG, MBB, MWG, SSI, VCB, VIC, VNM), 4 HNX (HUT, IDC, PVS, SHS) và 3 UPCoM (BSR, QNS, VGT)), cập nhật mỗi ngày sau phiên, hiển thị trên web responsive và ứng dụng mobile (GĐ3). Từ GĐ2, hệ thống thêm Screener, Portfolio, Trade Plan, Journal, Chat hỏi đáp dựa trên dữ liệu hệ thống, báo cáo PDF và thông báo qua email/Telegram. Ngoài phạm vi: đặt lệnh tự động và kết nối API công ty chứng khoán, tư vấn đầu tư (kể cả chatbot đưa khuyến nghị mua/bán), toàn sàn UPCoM (chỉ chọn một số mã thanh khoản cao), phái sinh, dữ liệu tick.
+Hệ thống dự báo xác suất Tăng / Đi ngang / Giảm sau 2 và 5 phiên (T+2, T+5) cho 15 mã HOSE thanh khoản cao (FPT, VNM, STB, ACB, SSI, VIC, HPG, VCB, MSN, MBB, GAS, MWG, VPB, VRE, TCB), cập nhật mỗi ngày sau phiên, hiển thị trên web responsive và ứng dụng mobile (GĐ3). Từ GĐ2, hệ thống thêm Screener, Portfolio, Trade Plan, Journal, Chat hỏi đáp dựa trên dữ liệu hệ thống, báo cáo PDF và thông báo qua email/Telegram. Ngoài phạm vi: đặt lệnh tự động và kết nối API công ty chứng khoán, tư vấn đầu tư (kể cả chatbot đưa khuyến nghị mua/bán), cổ phiếu HNX và UPCoM, phái sinh, dữ liệu tick.
 
 ### 1.3 Thuật ngữ
 
@@ -83,7 +85,7 @@ Cách có tài khoản (FR-M0-08..14, PRD §4.2, §9.2.6): retail tự đăng k�
 | Hệ thống ngoài | Vai trò | Cách kết nối |
 | --- | --- | --- |
 | SSI iBoard | Giá OHLCV ngày theo mã, chỉ số VN-Index, HNX-Index | HTTP JSON; apps/worker/src/providers/ssi.js, lệnh worker:market:sync |
-| CafeF, VnExpress | Danh sách tin theo chuyên mục, gán vào mã theo tiêu đề và tóm tắt | HTML/RSS; apps/worker/src/providers/news.js, lệnh worker:news:sync; worker mô hình chấm cảm xúc sau khi nạp |
+| CafeF, VnExpress | Tin theo chuyên mục (gán mã theo tiêu đề và tóm tắt) và trang tin theo từng mã của CafeF (lịch sử nhiều năm, phân trang 30 tin; dùng để nạp lịch sử từ 2021 cho mô hình) | HTML/RSS; apps/worker/src/providers/news.js, lệnh worker:news:sync; worker mô hình chấm cảm xúc sau khi nạp |
 | vnstock (hoặc nguồn tương đương) | Báo cáo tài chính quý kèm ngày công bố | Thư viện Python trong worker mô hình |
 | Google Colab / Kaggle | GPU để tinh chỉnh PhoBERT và huấn luyện mô hình | Notebook chạy mã trong ml/, checkpoint tải về và đăng ký phiên bản |
 | Nhà cung cấp mô hình ngôn ngữ (API) hoặc máy chủ LLM cục bộ | Diễn đạt câu trả lời của Chat từ dữ liệu đã truy xuất | HTTPS tới API nhà cung cấp hoặc máy chủ cục bộ tương thích OpenAI (chọn ở mục 12.4) |
@@ -252,8 +254,8 @@ CSDL là PostgreSQL 17 (image postgres:17-alpine). Lược đồ có hiệu lự
 | Tên trong thiết kế | Bảng triển khai | Migration |
 | --- | --- | --- |
 | app_user, auth_session | users, auth_sessions | 001 |
-| company, price_daily | symbols (thêm industry ở 020), daily_prices | 001, 020 |
-| index_daily, v_market_summary | market_batches, market_indices, market_summary | 001 |
+| company, price_daily | symbols (thêm industry ở 020), daily_prices: giá khớp open/high/low/close và giá đã điều chỉnh adj_open/adj_high/adj_low/adj_close (022) | 001, 020, 022 |
+| index_daily, v_market_summary | market_index_daily (VN-Index, HNX-Index, VN30 từ SSI), market_summary | 001, 021 |
 | forecast | forecasts | 001 |
 | document, document_symbol | news_items, news_item_symbols | 001, 004 |
 | audit_log | admin_audit_log (event_type, details jsonb) | 002 |
@@ -1472,7 +1474,7 @@ FR-M0-06 đã được PRD 0.0.4 viết lại: mật khẩu mới phải khác m
 
 ### 12.4 Câu hỏi mở
 
-Danh sách mã đã chốt: 17 mã: 10 HOSE (ACB, FPT, GAS, HPG, MBB, MWG, SSI, VCB, VIC, VNM), 4 HNX (HUT, IDC, PVS, SHS) và 3 UPCoM (BSR, QNS, VGT), giá SSI từ 13/04/2026; PRD 0.0.4 và Brief 0.0.4 đã đưa một số mã UPCoM thanh khoản cao vào phạm vi. Mốc lịch sử 3 năm cho huấn luyện chốt khi làm worker AI.
+Danh sách mã đã chốt với nhóm mô hình (31/10/2026): 15 mã HOSE FPT, VNM, STB, ACB, SSI, VIC, HPG, VCB, MSN, MBB, GAS, MWG, VPB, VRE, TCB; lịch sử giá ngày SSI 5 năm (từ 27/10/2021) theo mốc nhóm mô hình dùng. Mô hình, biểu đồ, chỉ báo và lợi suất theo kỳ dùng giá đã điều chỉnh cho chia cổ tức bằng cổ phiếu, thưởng cổ phiếu và tách cổ phiếu (adj_*); bảng giá, tham chiếu/trần/sàn và Portfolio dùng giá khớp thực tế. SSI tính lại toàn bộ giá điều chỉnh sau mỗi sự kiện quyền, nên worker đối chiếu phiên cũ nhất mỗi ngày và nạp lại lịch sử của mã khi giá điều chỉnh thay đổi.
 
 Chốt các ngưỡng đang "cần xác nhận" trong PRD: +3 điểm Macro F1, Macro F1 ≥ 0,40, AUC ≥ 0,60, k = 0,5, SUS ≥ 68; ngưỡng 45% đã có FR-M2-08; mức cao 55% còn là đề xuất, số mẫu nhỏ 50, bộ chống bịa 50 + 20 câu, p95 Chat 10 giây, KPI P7–P9.
 

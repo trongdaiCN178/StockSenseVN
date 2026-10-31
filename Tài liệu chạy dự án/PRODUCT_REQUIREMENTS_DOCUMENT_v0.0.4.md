@@ -6,7 +6,7 @@
 | STATUS | TEST |
 | AUTHOR | HOANG MINH TUAN |
 | VERIFY | HOANG MINH TUAN |
-| UPDATE | 30/10/2026 |
+| UPDATE | 31/10/2026 |
 | RELATED DOCUMENT | Project Brief CAPSTONE_PB v0.0.4; SDD CAPSTONE_SDD v0.0.5 |
 
 | Phiên bản | Ngày | Người sửa | Nội dung thay đổi |
@@ -14,11 +14,11 @@
 | 0.0.1 | 7/10/2026 | Hoang Minh Tuan | Khởi tạo tài liệu. |
 | 0.0.2 | 7–8/10/2026 | Hoang Minh Tuan | Tách rõ MVP Sản Phẩm với MVP nghiên cứu bổ sung để tránh chồng lấn chức năng. Mở rộng phạm vi theo Project Brief 0.0.2: thêm Screener, Portfolio, Trade Plan, Journal, Chat, PDF, thông báo email/Telegram và ứng dụng mobile theo 3 giai đoạn; sửa các lỗi và mâu thuẫn nội bộ. |
 | 0.0.3 | 9/10/2026 | Tran Trong Đai | Bổ sung thêm US-23: đăng nhập, đăng xuất, US-24; tự động cập nhật dự báo sau mỗi phiên giao dịch và US-25 xem lịch sử quản trị. Cập nhật các yêu cầu liên quan: FR (M0, M7); thêm AC-27 đến AC-30. Giảm số mã tối đa từ 30 xuống 10. Thêm FR-M7-09 hiển thị dữ liệu đầu vào FR-M7-10 chạy lại để tái lập theo US10. Thêm đặc tả use case cho US. |
-| 0.0.4 | 29/10/2026 | Tran Trong Đai | Bổ sung luồng đăng ký và vòng đời tài khoản: quy tắc nghiệp vụ, căn cứ pháp lý, US-26..US-29, UC-26..UC-29, FR-M0-08..FR-M0-15, AC-31..AC-39, NFR-18; ràng buộc pháp lý C6 (Luật Bảo vệ dữ liệu cá nhân 2025, Nghị định 356/2025); sửa điều kiện trước của UC-12, UC-23; cập nhật §4.2, §6.1, §8, §16. NFR-07: băm mật khẩu bằng hàm băm chậm có salt (triển khai scrypt), phiên lưu dạng token băm. Rà soát 30/10/2026: sửa C4 theo ngăn xếp kỹ thuật (Node.js, React, PostgreSQL); viết lại FR-M0-06; thống nhất mức ưu tiên cảnh báo trong app và xem đầu vào, tái lập dự báo với US-10, AC-14; cập nhật A8 (hạn mức Gmail); FR-M5-07 thêm Admin để nhận thông báo lỗi pipeline qua email/Telegram. |
+| 0.0.4 | 29/10/2026 | Tran Trong Đai | Bổ sung luồng đăng ký và vòng đời tài khoản: quy tắc nghiệp vụ, căn cứ pháp lý, US-26..US-29, UC-26..UC-29, FR-M0-08..FR-M0-15, AC-31..AC-39, NFR-18; ràng buộc pháp lý C6 (Luật Bảo vệ dữ liệu cá nhân 2025, Nghị định 356/2025); sửa điều kiện trước của UC-12, UC-23; cập nhật §4.2, §6.1, §8, §16. NFR-07: băm mật khẩu bằng hàm băm chậm có salt (triển khai scrypt), phiên lưu dạng token băm. Cập nhật 31/10/2026: phạm vi mã là 15 mã HOSE do nhóm mô hình chốt, lịch sử giá 5 năm đã điều chỉnh (§12.1). Rà soát 30/10/2026: sửa C4 theo ngăn xếp kỹ thuật (Node.js, React, PostgreSQL); viết lại FR-M0-06; thống nhất mức ưu tiên cảnh báo trong app và xem đầu vào, tái lập dự báo với US-10, AC-14; cập nhật A8 (hạn mức Gmail); FR-M5-07 thêm Admin để nhận thông báo lỗi pipeline qua email/Telegram. |
 
 ## 1. Tổng quan sản phẩm
 
-IDSS (Investment Decision Support System; tên thương mại tạm: StockSense VN) là hệ thống web và ứng dụng mobile cho biết xác suất cổ phiếu HOSE/HNX (kèm một số mã UPCoM thanh khoản cao) tăng, đi ngang hay giảm sau 2 và 5 phiên (T+2, T+5), kèm lý do dự báo và lịch sử kiểm chứng, đồng thời giúp người dùng tự lập kế hoạch giao dịch, theo dõi danh mục và nhìn lại quyết định của mình. Lõi sản phẩm là một mô hình học sâu đa phương thức hợp nhất hai nhóm tín hiệu: đặc trưng định lượng (giá, khối lượng, chỉ báo kỹ thuật, chỉ số tài chính) và đặc trưng định tính (cảm xúc tin tức tiếng Việt).
+IDSS (Investment Decision Support System; tên thương mại tạm: StockSense VN) là hệ thống web và ứng dụng mobile cho biết xác suất 15 cổ phiếu thanh khoản cao trên HOSE tăng, đi ngang hay giảm sau 2 và 5 phiên (T+2, T+5), kèm lý do dự báo và lịch sử kiểm chứng, đồng thời giúp người dùng tự lập kế hoạch giao dịch, theo dõi danh mục và nhìn lại quyết định của mình. Lõi sản phẩm là một mô hình học sâu đa phương thức hợp nhất hai nhóm tín hiệu: đặc trưng định lượng (giá, khối lượng, chỉ báo kỹ thuật, chỉ số tài chính) và đặc trưng định tính (cảm xúc tin tức tiếng Việt).
 
 **Đầu vào**: dữ liệu giá, báo cáo tài chính, tin tức theo mã; giao dịch, kế hoạch và ghi chú do người dùng tự nhập (hoặc import CSV).
 
@@ -50,7 +50,7 @@ Sản phẩm thành công khi chứng minh được mô hình đa phương thứ
 | R2 | Vượt mức ngẫu nhiên và mức “dự báo lớp phổ biến nhất” | Macro F1, AUC-ROC (one-vs-rest) | Macro F1 ≥ 0,40; AUC macro ≥ 0,60 (cần xác nhận) |
 | R3 | Chứng minh đóng góp của cảm xúc tin tức | Ablation 3 cấu hình: chỉ định lượng / chỉ văn bản / kết hợp | Cấu hình kết hợp tốt nhất trên ít nhất 1 trong 2 kỳ hạn |
 | R4 | Đánh giá không rò rỉ dữ liệu | Walk-forward theo thời gian, cut-off tin 15:00 | 100% thí nghiệm dùng chia tập theo thời gian |
-| R5 | Bộ dữ liệu hợp nhất | Số mã, số năm lịch sử | ≥ 15 mã HOSE/HNX/UPCoM, ≥ 3 năm lịch sử |
+| R5 | Bộ dữ liệu hợp nhất | Số mã, số năm lịch sử | 15 mã HOSE (danh sách §12.1), 5 năm lịch sử giá đã điều chỉnh |
 
 ### 3.2 Mục tiêu sản phẩm
 
@@ -129,7 +129,7 @@ Giá trị cốt lõi là một dự báo duy nhất hợp nhất giá, tài ch�
 | Truy vết | Không | Không | Mỗi dự báo gắn timestamp, phiên bản mô hình, snapshot dữ liệu |
 | Quyết định và nhìn lại | Ghi sổ hoặc bảng tính, dễ quên lý do vào lệnh | Ghi chú tách rời, không gắn với dự báo tại thời điểm quyết định | Trade Plan gắn snapshot dự báo lúc lập kế hoạch (không sửa được); Journal tự tạo khi đóng kế hoạch và so sánh quyết định với dự báo |
 
-Về học thuật, đóng góp là bằng chứng định lượng (ablation) về giá trị của cảm xúc tin tiếng Việt trong dự báo xu hướng ngắn hạn trên HOSE/HNX.
+Về học thuật, đóng góp là bằng chứng định lượng (ablation) về giá trị của cảm xúc tin tiếng Việt trong dự báo xu hướng ngắn hạn trên HOSE.
 
 ## 6. Phạm vi / ngoài phạm vi
 
@@ -176,7 +176,7 @@ Tự động đặt lệnh hoặc tích hợp trực tiếp với hệ thống g
 
 Cam kết lợi nhuận, tư vấn đầu tư cá nhân hóa hoặc đảm bảo độ chính xác.
 
-Toàn bộ thị trường (kể cả toàn sàn UPCoM; chỉ một số mã UPCoM thanh khoản cao được chọn vào danh sách theo dõi), phái sinh, chứng quyền, trái phiếu, quỹ, thị trường quốc tế.
+Toàn bộ thị trường, cổ phiếu HNX và UPCoM, phái sinh, chứng quyền, trái phiếu, quỹ, thị trường quốc tế.
 
 Dữ liệu tick-by-tick, giao dịch tần suất cao, suy luận thời gian thực mức mili-giây.
 
@@ -190,7 +190,7 @@ Lưu ý: Project Brief 0.0.2 đưa ứng dụng mobile native vào phạm vi ở
 
 ## 7. Giả định & ràng buộc
 
-Dự án giả định dữ liệu công khai đủ cho 15 mã trong 3 năm; ràng buộc chặt nhất là thời gian (GĐ1 12 tuần, tổng khoảng 28 tuần với GĐ2–GĐ3, một người thực hiện) và chi phí hạ tầng cho Chat và mobile từ GĐ2.
+Dự án giả định dữ liệu công khai đủ cho 15 mã trong 5 năm; ràng buộc chặt nhất là thời gian (GĐ1 12 tuần, tổng khoảng 28 tuần với GĐ2–GĐ3, một người thực hiện) và chi phí hạ tầng cho Chat và mobile từ GĐ2.
 
 ### 7.1 Giả định
 
@@ -572,7 +572,7 @@ Thiếu dự báo của một kỳ hạn → hiển thị trạng thái dữ li�
 
 **Các bước**
 
-**Người dùng** chọn một hoặc nhiều điều kiện lọc: sàn (HOSE, HNX, UPCoM), ngành, thanh khoản, xu hướng dự báo (Tăng, Đi ngang, Giảm), kỳ hạn.
+**Người dùng** chọn một hoặc nhiều điều kiện lọc: sàn, ngành, thanh khoản, xu hướng dự báo (Tăng, Đi ngang, Giảm), kỳ hạn.
 
 **Hệ thống** áp dụng đồng thời các điều kiện và hiển thị các mã thỏa mọi điều kiện (FR-M1-02, AC-02).
 
@@ -1468,7 +1468,7 @@ Màn hình: Trang chủ / Tổng quan thị trường. Dữ liệu: danh mục m
 | Mã | Yêu cầu | Vai trò | Ưu tiên |
 | --- | --- | --- | --- |
 | FR-M1-01 | Hiển thị danh sách mã mục tiêu: mã, tên công ty, sàn, ngành, giá đóng cửa, % thay đổi, GTGD bình quân 20 phiên. | R, T, A | Must |
-| FR-M1-02 | Lọc theo sàn (HOSE/HNX/UPCoM), ngành, thanh khoản, xu hướng dự báo (tăng/đi ngang/giảm) và kỳ hạn. | R, T, A | Must |
+| FR-M1-02 | Lọc theo sàn, ngành, thanh khoản, xu hướng dự báo (tăng/đi ngang/giảm) và kỳ hạn. | R, T, A | Must |
 | FR-M1-03 | Hiển thị tín hiệu mới nhất T+2 và T+5 mỗi mã bằng nhãn màu + xác suất của lớp được chọn. | R, T, A | Must |
 | FR-M1-04 | Sắp xếp theo xác suất tăng/giảm, thanh khoản, % thay đổi; tìm kiếm theo mã/tên. | R, T, A | Must |
 | FR-M1-05 | Hiển thị ngày dữ liệu và thời điểm cập nhật dự báo gần nhất ở đầu trang. | Tất cả | Must |
@@ -1697,7 +1697,7 @@ Bài toán là phân loại 3 lớp (tăng / đi ngang / giảm) cho hai kỳ h�
 | Báo cáo tài chính (vnstock hoặc tương đương) | ROE, ROA, EPS, P/E, P/B, nợ/vốn, tăng trưởng doanh thu/lợi nhuận | Theo quý, dùng theo ngày công bố | Chưa có ETL |
 | Tập gán nhãn cảm xúc | 2.000–3.000 tin tự gán nhãn 3 lớp | Một lần | Chưa có |
 
-Phạm vi mã: tối thiểu 15 mã thanh khoản cao, chủ yếu thuộc VN30 và HNX30, có thể kèm một số mã UPCoM thanh khoản cao; danh sách hiện tại gồm 17 mã: 10 HOSE (ACB, FPT, GAS, HPG, MBB, MWG, SSI, VCB, VIC, VNM), 4 HNX (HUT, IDC, PVS, SHS) và 3 UPCoM (BSR, QNS, VGT); lịch sử từ 2021 (≥ 3 năm), mở rộng về 2018 nếu nguồn tin đáp ứng.
+Phạm vi mã: 15 mã HOSE thanh khoản cao do nhóm mô hình chốt: FPT, VNM, STB, ACB, SSI, VIC, HPG, VCB, MSN, MBB, GAS, MWG, VPB, VRE, TCB (đều niêm yết từ năm 2018 trở về trước, đủ lịch sử cho huấn luyện); lịch sử giá 5 năm (từ 27/10/2021), dùng giá đã điều chỉnh cho chia cổ tức bằng cổ phiếu, thưởng cổ phiếu và tách cổ phiếu; giá khớp thực tế giữ riêng cho bảng giá, giá tham chiếu và Portfolio.
 
 ### 12.2 Đặc trưng
 
@@ -1837,7 +1837,7 @@ Kế hoạch 28 tuần · 3 giai đoạn, 6 cổng
 
 | Bản phát hành | Cuối tuần | Nội dung | Điều kiện qua cổng |
 | --- | --- | --- | --- |
-| R0 – Data ready | 3 | ETL giá (VN30 + HNX30), tin CafeF, BCTC; bảng đặc trưng ngày; nhãn T+2/T+5; báo cáo chất lượng dữ liệu | ≥ 15 mã, ≥ 3 năm; tỷ lệ thiếu < 5%; kiểm tra cut-off 15:00 đạt |
+| R0 – Data ready | 3 | ETL giá 15 mã và chỉ số VN-Index, HNX-Index, VN30, tin CafeF, BCTC; bảng đặc trưng ngày; nhãn T+2/T+5; báo cáo chất lượng dữ liệu | 15 mã, 5 năm; tỷ lệ thiếu < 5%; kiểm tra cut-off 15:00 đạt |
 | R1 – Model alpha | 8 | Mô hình cảm xúc tinh chỉnh; baseline; mô hình đa phương thức; ablation 3 cấu hình; báo cáo đánh giá | Đạt điều kiện demo mục 12.6 |
 | R2 – MVP | 10 | M1–M7 mức Must-have; batch dự báo hằng ngày; Should-have nếu kịp | AC-01 đến AC-09, AC-12 đến AC-15 đạt |
 | R3 – Final | 12 | Kiểm thử người dùng (8–10 người), sửa lỗi, báo cáo đồ án, slide, video demo 3–5 phút, README | KPI P1–P6; đủ sản phẩm bàn giao GĐ1 trong Project Brief |
@@ -1860,7 +1860,7 @@ Nếu cổng 2 trễ, phần Should-have của GĐ1 (tuần 9–10) được c�
 
 ☑ Thống nhất nhóm người dùng với tài liệu thiết kế: SDD 12.3 đã đánh dấu theo PRD (3 persona chính + người dùng mở rộng theo Brief).
 
-☐ Danh sách 15 mã cụ thể và mốc bắt đầu lịch sử (2018 hay 2021) sau khi kiểm tra độ sâu tin CafeF.
+☑ Danh sách 15 mã HOSE và mốc lịch sử 5 năm (từ 27/10/2021) đã chốt với nhóm mô hình (§12.1).
 
 ☐ Ngày bắt đầu tuần 1, ngày bảo vệ GĐ1 và lịch GĐ2–GĐ3 để đổi lịch tuần sang ngày thực.
 

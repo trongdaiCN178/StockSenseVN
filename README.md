@@ -42,7 +42,9 @@ npm run db:migrate
 npm run db:seed:demo
 ```
 
-`db:seed:demo` nạp 17 mã (10 HOSE, 4 HNX, 3 UPCoM), dự báo mẫu và 4 tài khoản demo. Chạy lại lệnh này sẽ đặt lại mật khẩu và mở khóa các tài khoản demo.
+`db:seed:demo` nạp 15 mã HOSE do nhóm mô hình chốt (FPT, VNM, STB, ACB, SSI, VIC, HPG, VCB, MSN, MBB, GAS, MWG, VPB, VRE, TCB), dự báo mẫu và 4 tài khoản demo. Chạy lại lệnh này sẽ đặt lại mật khẩu và mở khóa các tài khoản demo; dùng `node --env-file=.env db/seed-demo.js --market-only` để chỉ cập nhật danh sách mã và dữ liệu mẫu mà không đụng tới tài khoản. Lệnh này không ghi đè giá thật từ SSI và tắt các mã không thuộc danh sách.
+
+Sau khi seed, nạp giá thật 5 năm cho 15 mã và chỉ số (nhóm mô hình dùng 5 năm), ví dụ `--from 2021-10-27`: `node --env-file=../../.env src/cli.js --from <ngày bắt đầu>` trong `apps/worker` (truyền `--from` qua `npm run` sẽ bị npm bỏ mất).
 
 Trong `.env`, đặt `AUTH_RATE_LIMIT_SECRET` là một chuỗi ngẫu nhiên ít nhất 32 ký tự (bắt buộc cho đăng ký và quên mật khẩu).
 
@@ -60,9 +62,11 @@ Nạp dữ liệu thật ngay (không cần chờ lịch):
 
 ```sh
 npm run worker:market:sync         # giá OHLCV ngày từ SSI
-npm run worker:news:sync           # tin CafeF, VnExpress
+npm run worker:news:sync           # tin CafeF (chuyên mục + trang tin theo mã), VnExpress; mặc định 7 ngày gần nhất
 npm run worker:notifications:deliver
 ```
+
+Nạp lịch sử tin theo mã từ một ngày (chạy trong `apps/worker`, mất vài phút): `node --env-file=../../.env src/news-cli.js --from 2021-01-01`.
 
 Worker ở chế độ `watch` tự xếp hàng pipeline hằng ngày (giá → tin → cảnh báo → gửi thông báo) sau 15:30 giờ Việt Nam, thứ Hai đến thứ Sáu. Đổi giờ bằng `ADMIN_JOBS_SCHEDULE_TIME=HH:MM`, tắt bằng `ADMIN_JOBS_SCHEDULE=off`. Job lỗi được thử lại tối đa 3 lần; nếu vẫn lỗi, mọi Admin nhận cảnh báo ở chuông thông báo, kèm email/Telegram nếu Admin đã liên kết kênh trong Cài đặt → Kênh thông báo.
 

@@ -44,6 +44,15 @@ describe('price board rules', () => {
     expect(quote).toMatchObject({ reference: 56_000, ceiling: 59_900, floor: 52_100, change: 800, changePercent: 1.43 });
     expect(quote.tones).toEqual({ open: 'up', high: 'up', low: 'down', close: 'up' });
   });
+
+  it('lowers the reference price on an ex-rights day using adjusted prices', () => {
+    // 20% bonus shares: previous close 60,000 becomes 50,000 on the new basis.
+    const quote = buildBoardQuote('HOSE',
+      { date: '2026-10-27', open: 50_000, high: 51_000, low: 49_500, close: 50_500, adjClose: 50_500 },
+      { date: '2026-10-26', close: 60_000, adjClose: 50_000 });
+    expect(quote).toMatchObject({ reference: 50_000, ceiling: 53_500, floor: 46_500, change: 500, changePercent: 1 });
+    expect(quote.tones.close).toBe('up');
+  });
 });
 
 describe('indicators', () => {

@@ -73,6 +73,11 @@ function normalizeRow(symbol, row) {
     close,
     volume: optionalInteger(row.totalMatchVol),
     turnover: optionalNonNegativeNumber(row.totalMatchVal),
+    // The non-"Raw" fields are back-adjusted for stock dividends, bonus shares and splits.
+    adjOpen: optionalPositiveNumber(row.open),
+    adjHigh: optionalPositiveNumber(row.high),
+    adjLow: optionalPositiveNumber(row.low),
+    adjClose: optionalPositiveNumber(row.close),
   };
 }
 

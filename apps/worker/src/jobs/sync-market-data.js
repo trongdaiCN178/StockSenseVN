@@ -38,7 +38,8 @@ export async function syncMarketData({ pool, provider, startDate, endDate, logge
     for (const { symbol } of symbols.rows) {
       try {
         const records = await provider.fetchHistory(symbol, startDate, endDate);
-        const written = await upsertRecords(client, records, symbol, startDate, endDate);
+        let written = await upsertRecords(client, records, symbol, startDate, endDate);
+        written += await refreshAdjustedHistory(client, provider, symbol, startDate, endDate, logger);
         await createPriceCrossingAlerts(client, symbol);
         await createTradePlanAlerts(client, symbol);
         symbolsSucceeded += 1;
@@ -92,7 +93,9 @@ export async function syncMarketData({ pool, provider, startDate, endDate, logge
   }
 }
 
-async function upsertRecords(client, records, symbol, startDate, endDate) {
+async function upsertRecords(client, rawRecords, symbol, startDate, endDate) {
+  // SSI occasionally repeats the same session (seen for GAS and STB in July 2024); keep one row per day.
+  const records = [...new Map(rawRecords.map((row) => [row.tradeDate, row])).values()];
   let count = 0;
   for (let offset = 0; offset < records.length; offset += 250) {
     const chunk = records.slice(offset, offset + 250);
@@ -104,18 +107,36 @@ async function upsertRecords(client, records, symbol, startDate, endDate) {
         throw new Error(`SSI returned an out-of-range or mismatched row for ${symbol}.`);
       }
       const base = params.length;
-      params.push(row.symbol, row.tradeDate, row.open, row.high, row.low, row.close, row.volume, row.turnover);
-      values.push(`($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},'ssi')`);
+      params.push(row.symbol, row.tradeDate, row.open, row.high, row.low, row.close, row.volume, row.turnover,
+        row.adjOpen ?? null, row.adjHigh ?? null, row.adjLow ?? null, row.adjClose ?? null);
+      values.push(`(${Array.from({ length: 12 }, (_, i) => `$${base + i + 1}`).join(',')},'ssi')`);
     }
     const result = await client.query(`INSERT INTO daily_prices
-      (symbol, trade_date, open, high, low, close, volume, turnover, source)
+      (symbol, trade_date, open, high, low, close, volume, turnover, adj_open, adj_high, adj_low, adj_close, source)
       VALUES ${values.join(',')}
       ON CONFLICT (symbol, trade_date) DO UPDATE SET open=EXCLUDED.open, high=EXCLUDED.high,
         low=EXCLUDED.low, close=EXCLUDED.close, volume=EXCLUDED.volume,
-        turnover=EXCLUDED.turnover, source=EXCLUDED.source`, params);
+        turnover=EXCLUDED.turnover, adj_open=EXCLUDED.adj_open, adj_high=EXCLUDED.adj_high,
+        adj_low=EXCLUDED.adj_low, adj_close=EXCLUDED.adj_close, source=EXCLUDED.source`, params);
     count += result.rowCount;
   }
   return count;
+}
+
+// SSI back-adjusts the whole history after a stock dividend, bonus issue or split. The daily run only fetches a few
+// recent sessions, so it re-checks the oldest stored session and reloads the full history when its adjusted close moved.
+async function refreshAdjustedHistory(client, provider, symbol, startDate, endDate, logger) {
+  const { rows } = await client.query(`SELECT trade_date::text AS date, adj_close FROM daily_prices
+    WHERE symbol=$1 AND source='ssi' AND trade_date < $2 ORDER BY trade_date LIMIT 1`, [symbol, startDate]);
+  const oldest = rows[0];
+  if (!oldest) return 0;
+  const [probe] = await provider.fetchHistory(symbol, oldest.date, oldest.date);
+  if (!probe?.adjClose) return 0;
+  const stored = oldest.adj_close == null ? null : Number(oldest.adj_close);
+  if (stored != null && Math.abs(stored - probe.adjClose) <= probe.adjClose * 0.0005) return 0;
+  logger.info(`[StockSense worker] ${symbol}: adjusted prices changed upstream, reloading history from ${oldest.date}.`);
+  const history = await provider.fetchHistory(symbol, oldest.date, endDate);
+  return upsertRecords(client, history, symbol, oldest.date, endDate);
 }
 
 async function upsertIndexRecords(client, records, code) {

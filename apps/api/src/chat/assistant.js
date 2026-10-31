@@ -24,6 +24,8 @@ const vnd = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
 const dec = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
 const pct = (value) => (value == null ? '—' : `${value > 0 ? '+' : value < 0 ? '−' : ''}${dec.format(Math.abs(value))}%`);
 const day = (iso) => (iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString('vi-VN', { timeZone: 'UTC' }) : '—');
+// Period returns and indicators use back-adjusted closes so stock dividends and splits are not read as drops.
+const adjusted = (bars) => bars.map((bar) => ({ ...bar, close: bar.adjClose ?? bar.close }));
 const billions = (value) => (value == null ? '—' : `${dec.format(value / 1e9)} tỷ đ`);
 
 // Lowercase without Vietnamese diacritics, so "giá" and "gia" match the same patterns.
@@ -48,6 +50,8 @@ const PERSONAL_INTENTS = new Set(['portfolio', 'plans', 'journal', 'watchlist'])
 // FR-M12-04: phrases an answer must never contain.
 const OUTPUT_BLOCKLIST = [/\b(MUA|BÁN)\b/, /\bnên (mua|bán)\b/i, /khuyến nghị (mua|bán)/i, /giá mục tiêu (của|cho) [A-Z0-9]{3}/i];
 
+// Capitalised 3-letter words that are not tickers.
+const ACRONYMS = new Set(['RSI', 'EMA', 'SMA', 'ROE', 'ROA', 'EPS', 'NAV', 'ROI', 'ETF', 'IPO', 'ESG', 'CEO', 'GDP', 'CPI', 'FDI', 'VND', 'USD', 'HNX', 'API', 'PDF', 'CSV', 'ATM', 'TMCP']);
 const AMBIGUOUS_TERMS = new Set(['tran', 'san', 'rr', 'tham chieu', 'khoi luong', 'nhat ky', 'xac suat']);
 const GLOSSARY = [
   [['ty le loi nhuan rui ro', 'r:r', 'rr'], 'R:R (tỷ lệ lợi nhuận/rủi ro) = (giá mục tiêu − giá vào) / (giá vào − giá cắt lỗ) trong Trade Plan do bạn tự lập. Ví dụ vào 56.000, cắt lỗ 53.000, mục tiêu 62.000 thì R:R = 6.000 / 3.000 = 2.'],
@@ -101,7 +105,9 @@ export function createChatAssistant(deps) {
     const { board, set } = await symbols();
     const tokens = [...new Set((text.toUpperCase().match(/\b[A-Z0-9]{3}\b/g) ?? []))];
     const found = tokens.filter((token) => set.has(token));
-    const unknown = text.match(/\bm[ãa] ([A-Za-z0-9]{3,5})\b/i)?.[1]?.toUpperCase();
+    // A ticker the user names but StockSense does not track: "mã XYZ", or a capitalised 3-letter code.
+    const unknown = text.match(/\bm[ãa] ([A-Za-z0-9]{3,5})\b/i)?.[1]?.toUpperCase()
+      ?? (text.match(/\b[A-Z]{3}\b/g) ?? []).find((token) => !set.has(token) && !ACRONYMS.has(token));
 
     const has = (re) => re.test(norm);
     let outcome;
@@ -158,7 +164,7 @@ export function createChatAssistant(deps) {
     const move = quote.change > 0 ? `tăng ${vnd.format(quote.change)} đ (${pct(quote.changePercent)})` : quote.change < 0 ? `giảm ${vnd.format(-quote.change)} đ (${pct(quote.changePercent)})` : 'đứng giá tham chiếu (0%)';
     const content = `${symbol} (${info.exchange}${info.industry ? `, ${info.industry}` : ''}) phiên ${day(quote.date)}: đóng cửa ${vnd.format(quote.close)} đ, ${move} so với tham chiếu ${vnd.format(quote.reference)}. `
       + `Mở cửa ${vnd.format(quote.open)}, cao nhất ${vnd.format(quote.high)}, thấp nhất ${vnd.format(quote.low)}; khối lượng ${vnd.format(quote.volume ?? 0)} cp, giá trị ${billions(quote.turnover)}. `
-      + `Trần ${vnd.format(quote.ceiling)}, sàn ${vnd.format(quote.floor)}. Thay đổi 1 tuần ${pct(changeOver(bars, 5))}, 1 tháng ${pct(changeOver(bars, 21))}. `
+      + `Trần ${vnd.format(quote.ceiling)}, sàn ${vnd.format(quote.floor)}. Thay đổi 1 tuần ${pct(changeOver(adjusted(bars), 5))}, 1 tháng ${pct(changeOver(adjusted(bars), 21))} (giá điều chỉnh). `
       + 'Dữ liệu cuối ngày từ SSI.';
     return result('price', content, [{ type: 'price', label: `Giá ${symbol} phiên ${day(quote.date)} (SSI)`, date: quote.date, path: `/symbols/${symbol}` }]);
   }
@@ -167,7 +173,7 @@ export function createChatAssistant(deps) {
     const prices = await deps.market.prices(symbol, '6m');
     const bars = prices?.items ?? [];
     if (bars.length < 35) return result('technical', `${NO_DATA} Chưa đủ lịch sử giá của ${symbol} để tính chỉ báo.`);
-    const closes = bars.map((bar) => bar.close);
+    const closes = adjusted(bars).map((bar) => bar.close);
     const last = closes.at(-1);
     const r = rsi(closes, 14).at(-1);
     const ma20 = sma(closes, 20).at(-1);

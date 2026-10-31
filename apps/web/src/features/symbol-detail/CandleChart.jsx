@@ -4,7 +4,7 @@ import { aggregateBars, sma, rsi, macd } from '@stocksense/core/indicators';
 
 const number = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
 const INTERVALS = [['day', 'Ngày'], ['week', 'Tuần'], ['month', 'Tháng']];
-const RANGES = [['1m', '1T', 1], ['3m', '3T', 3], ['6m', '6T', 6], ['1y', '1N', 12], ['all', 'Tất cả', null]];
+const RANGES = [['1m', '1T', 1], ['3m', '3T', 3], ['6m', '6T', 6], ['1y', '1N', 12], ['3y', '3N', 36], ['all', 'Tất cả', null]];
 const MA_COLORS = { ma20: '#E3A008', ma50: '#7C5CDB' };
 
 const cssVar = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
